@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HUGPONG – Agricultural Management Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    body {
+      background: #fdfdfd;
+      overflow-y: auto;
+      height: auto;
+      display: block;
+    }
+    .landing-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 60px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .hero-logo {
+      width: 180px;
+      height: 180px;
+      margin-bottom: 30px;
+    }
+    .hero-title {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+    }
+    .hero-subtitle {
+      font-size: 20px;
+      color: var(--text-2);
+      max-width: 700px;
+      line-height: 1.6;
+      margin-bottom: 48px;
+    }
+    .about-section {
+      max-width: 800px;
+      background: var(--surface);
+      padding: 40px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      margin-bottom: 60px;
+      text-align: left;
+    }
+    .about-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 16px;
+    }
+    .about-text {
+      font-size: 16px;
+      color: var(--text-2);
+      line-height: 1.8;
+    }
+    .action-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      width: 100%;
+    }
+    .download-group {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .download-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #000;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: transform 0.2s, background 0.2s;
+      min-width: 220px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .download-btn:hover {
+      transform: translateY(-2px);
+      background: #222;
+    }
+    .download-btn.android {
+      background: #3DDC84;
+      color: #000;
+    }
+    .download-btn.android:hover {
+      background: #37c878;
+    }
+    .btn-label {
+      text-align: left;
+    }
+    .btn-top {
+      font-size: 10px;
+      text-transform: uppercase;
+      opacity: 0.8;
+      display: block;
+    }
+    .btn-main {
+      font-size: 18px;
+      font-weight: 700;
+      display: block;
+    }
+    .admin-login-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--primary);
+      font-weight: 700;
+      text-decoration: none;
+      padding: 12px 32px;
+      border: 2px solid var(--primary);
+      border-radius: var(--radius);
+      transition: all 0.2s;
+      margin-top: 20px;
+    }
+    .admin-login-link:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+    .footer {
+      margin-top: 100px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    svg {
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="landing-container">
+    <img src="logo.png" alt="HUGPONG Logo" class="hero-logo">
+    
+    <h1 class="hero-title">HUGPONG</h1>
+    <p class="hero-subtitle">The next-generation agricultural management system for Silay Block Farm operations.</p>
+
+    <div class="about-section">
+      <h2 class="about-title">About HUGPONG</h2>
+      <p class="about-text">
+        HUGPONG is an integrated platform designed to bridge the gap between farm owners, supervisors, and field workers. 
+        By providing real-time market price monitoring, advanced profitability calculations, and robust offline-first operational scheduling, 
+        HUGPONG empowers the Silay agricultural community to make data-driven decisions and streamline harvest workflows.
+      </p>
+    </div>
+
+    <div class="action-group">
+      <div class="download-group">
+        <a href="#" class="download-btn">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.1 2.48-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.24-2.02 1.1-3.15-1.03.04-2.28.67-3.02 1.52-.66.76-1.23 1.91-1.07 3.02 1.15.09 2.27-.56 2.99-1.39z"/></svg>
+          <div class="btn-label">
+            <span class="btn-top">Download on the</span>
+            <span class="btn-main">App Store</span>
+          </div>
+        </a>
+        
+        <a href="#" class="download-btn android">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6,18c0,1.1,0.9,2,2,2h8c1.1,0,2-0.9,2-2V7H6V18z M3.5,8C2.7,8,2,8.7,2,9.5v5c0,0.8,0.7,1.5,1.5,1.5S5,15.3,5,14.5v-5 C5,8.7,4.3,8,3.5,8z M20.5,8C19.7,8,19,8.7,19,9.5v5c0,0.8,0.7,1.5,1.5,1.5s1.5-0.7,1.5-1.5v-5C22,8.7,21.3,8,20.5,8z M15.7,4.5 l1.1-1.1c0.2-0.2,0.2-0.5,0-0.7c-0.2-0.2-0.5-0.2-0.7,0L15,3.8c-0.8-0.5-1.8-0.8-3-0.8s-2.2,0.3-3,0.8L7.9,2.7 C7.7,2.5,7.4,2.5,7.2,2.7c-0.2,0.2-0.2,0.5,0,0.7l1.1,1.1C6.9,5.5,6,7.1,6,9h12C18,7.1,17.1,5.5,15.7,4.5z M10,7.5c-0.3,0-0.5-0.2-0.5-0.5 S9.7,6.5,10,6.5s0.5,0.2,0.5,0.5S10.3,7.5,10,7.5z M14,7.5c-0.3,0-0.5-0.2-0.5-0.5s0.2-0.5,0.5-0.5s0.5,0.2,0.5,0.5S14.3,7.5,14,7.5z"/>
+          </svg>
+          <div class="btn-label">
+            <span class="btn-top">Get it on</span>
+            <span class="btn-main">Google Play</span>
+          </div>
+        </a>
+      </div>
+
+      <a href="login.html" class="admin-login-link">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+        Login as Admin
+      </a>
+    </div>
+
+    <footer class="footer">
+      &copy; 2026 HUGPONG Agricultural Operations Platform. All rights reserved.
+    </footer>
+  </div>
+</body>
+</html>
