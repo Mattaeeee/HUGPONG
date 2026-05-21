@@ -80,10 +80,83 @@
       cursor: pointer;
       transition: all 0.2s;
       margin-top: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      position: relative;
     }
     .login-btn:hover {
       background: var(--primary-light);
       transform: translateY(-1px);
+    }
+    .btn-spinner {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .demo-presets-card {
+      margin-top: 32px;
+      border-top: 1px dashed var(--border);
+      padding-top: 24px;
+      text-align: left;
+    }
+    .demo-presets-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .demo-presets-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .demo-preset-item {
+      background: #fcfdfe;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .demo-preset-item:hover {
+      border-color: var(--primary-light);
+      background: var(--primary-bg);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(45, 80, 22, 0.05);
+    }
+    .demo-preset-badge {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .demo-preset-badge.super {
+      color: var(--purple);
+    }
+    .demo-preset-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .demo-preset-email {
+      font-size: 11px;
+      color: var(--text-muted);
     }
     .forgot-pass {
       display: block;
@@ -104,11 +177,65 @@
       gap: 8px;
       color: var(--text-muted);
       text-decoration: none;
-      font-size: 14px;
       font-weight: 500;
     }
     .back-link:hover {
       color: var(--primary);
+    }
+
+    /* Premium Loading Overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(244, 246, 242, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .loading-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .overlay-content {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      transform: translateY(20px);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .loading-overlay.active .overlay-content {
+      transform: translateY(0);
+    }
+    .overlay-spinner {
+      width: 56px;
+      height: 56px;
+      border: 4px solid var(--primary-bg);
+      border-radius: 50%;
+      border-top-color: var(--primary);
+      animation: spin 1s cubic-bezier(0.55, 0.055, 0.675, 0.19) infinite;
+      box-shadow: 0 0 15px rgba(45, 80, 22, 0.15);
+    }
+    .overlay-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--primary);
+      margin: 0;
+    }
+    .overlay-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 0;
     }
   </style>
 </head>
@@ -123,20 +250,114 @@
     <h1 class="login-title">Admin Console</h1>
     <p class="login-subtitle">Enter your credentials to manage Silay Farm operations.</p>
 
-    <form onsubmit="event.preventDefault(); window.location.href='dashboard.html';">
+    <form id="login-form" onsubmit="handleLoginSubmit(event);">
       <div class="form-group">
-        <label class="form-label">Email Address</label>
-        <input type="email" class="form-input" placeholder="admin@hugpong.ph" required>
+        <label class="form-label">Contact Number</label>
+        <input type="tel" id="contact-input" class="form-input" placeholder="09XX XXX XXXX" pattern="^09\d{9}$" title="Enter a valid 11-digit PH mobile number starting with 09" required>
       </div>
       <div class="form-group">
         <label class="form-label">Password</label>
-        <input type="password" class="form-input" placeholder="••••••••" required>
+        <input type="password" id="password-input" class="form-input" placeholder="••••••••" required>
       </div>
       
-      <button type="submit" class="login-btn">Sign In</button>
+      <button type="submit" id="submit-btn" class="login-btn">
+        <span class="btn-spinner" id="btn-spinner"></span>
+        <span id="btn-text">Sign In</span>
+      </button>
       
       <a href="#" class="forgot-pass">Forgot password?</a>
     </form>
+
+    <div class="demo-presets-card">
+      <h3 class="demo-presets-title">Quick Demo Console Access</h3>
+      <div class="demo-presets-grid">
+        <div class="demo-preset-item" onclick="triggerDemoLogin('admin')">
+          <span class="demo-preset-badge">SRA Checker</span>
+          <span class="demo-preset-name">Admin Console</span>
+          <span class="demo-preset-email">09171234567</span>
+        </div>
+        <div class="demo-preset-item" onclick="triggerDemoLogin('superadmin')">
+          <span class="demo-preset-badge super">Super Admin</span>
+          <span class="demo-preset-name">Root Console</span>
+          <span class="demo-preset-email">09187654321</span>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- Premium Loading Overlay -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="overlay-content">
+      <div class="overlay-spinner"></div>
+      <p class="overlay-title">Securing Session...</p>
+      <p class="overlay-subtitle" id="overlay-status">Initializing secure admin protocol</p>
+    </div>
+  </div>
+
+  <script>
+    function triggerDemoLogin(role) {
+      const contactInput = document.getElementById('contact-input');
+      const passInput = document.getElementById('password-input');
+      
+      if (role === 'admin') {
+        contactInput.value = '09171234567';
+        passInput.value = 'admin123';
+      } else {
+        contactInput.value = '09187654321';
+        passInput.value = 'superadmin123';
+      }
+      
+      localStorage.setItem('hugpong_role', role);
+      
+      // Auto submit after a minor delay for great UX feel
+      setTimeout(() => {
+        document.getElementById('login-form').dispatchEvent(new Event('submit', { cancelable: true }));
+      }, 300);
+    }
+
+    function handleLoginSubmit(e) {
+      e.preventDefault();
+      
+      const contactNum = document.getElementById('contact-input').value;
+      const spinner = document.getElementById('btn-spinner');
+      const btnText = document.getElementById('btn-text');
+      const submitBtn = document.getElementById('submit-btn');
+      const overlay = document.getElementById('loading-overlay');
+      const statusText = document.getElementById('overlay-status');
+      
+      // Determine role from input contact if not already set by preset
+      if (!localStorage.getItem('hugpong_role')) {
+        if (contactNum === '09187654321') {
+          localStorage.setItem('hugpong_role', 'superadmin');
+        } else {
+          localStorage.setItem('hugpong_role', 'admin');
+        }
+      }
+      
+      // Premium loading sequence
+      spinner.style.display = 'inline-block';
+      btnText.textContent = 'Authenticating...';
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.85';
+      
+      // Transition to full-screen glassmorphic loading overlay
+      setTimeout(() => {
+        overlay.classList.add('active');
+        
+        // Cycle status messages for premium experience
+        setTimeout(() => {
+          statusText.textContent = 'Decrypting access tokens...';
+        }, 400);
+        
+        setTimeout(() => {
+          statusText.textContent = 'Synchronizing SRA weekly prices...';
+        }, 800);
+
+        setTimeout(() => {
+          window.location.href = 'dashboard.html';
+        }, 1300);
+      }, 300);
+    }
+  </script>
 </body>
 </html>

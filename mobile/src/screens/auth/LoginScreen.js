@@ -4,9 +4,10 @@ import { View, Text, Image, StyleSheet, TextInput, TouchableOpacity, KeyboardAvo
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOW } from '../../theme';
+import { setSession } from '../../data/mockData';
 
 export default function LoginScreen({ navigation }) {
-  const [credential, setCredential] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -14,7 +15,10 @@ export default function LoginScreen({ navigation }) {
 
   const validate = () => {
     const e = {};
-    if (!credential.trim()) e.credential = 'Email or mobile number is required';
+    const cleaned = contactNumber.replace(/\s/g, '');
+    if (!cleaned.startsWith('09') || cleaned.length !== 11) {
+      e.contactNumber = 'Enter a valid PH mobile number (09XXXXXXXXX)';
+    }
     if (password.length < 6) e.password = 'Password must be at least 6 characters';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -23,11 +27,40 @@ export default function LoginScreen({ navigation }) {
   const handleLogin = () => {
     if (!validate()) return;
     setLoading(true);
-    // Mock auth — replace with API call
+    // Find matching session role
+    const cleaned = contactNumber.replace(/\s/g, '');
+    if (cleaned === '09171234567') {
+      setSession('Member');
+    } else if (cleaned === '09189876543') {
+      setSession('Farm Manager');
+    } else if (cleaned === '09194448888') {
+      setSession('SRA Checker');
+    } else {
+      // default
+      setSession('Member');
+    }
+    
     setTimeout(() => {
       setLoading(false);
       navigation.replace('MainTabs');
     }, 1200);
+  };
+
+  const handleDemoLogin = (role) => {
+    setLoading(true);
+    setSession(role);
+    if (role === 'Member') {
+      setContactNumber('09171234567');
+    } else if (role === 'Farm Manager') {
+      setContactNumber('09189876543');
+    } else {
+      setContactNumber('09194448888');
+    }
+    setPassword('password');
+    setTimeout(() => {
+      setLoading(false);
+      navigation.replace('MainTabs');
+    }, 1000);
   };
 
   return (
@@ -43,22 +76,22 @@ export default function LoginScreen({ navigation }) {
 
           {/* Card */}
           <View style={s.card}>
-            {/* Credential */}
+            {/* Contact Number */}
             <View style={s.fieldGroup}>
-              <Text style={s.label}>Email or Mobile Number</Text>
-              <View style={[s.inputWrap, errors.credential && s.inputError]}>
-                <Ionicons name="person-outline" size={18} color={COLORS.textMuted} style={s.inputIcon} />
+              <Text style={s.label}>Contact Number</Text>
+              <View style={[s.inputWrap, errors.contactNumber && s.inputError]}>
+                <Ionicons name="call-outline" size={18} color={COLORS.textMuted} style={s.inputIcon} />
                 <TextInput
                   style={s.input}
-                  value={credential}
-                  onChangeText={v => { setCredential(v); setErrors(p => ({ ...p, credential: null })); }}
-                  placeholder="Enter email or mobile"
+                  value={contactNumber}
+                  onChangeText={v => { setContactNumber(v); setErrors(p => ({ ...p, contactNumber: null })); }}
+                  placeholder="09XX XXX XXXX"
                   placeholderTextColor={COLORS.textMuted}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
+                  keyboardType="phone-pad"
+                  maxLength={13}
                 />
               </View>
-              {errors.credential && <Text style={s.errorText}>{errors.credential}</Text>}
+              {errors.contactNumber && <Text style={s.errorText}>{errors.contactNumber}</Text>}
             </View>
 
             {/* Password */}
@@ -93,6 +126,34 @@ export default function LoginScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
+          {/* Quick Demo Login */}
+          <View style={s.demoCard}>
+            <Text style={s.demoCardTitle}>Quick Demo Access</Text>
+            <Text style={s.demoCardSub}>Tap a role preset below to automatically log in and experience HUGPONG as different members of the farm ecosystem.</Text>
+
+            <View style={s.demoRow}>
+              {[
+                { role: 'Member', name: 'Juan dela Cruz (Member)', color: '#4A7C2F', sub: 'Log operations & offline tasks' },
+                { role: 'Farm Manager', name: 'Jose Reyes (Farm Manager)', color: '#1A6B9A', sub: 'Approve logs & generate QR' },
+                { role: 'SRA Checker', name: 'Maria Santos (SRA Checker)', color: '#8F3A8F', sub: 'Scan QR & compile sugar reports' },
+              ].map(d => (
+                <TouchableOpacity
+                  key={d.role}
+                  style={[s.demoBtn, { borderColor: d.color + '25' }]}
+                  onPress={() => handleDemoLogin(d.role)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[s.demoDot, { backgroundColor: d.color }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.demoBtnText, { color: d.color }]}>{d.name}</Text>
+                    <Text style={s.demoBtnSub} numberOfLines={1}>{d.sub}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={d.color} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
           {/* Register */}
           <View style={s.registerRow}>
             <Text style={s.registerText}>Don't have an account? </Text>
@@ -108,8 +169,8 @@ export default function LoginScreen({ navigation }) {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { flexGrow: 1, padding: SPACING.xl, gap: SPACING.xl },
-  header: { alignItems: 'center', gap: 10, paddingTop: 20 },
+  scroll: { flexGrow: 1, padding: SPACING.lg, gap: SPACING.md, paddingBottom: 32 },
+  header: { alignItems: 'center', gap: 10, paddingTop: 10 },
   logoImg: { width: 80, height: 80 },
   title: { fontSize: 26, fontWeight: '800', color: COLORS.text },
   sub: { fontSize: 14, color: COLORS.textMuted },
@@ -126,7 +187,17 @@ const s = StyleSheet.create({
   btn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 15, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 4 },
   btnDisabled: { opacity: 0.6 },
   btnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  registerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  registerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 4 },
   registerText: { fontSize: 14, color: COLORS.textMuted },
   registerLink: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
+  
+  // Demo styling
+  demoCard: { backgroundColor: '#fff', borderRadius: RADIUS.xl, padding: SPACING.xl, gap: SPACING.md, ...SHADOW.card },
+  demoCardTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text },
+  demoCardSub: { fontSize: 12, color: COLORS.textMuted, lineHeight: 18 },
+  demoRow: { gap: 8, marginTop: 4 },
+  demoBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1.5, borderRadius: RADIUS.md, padding: SPACING.md, backgroundColor: COLORS.background },
+  demoDot: { width: 8, height: 8, borderRadius: 4 },
+  demoBtnText: { fontSize: 13, fontWeight: '700' },
+  demoBtnSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
 });

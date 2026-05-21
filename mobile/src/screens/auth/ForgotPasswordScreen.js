@@ -34,19 +34,19 @@ export default function ForgotPasswordScreen({ navigation }) {
               </View>
               <View style={s.textBlock}>
                 <Text style={s.title}>Reset your password</Text>
-                <Text style={s.sub}>Enter your mobile number or email and we'll send a reset link.</Text>
+                <Text style={s.sub}>Enter your registered mobile number and we'll send a password reset link via SMS.</Text>
               </View>
               <View style={s.card}>
-                <Text style={s.label}>Mobile Number or Email</Text>
+                <Text style={s.label}>Mobile Number</Text>
                 <View style={s.inputWrap}>
                   <Ionicons name="phone-portrait-outline" size={18} color={COLORS.textMuted} />
                   <TextInput
                     style={s.input}
                     value={mobile}
                     onChangeText={setMobile}
-                    placeholder="+63 9XX XXX XXXX or email"
+                    placeholder="09XX XXX XXXX"
                     placeholderTextColor={COLORS.textMuted}
-                    keyboardType="email-address"
+                    keyboardType="phone-pad"
                     autoCapitalize="none"
                   />
                 </View>
@@ -61,7 +61,7 @@ export default function ForgotPasswordScreen({ navigation }) {
                 <Ionicons name="checkmark-circle" size={60} color={COLORS.success} />
               </View>
               <Text style={s.successTitle}>Link Sent!</Text>
-              <Text style={s.successSub}>Check your mobile or email for the password reset link. It expires in 15 minutes.</Text>
+              <Text style={s.successSub}>Check your mobile messages for the password reset link. It expires in 15 minutes.</Text>
               <TouchableOpacity style={s.btn} onPress={() => navigation.navigate('Login')}>
                 <Text style={s.btnText}>Back to Sign In</Text>
               </TouchableOpacity>

@@ -166,13 +166,13 @@ export default function SyncMonitorScreen({ navigation }) {
                   </View>
                   <View style={s.conflictVersions}>
                     <View style={[s.versionBox, s.versionLocal]}>
-                      <Text style={s.versionLabel}>📱  Your Version</Text>
+                      <Text style={s.versionLabel}>Your Version</Text>
                       <Text style={s.versionUser}>{c.localUser}</Text>
                       <Text style={s.versionTime}>{c.localTime}</Text>
                     </View>
                     <Text style={s.versionVs}>vs</Text>
                     <View style={[s.versionBox, s.versionCloud]}>
-                      <Text style={s.versionLabel}>☁️  Cloud Version</Text>
+                      <Text style={s.versionLabel}>Cloud Version</Text>
                       <Text style={s.versionUser}>{c.cloudUser}</Text>
                       <Text style={s.versionTime}>{c.cloudTime}</Text>
                     </View>
@@ -231,7 +231,7 @@ const s = StyleSheet.create({
   // Conflicts
   conflictNotice: { flexDirection: 'row', gap: 8, backgroundColor: '#E0F0FA', borderRadius: RADIUS.md, padding: SPACING.md, alignItems: 'flex-start' },
   conflictNoticeText: { flex: 1, fontSize: 12, color: COLORS.blue, lineHeight: 18 },
-  conflictCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.lg, gap: SPACING.md, ...SHADOW.card, borderLeftWidth: 3, borderLeftColor: '#9B59B6' },
+  conflictCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.lg, gap: SPACING.md, ...SHADOW.card, borderWidth: 1, borderColor: COLORS.border },
   conflictHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   conflictRecord: { fontSize: 14, fontWeight: '700', color: COLORS.text, flex: 1 },
   conflictVersions: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },

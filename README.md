@@ -31,7 +31,7 @@ An integrated management system designed for the **Silay Block Farm** operations
 - **Real-time Market Sync**: Monitor HPCo and MOL prices.
 - **Offline Operations**: Log tasks in the field without internet; sync later.
 - **Data-Driven Decisions**: Advanced profitability and revenue calculators.
-- **Secure Sync**: Conflict resolution and device audit logs.
+- **Secure Sync**: Robust offline compilation and conflict resolution.
 
 ---
 *Created for the HUGPONG Agricultural Operations Team.*

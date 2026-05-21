@@ -99,6 +99,11 @@ body {
   background: rgba(255,255,255,0.2);
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; color: #fff; font-size: 14px;
+  transition: all 0.2s ease;
+}
+.admin-avatar.superadmin {
+  background: linear-gradient(135deg, var(--accent), #ff8c00);
+  box-shadow: 0 0 8px rgba(245, 166, 35, 0.4);
 }
 .admin-name { font-size: 13px; font-weight: 600; color: #fff; }
 .admin-role { font-size: 10px; color: rgba(255,255,255,0.5); }
@@ -402,4 +407,217 @@ body {
   .sidebar.open { left: 0; }
   .sidebar-toggle { display: flex; }
   .kpi-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── SRA AUDIT & VIEWFINDER PREMIUM STYLES ───────────── */
+.qr-viewfinder-box {
+  position: relative;
+  background: #090e05 !important;
+  border: 2px solid var(--primary-light) !important;
+  box-shadow: 0 0 20px rgba(74, 124, 47, 0.25), inset 0 0 30px rgba(0, 0, 0, 0.8) !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.qr-laser {
+  position: absolute;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(143, 58, 143, 0.8), #4a7c2f, rgba(143, 58, 143, 0.8), transparent) !important;
+  box-shadow: 0 0 12px #4a7c2f, 0 0 4px #4a7c2f !important;
+  animation: laserPulse 2s infinite linear;
+  z-index: 2;
+}
+
+.qr-target-corners {
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  border: 2px dashed var(--primary-light) !important;
+  border-radius: 12px !important;
+  background: rgba(74, 124, 47, 0.03);
+  box-shadow: 0 0 15px rgba(74, 124, 47, 0.1);
+  animation: targetPulse 3s infinite ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.qr-target-corners::before,
+.qr-target-corners::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: #4a7c2f;
+  border-style: solid;
+  pointer-events: none;
+}
+
+/* Corners detailing for premium high-tech visual overlay */
+.qr-target-corners::before {
+  top: -4px; left: -4px;
+  border-width: 4px 0 0 4px;
+  border-top-left-radius: 8px;
+}
+.qr-target-corners::after {
+  bottom: -4px; right: -4px;
+  border-width: 0 4px 4px 0;
+  border-bottom-right-radius: 8px;
+}
+
+@keyframes laserPulse {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@keyframes targetPulse {
+  0%, 100% { transform: scale(1); border-color: rgba(74, 124, 47, 0.4); }
+  50% { transform: scale(1.04); border-color: rgba(74, 124, 47, 0.95); box-shadow: 0 0 20px rgba(74, 124, 47, 0.2); }
+}
+
+/* ── SLEEK ROLE BADGES ───────────────────────────────── */
+.badge-role {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+}
+
+.badge-role.member {
+  background: var(--bg);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+.badge-role.manager {
+  background: var(--blue-bg);
+  color: var(--blue);
+  border: 1px solid rgba(26, 107, 154, 0.2);
+}
+
+.badge-role.checker {
+  background: var(--primary-bg);
+  color: var(--primary);
+  border: 1px solid rgba(74, 124, 47, 0.2);
+}
+
+.badge-role.superadmin {
+  background: var(--purple-bg);
+  color: var(--purple);
+  border: 1px solid rgba(107, 63, 160, 0.2);
+  box-shadow: 0 0 8px rgba(107, 63, 160, 0.15);
+}
+
+/* ── PRINT AUDIT CERTIFICATE LAYOUT ────────────────── */
+@media print {
+  /* Suppress layout headers, sidebar, buttons, and alerts for pure report layout */
+  body, html {
+    background: #fff !important;
+    color: #000 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  #app {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .sidebar, 
+  .topbar, 
+  .sidebar-toggle, 
+  .role-selector-pill, 
+  .price-pill, 
+  #topbar-refresh, 
+  .page-toolbar, 
+  .reset-demo-btn,
+  .qr-viewfinder-box, 
+  #page-audit .card:first-child, 
+  .btn-primary, 
+  .btn-outline, 
+  .btn-icon,
+  #toast {
+    display: none !important;
+  }
+
+  .main-wrap {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .page-content {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .page {
+    display: block !important;
+  }
+
+  #page-audit {
+    display: block !important;
+  }
+
+  .audit-center-grid {
+    display: block !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  #audit-report-card {
+    border: none !important;
+    background: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    min-height: auto !important;
+    display: block !important;
+  }
+
+  #audit-certificate-sheet {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 24px !important;
+    width: 100% !important;
+  }
+
+  /* Styling for printable certificate sheet elements */
+  #audit-certificate-sheet > div {
+    margin-bottom: 20px;
+  }
+
+  .data-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .data-table th {
+    background: #f0f4ec !important;
+    color: #000 !important;
+    border-bottom: 2px solid #2d5016 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .data-table td {
+    border-bottom: 1px solid #ddd !important;
+    color: #000 !important;
+  }
+  
+  .status-badge {
+    border: 1px solid #000 !important;
+    background: transparent !important;
+    color: #000 !important;
+    font-weight: 700 !important;
+  }
 }

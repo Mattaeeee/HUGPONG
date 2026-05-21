@@ -22,6 +22,32 @@ const NOTIFICATIONS = [
 
 const MOCK_MOL = { value: 4200, change: +80, unit: '/ MT', lastUpdated: 'May 17, 2026' };
 
+// Mock weather data - replace with real API when online
+const WEATHER_ADVISORIES = [
+  {
+    type: 'rain',
+    icon: 'rainy',
+    iconColor: '#1A6B9A',
+    title: 'Heavy Rain Expected',
+    message: 'Delay fertilizer application and chemical spraying to avoid run-off and input loss.',
+  },
+  {
+    type: 'heat',
+    icon: 'sunny',
+    iconColor: '#F5A623',
+    title: 'Extreme Heat Warning',
+    message: 'Delay planting of cane points (patdan) unless irrigation is ready to prevent drying out.',
+  },
+  {
+    type: 'clear',
+    icon: 'partly-sunny',
+    iconColor: '#4A7C2F',
+    title: 'Good Field Window',
+    message: 'Clear weather. Excellent conditions for plowing, planting, weeding, or fertilizing.',
+  },
+];
+const weatherData = WEATHER_ADVISORIES[2]; // default: clear — change index to simulate
+
 export default function HomeScreen({ navigation }) {
   const price = MOCK_PRICE;
   const mol = MOCK_MOL;
@@ -96,25 +122,22 @@ export default function HomeScreen({ navigation }) {
         </View>
 
 
-        {/* ── Profit Preview ── */}
-        <TouchableOpacity style={[s.card, s.profitCard]} onPress={() => navigation.navigate('Calculator')} activeOpacity={0.85}>
-          <View style={s.profitInner}>
-            <View>
-              <Text style={s.profitLabel}>Estimated Net Profit Preview</Text>
-              <Text style={s.profitValue}>Php 311,000</Text>
-              <Text style={s.profitSub}>Based on 2.0 Ha · 118 Lkg/Ha</Text>
-            </View>
-            <View style={s.profitArrow}>
-              <Ionicons name="calculator" size={20} color={COLORS.primary} />
-              <Ionicons name="chevron-forward" size={16} color={COLORS.primaryLight} />
+        {/* ── Weather Advisory Banner ── */}
+        <View style={[s.card, s.weatherCard, weatherData.type === 'rain' && s.weatherRain, weatherData.type === 'heat' && s.weatherHeat, weatherData.type === 'clear' && s.weatherClear]}>
+          <View style={s.weatherRow}>
+            <Ionicons name={weatherData.icon} size={28} color={weatherData.iconColor} />
+            <View style={s.weatherBody}>
+              <Text style={s.weatherTitle}>{weatherData.title}</Text>
+              <Text style={s.weatherMsg}>{weatherData.message}</Text>
             </View>
           </View>
-        </TouchableOpacity>
+          <Text style={s.weatherSub}>📍 Silay / Kapitan Ramon · Cached forecast</Text>
+        </View>
 
         {/* ── Price Analytics ── */}
         <View style={s.card}>
           <View style={s.chartHeader}>
-            <Text style={s.sectionTitle}>Price Analytics</Text>
+            <Text style={s.sectionTitle}>SRA Weekly Price Monitor</Text>
             <View style={s.chartModeRow}>
               {['weekly', 'monthly'].map(m => (
                 <TouchableOpacity key={m} style={[s.modeChip, chartMode === m && s.modeChipActive]} onPress={() => setChartMode(m)}>
@@ -123,22 +146,31 @@ export default function HomeScreen({ navigation }) {
               ))}
             </View>
           </View>
+          <Text style={s.syncStamp}>Last synced: May 21, 2026 · 6:30 PM  ✓ Cached</Text>
 
           {/* Bar Chart */}
           <View style={s.chartWrap}>
             <View style={s.chartYAxis}>
               {['3,000', '2,500', '2,000', '1,500'].map(v => <Text key={v} style={s.yLabel}>{v}</Text>)}
             </View>
-            <View style={s.chartBars}>
-              {chart.months.map((month, mi) => (
-                <View key={mi} style={s.barGroup}>
-                  {chart.weeks.map((wk, wi) => {
-                    const h = Math.max(4, ((wk[mi] - MIN_PRICE) / (MAX_PRICE - MIN_PRICE)) * 110);
-                    return <View key={wi} style={[s.bar, { height: h, backgroundColor: BAR_COLORS[wi] }]} />;
-                  })}
-                  <Text style={s.xLabel}>{month}</Text>
-                </View>
-              ))}
+            <View style={s.chartPlotArea}>
+              <View style={s.chartBarsRow}>
+                {chart.months.map((month, mi) => (
+                  <View key={mi} style={s.barGroup}>
+                    {chart.weeks.map((wk, wi) => {
+                      const h = Math.max(4, ((wk[mi] - MIN_PRICE) / (MAX_PRICE - MIN_PRICE)) * 110);
+                      return <View key={wi} style={[s.bar, { height: h, backgroundColor: BAR_COLORS[wi] }]} />;
+                    })}
+                  </View>
+                ))}
+              </View>
+              <View style={s.chartXAxisRow}>
+                {chart.months.map((month, mi) => (
+                  <View key={mi} style={s.chartXAxisCol}>
+                    <Text style={s.xLabel}>{month}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
 
@@ -177,26 +209,27 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* ── Crop Year Summary ── */}
+        {/* ── Active Fields Quick View ── */}
         <View style={s.card}>
-          <Text style={s.sectionTitle}>Crop Year Statistics</Text>
-          <View style={s.cropGrid}>
-            {[
-              { label: 'Crop Year', value: '2025–2026' },
-              { label: 'Weeks Remaining', value: '14 wks' },
-              { label: 'Price Avg (YTD)', value: 'Php 2,650' },
-              { label: 'Peak Price', value: 'Php 2,900' },
-            ].map(item => (
-              <View key={item.label} style={s.cropItem}>
-                <Text style={s.cropLabel}>{item.label}</Text>
-                <Text style={s.cropValue}>{item.value}</Text>
+          <Text style={s.sectionTitle}>My Active Fields</Text>
+          {[
+            { id: 'FLD-KTR-001', stage: 'Fertilization Stage 2', age: '3.2 months', status: 'on-track', ha: '1.5 Ha' },
+            { id: 'FLD-KTR-003', stage: 'Land Preparation', age: '0.3 months', status: 'on-track', ha: '2.0 Ha' },
+            { id: 'FLD-KTR-007', stage: 'Harvesting', age: '10.5 months', status: 'urgent', ha: '1.0 Ha' },
+          ].map(field => (
+            <View key={field.id} style={s.fieldRow}>
+              <View style={[s.fieldStatusDot, { backgroundColor: field.status === 'urgent' ? COLORS.accent : COLORS.success }]} />
+              <View style={s.fieldBody}>
+                <Text style={s.fieldId}>{field.id} · {field.ha}</Text>
+                <Text style={s.fieldStage}>{field.stage}</Text>
               </View>
-            ))}
-          </View>
-          <View style={s.stableNote}>
-            <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
-            <Text style={s.stableText}> Price is stable with 2% upward variance over 14 days</Text>
-          </View>
+              <Text style={s.fieldAge}>{field.age}</Text>
+            </View>
+          ))}
+          <TouchableOpacity style={s.analyticsBtn} onPress={() => navigation.navigate('Schedules')}>
+            <Text style={s.analyticsBtnText}>Manage Field Operations</Text>
+            <Ionicons name="chevron-forward" size={15} color={COLORS.primaryLight} />
+          </TouchableOpacity>
         </View>
 
       </ScrollView>
@@ -247,7 +280,7 @@ const s = StyleSheet.create({
   priceUpdated: { fontSize: 10, color: COLORS.textMuted, marginTop: 2 },
 
   // HPCo Silay unified card
-  priceCard: { borderLeftWidth: 4, borderLeftColor: COLORS.primary },
+  priceCard: { borderWidth: 1, borderColor: COLORS.border },
   priceCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
   priceSourceRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   sourceDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.success },
@@ -262,13 +295,24 @@ const s = StyleSheet.create({
   pricePairDivider: { width: 1, backgroundColor: COLORS.border, marginHorizontal: SPACING.md, alignSelf: 'stretch' },
 
 
-  // Profit card
+  // Profit card (kept for Calculator screen reference)
   profitCard: { borderWidth: 1.5, borderColor: COLORS.border },
   profitInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   profitLabel: { fontSize: 11, color: COLORS.textMuted, marginBottom: 4, fontWeight: '500' },
   profitValue: { fontSize: 26, fontWeight: '800', color: COLORS.text },
   profitSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
   profitArrow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+
+  // Weather Advisory Banner
+  weatherCard: { borderWidth: 1, borderColor: COLORS.border, gap: 10 },
+  weatherRain: { backgroundColor: '#EBF5FB' },
+  weatherHeat: { backgroundColor: '#FFFBF0' },
+  weatherClear: { backgroundColor: '#F4FBF0' },
+  weatherRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  weatherBody: { flex: 1, gap: 3 },
+  weatherTitle: { fontSize: 14, fontWeight: '800', color: COLORS.text },
+  weatherMsg: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 18 },
+  weatherSub: { fontSize: 10, color: COLORS.textMuted },
 
   // Chart
   chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
@@ -278,13 +322,16 @@ const s = StyleSheet.create({
   modeChipActive: { backgroundColor: '#fff', ...SHADOW.card },
   modeChipText: { fontSize: 12, color: COLORS.textMuted, fontWeight: '500' },
   modeChipTextActive: { color: COLORS.primary, fontWeight: '700' },
-  chartWrap: { flexDirection: 'row', height: 130, marginBottom: SPACING.sm },
-  chartYAxis: { justifyContent: 'space-between', marginRight: 6, paddingBottom: 20 },
+  chartWrap: { flexDirection: 'row', height: 140, marginBottom: SPACING.sm },
+  chartYAxis: { justifyContent: 'space-between', marginRight: 6, height: 110 },
   yLabel: { fontSize: 9, color: COLORS.textMuted },
-  chartBars: { flex: 1, flexDirection: 'row', alignItems: 'flex-end', gap: 4, paddingBottom: 20 },
+  chartPlotArea: { flex: 1 },
+  chartBarsRow: { flex: 1, flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 110 },
   barGroup: { flex: 1, flexDirection: 'row', alignItems: 'flex-end', gap: 1 },
   bar: { flex: 1, borderRadius: 3 },
-  xLabel: { position: 'absolute', bottom: 0, fontSize: 9, color: COLORS.textMuted, width: '100%', textAlign: 'center' },
+  chartXAxisRow: { flexDirection: 'row', gap: 4, marginTop: 6, height: 18 },
+  chartXAxisCol: { flex: 1, alignItems: 'center' },
+  xLabel: { fontSize: 9, color: COLORS.textMuted, textAlign: 'center' },
   legendRow: { flexDirection: 'row', gap: 10, marginBottom: SPACING.md, flexWrap: 'wrap' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
@@ -296,14 +343,23 @@ const s = StyleSheet.create({
   statValue: { fontSize: 13, fontWeight: '700', color: COLORS.text },
   analyticsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: SPACING.sm },
   analyticsBtnText: { fontSize: 13, fontWeight: '600', color: COLORS.primaryLight },
+  syncStamp: { fontSize: 10, color: COLORS.textMuted, marginBottom: SPACING.sm },
 
-  // Crop Year
+  // Crop Year (kept for reference)
   cropGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: SPACING.sm },
   cropItem: { width: (width - SPACING.lg * 2 - SPACING.lg * 2 - 10) / 2, backgroundColor: COLORS.background, borderRadius: RADIUS.sm, padding: SPACING.md },
   cropLabel: { fontSize: 11, color: COLORS.textMuted, marginBottom: 4 },
   cropValue: { fontSize: 15, fontWeight: '700', color: COLORS.text },
   stableNote: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.successLight, borderRadius: RADIUS.sm, padding: SPACING.sm },
   stableText: { fontSize: 11, color: COLORS.success, flex: 1 },
+
+  // Active Fields
+  fieldRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
+  fieldStatusDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
+  fieldBody: { flex: 1, gap: 2 },
+  fieldId: { fontSize: 12, fontWeight: '700', color: COLORS.text },
+  fieldStage: { fontSize: 11, color: COLORS.textMuted },
+  fieldAge: { fontSize: 11, fontWeight: '600', color: COLORS.textSecondary },
 
   // Notifications
   notifOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.35)' },

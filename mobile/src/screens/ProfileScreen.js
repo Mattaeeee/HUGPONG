@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Modal, Animated, Dimensions, Alert, Switch,
@@ -7,32 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
+import { subscribe, getIsSynced, getCurrentSession, setSynced } from '../data/mockData';
 
 const { height } = Dimensions.get('window');
 
-const MOCK_USER = {
-  name: 'Juan dela Cruz',
-  role: 'Lead Cabo',
-  employeeId: 'EMP-001',
-  sector: 'Sector B',
-  farm: 'Silay Block Farm',
-  email: 'juan@hugpong.ph',
-  mobile: '+63 917 123 4567',
-};
-
-const MOCK_PENDING = [
-  { id: 1, type: 'Task Completion', desc: 'Fertilization – Plot 4', time: '10:32 AM' },
-  { id: 2, type: 'Resource Log', desc: '12 bags Urea applied', time: '10:45 AM' },
-  { id: 3, type: 'Schedule Update', desc: 'Weeding – Sector A rescheduled', time: 'Yesterday' },
-];
-
-const MOCK_AUDIT = [
-  { id: 1, action: 'Login', device: 'Samsung A54', ip: '192.168.1.5', time: 'Today 8:01 AM' },
-  { id: 2, action: 'Synced 3 records', device: 'Samsung A54', ip: '192.168.1.5', time: 'Today 8:05 AM' },
-  { id: 3, action: 'Price viewed', device: 'Samsung A54', ip: '192.168.1.5', time: 'Today 9:12 AM' },
-  { id: 4, action: 'Task marked complete', device: 'Samsung A54', ip: '192.168.1.5', time: 'Today 10:32 AM' },
-  { id: 5, action: 'Login', device: 'Samsung A54', ip: '192.168.1.5', time: 'Yesterday 7:55 AM' },
-];
 
 const LANGUAGES = [
   { key: 'en', label: 'English', native: 'English' },
@@ -41,29 +19,42 @@ const LANGUAGES = [
 ];
 
 export default function ProfileScreen({ navigation }) {
+  const [session, setSessionState] = useState(getCurrentSession());
+  const [synced, setSyncedState] = useState(getIsSynced());
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState('Today, 8:05 AM');
-  const [autoSync, setAutoSync] = useState(true);
-  const [showAudit, setShowAudit] = useState(false);
   const [language, setLanguage] = useState('en');
   const [langExpanded, setLangExpanded] = useState(false);
-  const slideAnim = useRef(new Animated.Value(height)).current;
+  const [autoSync, setAutoSync] = useState(true);
 
-  const openAudit = () => {
-    setShowAudit(true);
-    Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
-  };
-  const closeAudit = () => {
-    Animated.timing(slideAnim, { toValue: height, duration: 220, useNativeDriver: true }).start(() => setShowAudit(false));
-  };
+  useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      setSessionState({ ...getCurrentSession() });
+      setSyncedState(getIsSynced());
+    });
+    return unsubscribe;
+  }, []);
+
 
   const doSync = () => {
     if (syncing) return;
+    if (synced && session.pendingLogs === 0) {
+      Alert.alert(
+        'Synced ✓',
+        'Your sugarcane records are fully synchronized with the HUGPONG cloud.'
+      );
+      return;
+    }
     setSyncing(true);
     setTimeout(() => {
+      setSynced(true);
       setSyncing(false);
       setLastSync('Just now');
-    }, 2200);
+      Alert.alert(
+        'Sync Complete ✓',
+        'All local sugarcane operation logs have been successfully uploaded and compiled.'
+      );
+    }, 1500);
   };
 
   const clearCache = () => {
@@ -78,49 +69,57 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const signOut = () => {
-    Alert.alert(
-      'Sign Out?',
-      '⚠️  You have 3 pending unsynced records.\n\nSigning out without syncing may cause data loss. Sync first or proceed anyway.',
-      [
-        { text: 'Sync First', onPress: doSync },
-        { text: 'Sign Out Anyway', style: 'destructive', onPress: () => navigation.replace('Login') },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+    if (session.pendingLogs > 0) {
+      Alert.alert(
+        'Sign Out?',
+        `You have ${session.pendingLogs} pending unsynced records.\n\nSigning out without syncing may cause data loss. Please sync first or proceed anyway.`,
+        [
+          { text: 'Sync First', onPress: doSync },
+          { text: 'Sign Out Anyway', style: 'destructive', onPress: () => navigation.replace('Login') },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    } else {
+      Alert.alert(
+        'Sign Out',
+        'Are you sure you want to sign out?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign Out', style: 'destructive', onPress: () => navigation.replace('Login') },
+        ]
+      );
+    }
   };
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-      <AppHeader right={
-        <TouchableOpacity style={s.iconBtn} onPress={openAudit}>
-          <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.textSecondary} />
-        </TouchableOpacity>
-      } />
+      <AppHeader />
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
         {/* ── Identity Card ── */}
         <View style={[s.card, s.identityCard]}>
           <View style={s.avatarWrap}>
-            <Text style={s.avatarText}>{MOCK_USER.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</Text>
+            <Text style={s.avatarText}>
+              {session.name ? session.name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'U'}
+            </Text>
           </View>
           <View style={s.identityInfo}>
-            <Text style={s.identityName}>{MOCK_USER.name}</Text>
+            <Text style={s.identityName}>{session.name}</Text>
             <View style={s.roleBadge}>
-              <Text style={s.roleText}>{MOCK_USER.role}</Text>
+              <Text style={s.roleText}>{session.role}</Text>
             </View>
-            <Text style={s.identityId}>ID: {MOCK_USER.employeeId}</Text>
+            <Text style={s.identityId}>ID: {session.employeeId}</Text>
           </View>
         </View>
 
-        {/* ── Sector Assignment ── */}
+        {/* ── Field Assignment ── */}
         <View style={s.card}>
           <Text style={s.cardTitle}>Operational Assignment</Text>
           {[
-            { icon: 'business', label: 'Farm', value: MOCK_USER.farm },
-            { icon: 'map', label: 'Sector', value: MOCK_USER.sector },
-            { icon: 'mail', label: 'Email', value: MOCK_USER.email },
-            { icon: 'call', label: 'Mobile', value: MOCK_USER.mobile },
+            { icon: 'business', label: 'Farm', value: session.farm },
+            { icon: 'map', label: 'Field ID', value: session.fieldId },
+            { icon: 'call', label: 'Mobile', value: session.mobile },
           ].map(r => (
             <View key={r.label} style={s.infoRow}>
               <Ionicons name={r.icon} size={15} color={COLORS.primaryLight} style={{ width: 22 }} />
@@ -134,23 +133,25 @@ export default function ProfileScreen({ navigation }) {
         <View style={s.card}>
           <View style={s.syncHeader}>
             <Text style={s.cardTitle}>Sync Dashboard</Text>
-            <View style={[s.syncStatusDot, { backgroundColor: autoSync ? COLORS.success : COLORS.textMuted }]} />
+            <View style={[s.syncStatusDot, { backgroundColor: synced ? COLORS.success : '#C97A00' }]} />
           </View>
 
           {/* Stats Row */}
           <View style={s.syncStats}>
             <View style={s.syncStat}>
-              <Text style={s.syncStatNum}>{MOCK_PENDING.length}</Text>
+              <Text style={s.syncStatNum}>{session.pendingLogs}</Text>
               <Text style={s.syncStatLabel}>Pending</Text>
             </View>
             <View style={s.syncStatDivider} />
             <View style={s.syncStat}>
-              <Text style={s.syncStatNum}>24</Text>
+              <Text style={s.syncStatNum}>{session.syncedLogs}</Text>
               <Text style={s.syncStatLabel}>Synced</Text>
             </View>
             <View style={s.syncStatDivider} />
             <View style={s.syncStat}>
-              <Text style={[s.syncStatNum, { color: COLORS.success }]}>OK</Text>
+              <Text style={[s.syncStatNum, { color: synced ? COLORS.success : '#C97A00' }]}>
+                {synced ? 'OK' : 'SYNC'}
+              </Text>
               <Text style={s.syncStatLabel}>Status</Text>
             </View>
           </View>
@@ -159,16 +160,31 @@ export default function ProfileScreen({ navigation }) {
 
           {/* Pending Logs */}
           <Text style={s.pendingTitle}>Pending Local Logs</Text>
-          {MOCK_PENDING.map(p => (
-            <View key={p.id} style={s.pendingRow}>
-              <View style={s.pendingDot} />
-              <View style={s.pendingBody}>
-                <Text style={s.pendingType}>{p.type}</Text>
-                <Text style={s.pendingDesc}>{p.desc}</Text>
-              </View>
-              <Text style={s.pendingTime}>{p.time}</Text>
+          {session.pendingLogs > 0 ? (
+            Array.from({ length: session.pendingLogs }).map((_, i) => {
+              const logs = [
+                { type: 'Task Completion', desc: 'Fertilization – Plot 4', time: 'Just now' },
+                { type: 'Resource Log', desc: '12 bags Urea applied', time: '5m ago' },
+                { type: 'Schedule Update', desc: 'Weeding – Sector A rescheduled', time: '10m ago' },
+              ];
+              const p = logs[i % logs.length];
+              return (
+                <View key={i} style={s.pendingRow}>
+                  <View style={[s.pendingDot, { backgroundColor: '#C97A00' }]} />
+                  <View style={s.pendingBody}>
+                    <Text style={s.pendingType}>{p.type}</Text>
+                    <Text style={s.pendingDesc}>{p.desc}</Text>
+                  </View>
+                  <Text style={s.pendingTime}>{p.time}</Text>
+                </View>
+              );
+            })
+          ) : (
+            <View style={s.emptySyncState}>
+              <Ionicons name="cloud-done-outline" size={16} color="#267326" />
+              <Text style={s.emptySyncText}>No pending logs to sync</Text>
             </View>
-          ))}
+          )}
 
           {/* Sync Button */}
           <TouchableOpacity style={[s.syncBtn, syncing && s.syncBtnDisabled]} onPress={doSync} disabled={syncing}>
@@ -218,7 +234,6 @@ export default function ProfileScreen({ navigation }) {
             { icon: 'shield-outline', label: 'Security & Password', color: COLORS.primary, onPress: () => navigation.navigate('Security') },
             { icon: 'cloud-upload-outline', label: 'Sync Monitor', color: COLORS.blue, onPress: () => navigation.navigate('SyncMonitor') },
             { icon: 'trash-outline', label: 'Clear Cache', color: COLORS.accent, onPress: clearCache },
-            { icon: 'document-text-outline', label: 'Device Audit Log', color: COLORS.blue, onPress: openAudit },
           ].map(item => (
             <TouchableOpacity key={item.label} style={s.settingRow} onPress={item.onPress}>
               <View style={[s.settingIcon, { backgroundColor: item.color + '18' }]}>
@@ -241,33 +256,6 @@ export default function ProfileScreen({ navigation }) {
         <View style={{ height: 24 }} />
       </ScrollView>
 
-      {/* ── Audit Log Bottom Sheet ── */}
-      <Modal visible={showAudit} transparent animationType="none">
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={closeAudit} />
-        <Animated.View style={[s.sheet, { transform: [{ translateY: slideAnim }] }]}>
-          <View style={s.sheetHandle} />
-          <View style={s.sheetHeader}>
-            <Text style={s.sheetTitle}>Device Audit Log</Text>
-            <TouchableOpacity onPress={closeAudit}><Ionicons name="close" size={22} color={COLORS.text} /></TouchableOpacity>
-          </View>
-          <Text style={s.auditSubtitle}>Recent activity on this device</Text>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {MOCK_AUDIT.map(a => (
-              <View key={a.id} style={s.auditRow}>
-                <View style={s.auditIconWrap}>
-                  <Ionicons name="shield-checkmark" size={15} color={COLORS.primary} />
-                </View>
-                <View style={s.auditBody}>
-                  <Text style={s.auditAction}>{a.action}</Text>
-                  <Text style={s.auditMeta}>{a.device} · {a.ip}</Text>
-                </View>
-                <Text style={s.auditTime}>{a.time}</Text>
-              </View>
-            ))}
-            <View style={{ height: 32 }} />
-          </ScrollView>
-        </Animated.View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -310,6 +298,8 @@ const s = StyleSheet.create({
   pendingType: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary },
   pendingDesc: { fontSize: 12, color: COLORS.text },
   pendingTime: { fontSize: 10, color: COLORS.textMuted },
+  emptySyncState: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, backgroundColor: '#F2FBF2', borderRadius: RADIUS.md, borderWidth: 1, borderColor: '#E8F5E8', marginTop: 4, marginBottom: SPACING.md },
+  emptySyncText: { fontSize: 13, fontWeight: '600', color: '#267326' },
   syncBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 13, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: SPACING.md },
   syncBtnDisabled: { opacity: 0.6 },
   syncBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
@@ -334,17 +324,4 @@ const s = StyleSheet.create({
   signOutText: { fontSize: 14, fontWeight: '700', color: '#D9534F' },
   footerNote: { fontSize: 10, color: COLORS.textMuted, textAlign: 'center', lineHeight: 16 },
 
-  // Audit Sheet
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, maxHeight: height * 0.75, paddingBottom: 24 },
-  sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: COLORS.border, alignSelf: 'center', marginTop: 12, marginBottom: 4 },
-  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  sheetTitle: { fontSize: 17, fontWeight: '800', color: COLORS.text },
-  auditSubtitle: { fontSize: 12, color: COLORS.textMuted, paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm },
-  auditRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingHorizontal: SPACING.lg, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  auditIconWrap: { width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.primaryBg, justifyContent: 'center', alignItems: 'center' },
-  auditBody: { flex: 1, gap: 1 },
-  auditAction: { fontSize: 13, fontWeight: '600', color: COLORS.text },
-  auditMeta: { fontSize: 10, color: COLORS.textMuted },
-  auditTime: { fontSize: 10, color: COLORS.textMuted, textAlign: 'right' },
 });

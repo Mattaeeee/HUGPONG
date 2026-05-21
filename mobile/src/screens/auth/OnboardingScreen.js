@@ -11,12 +11,12 @@ const SLIDES = [
     icon: 'leaf',
     iconBg: '#E8F5E0',
     title: 'Manage Your Farm\nOperations',
-    sub: 'Track tasks, assign cabos, and monitor every sector of your hacienda — all in one place.',
+    sub: 'Track tasks, record operation costs, and monitor every sector of your block farm — all in one place.',
   },
   {
     icon: 'trending-up',
     iconBg: '#E0F0E8',
-    title: 'Live HPCo Price\nMonitoring',
+    title: 'Live SRA Price\nMonitoring',
     sub: 'Get real-time sugarcane market prices and instant income estimates based on your land and yield.',
   },
   {
@@ -36,13 +36,13 @@ export default function OnboardingScreen({ navigation }) {
     if (current < SLIDES.length - 1) {
       flatRef.current?.scrollToIndex({ index: current + 1, animated: true });
     } else {
-      navigation.replace('Login');
+      navigation.replace('Register');
     }
   };
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-      <TouchableOpacity style={s.skip} onPress={() => navigation.replace('Login')}>
+      <TouchableOpacity style={s.skip} onPress={() => navigation.replace('Register')}>
         <Text style={s.skipText}>Skip</Text>
       </TouchableOpacity>
 

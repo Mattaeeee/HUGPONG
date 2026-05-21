@@ -41,11 +41,11 @@ export default function SplashScreen({ navigation }) {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.primary, justifyContent: 'space-between', alignItems: 'center', paddingVertical: 60 },
+  container: { flex: 1, backgroundColor: COLORS.background, justifyContent: 'space-between', alignItems: 'center', paddingVertical: 60 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16 },
   logoWrap: { alignItems: 'center', gap: 18 },
-  logoImg: { width: 130, height: 130 },
-  logoText: { fontSize: 32, fontWeight: '800', color: '#fff', letterSpacing: 4 },
-  tagline: { fontSize: 14, color: 'rgba(255,255,255,0.6)', letterSpacing: 1, fontWeight: '400' },
-  version: { fontSize: 12, color: 'rgba(255,255,255,0.3)' },
+  logoImg: { width: 140, height: 140 },
+  logoText: { fontSize: 32, fontWeight: '800', color: COLORS.primary, letterSpacing: 4 },
+  tagline: { fontSize: 14, color: COLORS.textSecondary, letterSpacing: 1, fontWeight: '400' },
+  version: { fontSize: 12, color: COLORS.textMuted },
 });

@@ -79,7 +79,7 @@ export default function TaskDetailScreen({ route, navigation }) {
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Hero Card */}
-        <View style={[s.heroCard, { borderLeftColor: type.color }]}>
+        <View style={s.heroCard}>
           <View style={s.heroTop}>
             <View style={[s.heroIconWrap, { backgroundColor: type.color + '18' }]}>
               <Ionicons name={task.icon} size={28} color={type.color} />
@@ -220,7 +220,7 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text, flex: 1, textAlign: 'center' },
   editBtn: { padding: 8 },
   scroll: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 40 },
-  heroCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.lg, borderLeftWidth: 4, ...SHADOW.card },
+  heroCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.lg, borderWidth: 1, borderColor: COLORS.border, ...SHADOW.card },
   heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.md },
   heroIconWrap: { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   heroInfo: { flex: 1, gap: 2 },

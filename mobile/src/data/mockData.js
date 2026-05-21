@@ -73,16 +73,96 @@ export const MOCK_TASKS = [
   },
 ];
 
-export const MOCK_PROFILE = {
-  name: 'Gabe',
-  role: 'Lead Cabo',
-  farm: 'Silay Block Farm – Sector B',
-  pendingLogs: 5,
-  syncedLogs: 142,
+export const DEMO_ACCOUNTS = {
+  'Member': {
+    name: 'Juan dela Cruz',
+    role: 'Member',
+    employeeId: 'MBR-2026-004',
+    fieldId: 'FLD-KTR-001',
+    farm: 'Silay Block Farm',
+    mobile: '0917 123 4567',
+    pendingLogs: 0,
+    syncedLogs: 24,
+  },
+  'Farm Manager': {
+    name: 'Jose Reyes',
+    role: 'Farm Manager',
+    employeeId: 'MGR-2026-001',
+    fieldId: 'FLD-KTR-001',
+    farm: 'Silay Block Farm',
+    mobile: '0918 987 6543',
+    pendingLogs: 0,
+    syncedLogs: 142,
+  },
+  'SRA Checker': {
+    name: 'Maria Santos',
+    role: 'SRA Checker',
+    employeeId: 'SRA-2026-088',
+    fieldId: 'FLD-KTR-003',
+    farm: 'SRA Sugar District VII',
+    mobile: '0919 444 8888',
+    pendingLogs: 0,
+    syncedLogs: 512,
+  },
 };
 
-export const MOCK_AUDIT_LOGS = [
-  { time: '12:12 AM', msg: 'Local Activity Logged: Plot A11' },
-  { time: '12:45 AM', msg: 'Price Cache Updated via Broadcast' },
-  { time: '11:30 PM', msg: 'Task Completed: Fertilization Plot 4' },
-];
+let CURRENT_SESSION = { ...DEMO_ACCOUNTS['Member'] };
+let IS_SYNCED = true;
+
+export const getCurrentSession = () => CURRENT_SESSION;
+export const getIsSynced = () => IS_SYNCED;
+
+let listeners = [];
+
+export const subscribe = (listener) => {
+  listeners.push(listener);
+  return () => {
+    listeners = listeners.filter(l => l !== listener);
+  };
+};
+
+const notify = () => {
+  listeners.forEach(l => {
+    try {
+      l();
+    } catch (e) {
+      console.warn('Subscriber error', e);
+    }
+  });
+};
+
+export const setSession = (role) => {
+  const account = DEMO_ACCOUNTS[role];
+  if (account) {
+    CURRENT_SESSION = { ...account };
+    notify();
+  }
+};
+
+export const updateSessionFieldId = (fieldId) => {
+  CURRENT_SESSION.fieldId = fieldId;
+  notify();
+};
+
+export const setSynced = (synced) => {
+  IS_SYNCED = synced;
+  if (!synced) {
+    CURRENT_SESSION.pendingLogs = CURRENT_SESSION.pendingLogs + 1;
+  } else {
+    CURRENT_SESSION.syncedLogs = CURRENT_SESSION.syncedLogs + CURRENT_SESSION.pendingLogs;
+    CURRENT_SESSION.pendingLogs = 0;
+  }
+  notify();
+};
+
+export const MOCK_PROFILE = {
+  get name() { return CURRENT_SESSION.name; },
+  get role() { return CURRENT_SESSION.role; },
+  get employeeId() { return CURRENT_SESSION.employeeId; },
+  get fieldId() { return CURRENT_SESSION.fieldId; },
+  get farm() { return CURRENT_SESSION.farm; },
+  get mobile() { return CURRENT_SESSION.mobile; },
+  get pendingLogs() { return CURRENT_SESSION.pendingLogs; },
+  get syncedLogs() { return CURRENT_SESSION.syncedLogs; },
+}; // backward compatibility
+

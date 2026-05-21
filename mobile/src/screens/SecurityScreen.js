@@ -175,7 +175,7 @@ const s = StyleSheet.create({
   backBtn: { padding: 8 },
   headerTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text },
   scroll: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 40 },
-  warningCard: { flexDirection: 'row', gap: SPACING.md, backgroundColor: COLORS.primaryBg, borderRadius: RADIUS.lg, padding: SPACING.lg, borderLeftWidth: 3, borderLeftColor: COLORS.primary, alignItems: 'flex-start' },
+  warningCard: { flexDirection: 'row', gap: SPACING.md, backgroundColor: COLORS.primaryBg, borderRadius: RADIUS.lg, padding: SPACING.lg, borderWidth: 1, borderColor: COLORS.border, alignItems: 'flex-start' },
   warningBody: { flex: 1, gap: 4 },
   warningTitle: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
   warningText: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 18 },

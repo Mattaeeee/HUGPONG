@@ -27,44 +27,53 @@
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           Dashboard
         </button>
+
+        <span class="nav-group-label">SRA Supervision</span>
+        <button class="nav-item" data-page="audit">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
+          SRA Audit Center
+        </button>
         <button class="nav-item" data-page="prices">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          Price Management
+          SRA Price Monitor
         </button>
 
         <span class="nav-group-label">Farm Operations</span>
-        <button class="nav-item" data-page="schedules">
+        <button class="nav-item" data-page="logs">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          Schedules
+          Operation Logs
         </button>
-        <button class="nav-item" data-page="cabos">
+        <button class="nav-item" data-page="analytics">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Descriptive Analytics
+        </button>
+        <button class="nav-item" data-page="users">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Cabos & Workers
-        </button>
-        <button class="nav-item" data-page="plots">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-          Plots & Sectors
+          User Management
         </button>
 
-        <span class="nav-group-label">Analytics</span>
-        <button class="nav-item" data-page="reports">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Reports
+        <span class="nav-group-label superadmin-only">System Control</span>
+        <button class="nav-item superadmin-only" data-page="fields">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+          Field Registry
         </button>
-        <button class="nav-item" data-page="sync">
+        <button class="nav-item" data-page="sync" id="nav-sync">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
           Sync Monitor
         </button>
       </nav>
 
       <div class="sidebar-footer">
-        <div class="admin-badge">
-          <div class="admin-avatar">A</div>
+        <div class="admin-badge" id="sidebar-admin-badge" style="margin-bottom: 12px;">
+          <div class="admin-avatar" id="sidebar-admin-avatar">A</div>
           <div>
-            <p class="admin-name">Admin</p>
-            <p class="admin-role">System Administrator</p>
+            <p class="admin-name" id="sidebar-admin-name">Admin</p>
+            <p class="admin-role" id="sidebar-admin-role">SRA Checker</p>
           </div>
         </div>
+        <button class="btn-outline reset-demo-btn superadmin-only" id="reset-demo-btn" onclick="resetDemoDatabase()" style="width:100%; border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.6); font-size:11px; padding:6px; display:none;">
+          ↺ Reset Demo Data
+        </button>
       </div>
     </aside>
 
@@ -82,13 +91,18 @@
           </div>
         </div>
         <div class="topbar-right">
+          <!-- Demo Role Switcher Toggle -->
+          <div class="role-selector-pill" style="display:flex; align-items:center; background: var(--bg); border: 1px solid var(--border); border-radius:20px; padding: 6px 14px; gap:8px;">
+            <span style="font-size:10px; font-weight:700; color:var(--text-2); text-transform:uppercase; letter-spacing:0.5px;">Role:</span>
+            <select id="role-toggle-select" onchange="switchRole(this.value)" style="border:none; background:transparent; font-size:12px; font-weight:700; color:var(--primary); outline:none; cursor:pointer;">
+              <option value="admin">SRA Checker</option>
+              <option value="superadmin">Super Admin</option>
+            </select>
+          </div>
+
           <div class="price-pill">
             <span class="price-dot"></span>
-            HPCo: <strong>Php 2,800</strong>
-          </div>
-          <div class="price-pill" style="background: #fdf5e6; color: #8b4513;">
-            <span class="price-dot" style="background: #8b4513;"></span>
-            MOL: <strong>Php 4,200</strong>
+            SRA Sugar: <strong id="topbar-sugar-price">Php 2,800</strong>
           </div>
           <button class="topbar-btn" id="topbar-refresh">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -107,41 +121,33 @@
             <div class="kpi-card">
               <div class="kpi-icon green"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
               <div>
-                <p class="kpi-label">Current HPCo Price</p>
-                <p class="kpi-value">Php 2,800</p>
-                <p class="kpi-change up">↑ +Php 50 from last week</p>
+                <p class="kpi-label">SRA Sugar Price (Lkg)</p>
+                <p class="kpi-value" id="dashboard-sugar-price">Php 2,800</p>
+                <p class="kpi-change up" id="dashboard-sugar-change">↑ +Php 50 from last week</p>
               </div>
             </div>
             <div class="kpi-card">
-              <div class="kpi-icon blue"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+              <div class="kpi-icon blue"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></div>
               <div>
-                <p class="kpi-label">Tasks Today</p>
-                <p class="kpi-value">12</p>
-                <p class="kpi-change neutral">4 pending · 5 in progress · 3 done</p>
+                <p class="kpi-label">Total Managed Area</p>
+                <p class="kpi-value">22.5 Ha</p>
+                <p class="kpi-change neutral">Across 4 active fields</p>
               </div>
             </div>
             <div class="kpi-card">
               <div class="kpi-icon orange"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
               <div>
-                <p class="kpi-label">Active Cabos</p>
-                <p class="kpi-value">8</p>
-                <p class="kpi-change neutral">Across 3 sectors</p>
+                <p class="kpi-label">System Directory</p>
+                <p class="kpi-value" id="dashboard-users-count">6 Users</p>
+                <p class="kpi-change neutral" id="dashboard-pending-count">0 pending approvals</p>
               </div>
             </div>
-            <div class="kpi-card">
+            <div class="kpi-card" id="kpi-sync-card">
               <div class="kpi-icon purple"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div>
               <div>
-                <p class="kpi-label">Pending Sync</p>
-                <p class="kpi-value">5</p>
-                <p class="kpi-change warn">↑ Offline records</p>
-              </div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-icon orange" style="background: #fdf5e6; color: #8b4513;"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v8m-4-4h8"/></svg></div>
-              <div>
-                <p class="kpi-label">Molasses Price (MOL)</p>
-                <p class="kpi-value">Php 4,200</p>
-                <p class="kpi-change up">↑ +Php 80 / MT</p>
+                <p class="kpi-label">Lag Warnings</p>
+                <p class="kpi-value text-warn" style="color:var(--danger)">1 Flag</p>
+                <p class="kpi-change warn" style="color:var(--danger)">FLD-KTR-007 offline 4d</p>
               </div>
             </div>
           </div>
@@ -150,148 +156,416 @@
           <div class="charts-row">
             <div class="card chart-card-lg">
               <div class="card-header">
-                <h3 class="card-title">Market Price Trend (HPCo Silay)</h3>
-                <span class="badge badge-green">Live</span>
+                <h3 class="card-title">SRA Raw Sugar Price Trend (12 Weeks)</h3>
+                <span class="badge badge-green">Live SRA Feed</span>
               </div>
-              <div class="line-chart-area" id="price-trend-chart"></div>
+              <div class="price-trend-visual-container" style="display:flex; flex-direction:column; gap:16px;">
+                <div class="line-chart-area" id="price-trend-chart"></div>
+                <div style="font-size:11px; color:var(--text-muted); text-align:center;">
+                  Weekly sugar price updates compiled from official SRA Sugar Monitor releases.
+                </div>
+              </div>
             </div>
             <div class="card">
               <div class="card-header">
-                <h3 class="card-title">Task Status Breakdown</h3>
+                <h3 class="card-title">Crop Stage Distribution</h3>
               </div>
-              <div class="donut-wrap" id="donut-chart"></div>
-              <div class="donut-legend">
-                <div class="dl-item"><span class="dl-dot orange"></span>Pending <strong>4</strong></div>
-                <div class="dl-item"><span class="dl-dot blue"></span>In Progress <strong>5</strong></div>
-                <div class="dl-item"><span class="dl-dot green"></span>Completed <strong>3</strong></div>
+              <div class="crop-bar-chart" id="crop-stage-visual" style="display:flex; flex-direction:column; gap:12px; padding:10px 0;">
+                <!-- Filled dynamically by Javascript -->
               </div>
             </div>
           </div>
 
-          <!-- Recent Tasks Table -->
+          <!-- Pending Activities Table -->
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title">Today's Task Overview</h3>
-              <button class="btn-outline" data-page="schedules" onclick="navigate('schedules')">View All</button>
+              <h3 class="card-title">Pending Tasks Awaiting Sync / Review</h3>
+              <button class="btn-outline" onclick="navigate('logs')">View Field Logs</button>
             </div>
             <div class="table-wrap">
-              <table class="data-table" id="dashboard-tasks-table">
+              <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Task</th><th>Sector / Plot</th><th>Cabo</th><th>Time</th><th>Status</th>
+                    <th>Log ID</th><th>Field ID</th><th>Schedule</th><th>Operation Description</th><th>Cost Details</th><th>Status</th>
                   </tr>
                 </thead>
-                <tbody id="dashboard-tasks-body"></tbody>
+                <tbody id="dashboard-activities-body"></tbody>
               </table>
             </div>
           </div>
         </section>
 
-        <!-- ═══ PRICE MANAGEMENT ═══ -->
+        <!-- ═══ SRA AUDIT CENTER (NEW) ═══ -->
+        <section class="page hidden" id="page-audit">
+          <div class="audit-center-grid" style="display:grid; grid-template-columns: 340px 1fr; gap:20px;">
+            <!-- Left Side: QR Scanner Simulator -->
+            <div class="card" style="display:flex; flex-direction:column; gap:16px;">
+              <h3 class="card-title">Simulate SRA QR Code Scan</h3>
+              <p style="font-size:12px; color:var(--text-2); line-height:1.6;">
+                Farmers compile approved field logs into an encrypted QR code. Scan or input the hash identifier to generate a certified audit report.
+              </p>
+              
+              <!-- Scanning Viewfinder Mock -->
+              <div class="qr-viewfinder-box" style="position:relative; width:100%; height:200px; background:#080a06; border-radius:10px; overflow:hidden; border:2px solid var(--border); display:flex; align-items:center; justify-content:center;">
+                <!-- pulsing laser line -->
+                <div class="qr-laser" style="position:absolute; width:100%; height:2px; background:rgba(74, 124, 47, 0.85); box-shadow: 0 0 8px #4a7c2f; animation: laserPulse 2.5s infinite linear; top:0;"></div>
+                <div class="qr-target-corners" style="position:absolute; width:120px; height:120px; border:2px dashed rgba(255,255,255,0.3); border-radius:6px; display:flex; align-items:center; justify-content:center; flex-direction:column;">
+                  <span style="font-size:10px; font-weight:700; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.5px;">Align QR</span>
+                </div>
+                <div id="scanner-feed-status" style="position:absolute; bottom:12px; font-size:11px; font-weight:600; color:#8a9b7a; display:flex; align-items:center; gap:6px;">
+                  <span class="price-dot" style="background:#8a9b7a;"></span> Camera Standby
+                </div>
+              </div>
+
+              <!-- Simulator Action Buttons -->
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <button class="btn-primary" onclick="simulateQRScanning()" style="width:100%; display:flex; justify-content:center; align-items:center; gap:8px;">
+                  <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  Scan QR from Mobile
+                </button>
+                <div style="text-align:center; font-size:11px; color:var(--text-muted); font-weight:600;">— OR ENTER CODE MANUALLY —</div>
+                <div style="display:flex; gap:6px;">
+                  <input type="text" id="manual-qr-input" class="form-input" placeholder="HUG-202605-XXXX" style="flex:1; font-size:12px; text-transform:uppercase;">
+                  <button class="btn-outline" onclick="submitManualQR()" style="padding: 9px 12px; font-size:12px;">Verify</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Side: Certified SRA Audit Certificate -->
+            <div class="card" id="audit-report-card" style="min-height:400px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; border-style:dashed; border-color:var(--text-muted); border-width:2px; background:rgba(255,255,255,0.4);">
+              <div id="audit-empty-view">
+                <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--text-muted); margin-bottom:12px;"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"/></svg>
+                <h4 style="font-size:16px; font-weight:700; color:var(--text-2)">Awaiting Audit Validation</h4>
+                <p style="font-size:13px; color:var(--text-muted); max-width:320px; margin:8px auto 0; line-height:1.5;">
+                  Scan the Farmer Manager's QR code or enter code <strong>HUG-202605-A3F9</strong> to review block farm details.
+                </p>
+              </div>
+
+              <!-- Populated Certificate Sheet (Hidden initially) -->
+              <div id="audit-certificate-sheet" style="display:none; width:100%; text-align:left; gap:20px; flex-direction:column;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--primary); padding-bottom:12px;">
+                  <div>
+                    <h3 style="font-size:18px; font-weight:800; color:var(--primary); text-transform:uppercase;">SRA Audit Certificate</h3>
+                    <p style="font-size:11px; color:var(--text-muted)">SUGAR REGULATORY ADMINISTRATION · SILAY BLOCK FARM AUDITOR</p>
+                  </div>
+                  <div style="text-align:right;">
+                    <span class="status-badge status-completed" style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">✓ Fully Certified</span>
+                  </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px;">
+                  <div>
+                    <p style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Verification ID</p>
+                    <p style="font-size:13px; font-weight:700; color:var(--text);" id="cert-hash">HUG-202605-A3F9</p>
+                  </div>
+                  <div>
+                    <p style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Compiled By</p>
+                    <p style="font-size:13px; font-weight:700; color:var(--text);">Maria Santos (Farm Manager)</p>
+                  </div>
+                  <div>
+                    <p style="font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Verification Date</p>
+                    <p style="font-size:13px; font-weight:700; color:var(--text);">May 05, 2026</p>
+                  </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px;">
+                  <div class="kpi-card" style="padding:10px; flex-direction:column; gap:2px; border:1px solid var(--border);">
+                    <span style="font-size:10px; color:var(--text-muted);">Compiled Logs</span>
+                    <strong style="font-size:18px; color:var(--text);" id="cert-total-logs">10 logs</strong>
+                  </div>
+                  <div class="kpi-card" style="padding:10px; flex-direction:column; gap:2px; border:1px solid var(--border);">
+                    <span style="font-size:10px; color:var(--text-muted);">Approved Logs</span>
+                    <strong style="font-size:18px; color:var(--success);" id="cert-approved-logs">8 / 10</strong>
+                  </div>
+                  <div class="kpi-card" style="padding:10px; flex-direction:column; gap:2px; border:1px solid var(--border);">
+                    <span style="font-size:10px; color:var(--text-muted);">Hectares Audited</span>
+                    <strong style="font-size:18px; color:var(--blue);">5.3 Ha</strong>
+                  </div>
+                  <div class="kpi-card" style="padding:10px; flex-direction:column; gap:2px; border:1px solid var(--border);">
+                    <span style="font-size:10px; color:var(--text-muted);">Total Certified Cost</span>
+                    <strong style="font-size:18px; color:var(--primary);" id="cert-total-cost">Php 19,350</strong>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 style="font-size:12px; font-weight:700; color:var(--text-2); text-transform:uppercase; margin-bottom:8px;">Certified Operation Invoices</h4>
+                  <div class="table-wrap" style="max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:8px;">
+                    <table class="data-table">
+                      <thead>
+                        <tr><th>Field ID</th><th>Type</th><th>Operation Details</th><th>Cost</th><th>Status</th></tr>
+                      </thead>
+                      <tbody id="audit-certificate-table-body">
+                        <!-- Populated by Javascript -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:16px;">
+                  <span style="font-size:11px; color:var(--text-muted);">
+                    Digital Signature Certified by Sugar Regulatory Administration.
+                  </span>
+                  <button class="btn-primary" onclick="printCertifiedAuditReport()" style="display:flex; align-items:center; gap:8px;">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2m-2-9v10H8V9"/></svg>
+                    Print Audit Document
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══ SRA Sugar PRICE MONITOR ═══ -->
         <section class="page hidden" id="page-prices">
           <div class="page-toolbar">
-            <h2 class="section-title">Price History &amp; Updates</h2>
-            <button class="btn-primary" id="add-price-btn">+ Post New Price</button>
+            <h2 class="section-title">Weekly Price Posting Desk</h2>
+            <button class="btn-primary" id="add-price-btn">+ Post New Weekly Price</button>
           </div>
-          <div class="card">
-            <div class="table-wrap">
-              <table class="data-table">
-                <thead>
-                  <tr><th>Date</th><th>Mill</th><th>Price (Php/Lkg)</th><th>Change</th><th>Source</th><th>Actions</th></tr>
-                </thead>
-                <tbody id="price-table-body"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Add Price Modal Inline -->
-          <div class="inline-modal hidden" id="price-form-card">
+          
+          <div class="audit-center-grid" style="display:grid; grid-template-columns: 2fr 1fr; gap:20px; align-items: flex-start;">
             <div class="card">
-              <h3 class="card-title" style="margin-bottom:16px">Post New Price Update</h3>
-              <div class="form-grid">
-                <div class="form-group"><label class="form-label">Mill / Market</label><input class="form-input" id="p-mill" value="HPCo – Silay"/></div>
-                <div class="form-group"><label class="form-label">Price (Php / Lkg)</label><input class="form-input" id="p-price" type="number" placeholder="2800"/></div>
-                <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="p-date" type="date"/></div>
-                <div class="form-group"><label class="form-label">Source</label><input class="form-input" id="p-source" placeholder="Facebook Broadcast"/></div>
+              <h3 class="card-title" style="margin-bottom:12px">Sugar price trends monitor (PH Market)</h3>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>Posted Date</th><th>Sector Range</th><th>Sugar Price (Php/Lkg)</th><th>Trend Change</th><th>Source Citation</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody id="price-table-body"></tbody>
+                </table>
               </div>
-              <div class="form-actions">
-                <button class="btn-outline" id="price-form-cancel">Cancel</button>
-                <button class="btn-primary" id="price-form-save">Save Price</button>
+            </div>
+
+            <!-- Price form inside page card -->
+            <div class="card" id="price-form-card" style="display:none;">
+              <h3 class="card-title" style="margin-bottom:12px">Post Official Sugar Price</h3>
+              <div style="display:flex; flex-direction:column; gap:12px;">
+                <div class="form-group">
+                  <label class="form-label">Official Week</label>
+                  <input class="form-input" id="p-week" placeholder="e.g. Wk1 May"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Sugar Price (Php / Lkg)</label>
+                  <input class="form-input" id="p-price" type="number" placeholder="2800"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Effective Date</label>
+                  <input class="form-input" id="p-date" type="date"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Citation / Circular Code</label>
+                  <input class="form-input" id="p-source" placeholder="e.g. SRA Facebook Broadcast"/>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                  <button class="btn-outline" id="price-form-cancel" style="flex:1;">Cancel</button>
+                  <button class="btn-primary" id="price-form-save" style="flex:1;">Post Price</button>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- ═══ SCHEDULES ═══ -->
-        <section class="page hidden" id="page-schedules">
+        <!-- ═══ OPERATION LOGS ═══ -->
+        <section class="page hidden" id="page-logs">
           <div class="page-toolbar">
-            <h2 class="section-title">Task Schedules</h2>
-            <button class="btn-primary" id="add-sched-btn">+ Add Task</button>
+            <h2 class="section-title">Field Operation Logs Directory</h2>
+            <!-- Filter by Fields -->
+            <div style="display:flex; gap:10px; align-items:center;">
+              <label for="log-field-filter" style="font-size:12px; font-weight:600; color:var(--text-2)">Filter Field:</label>
+              <select id="log-field-filter" onchange="renderLogs()" class="form-input" style="padding:6px 12px; font-size:12px; border-radius:6px; background:#fff;">
+                <option value="all">All Active Fields</option>
+                <option value="FLD-KTR-001">FLD-KTR-001 (Juan dela Cruz)</option>
+                <option value="FLD-KTR-003">FLD-KTR-003 (Maria Santos)</option>
+                <option value="FLD-KTR-007">FLD-KTR-007 (Pedro Reyes)</option>
+                <option value="FLD-KTR-009">FLD-KTR-009 (Ana Gomez)</option>
+              </select>
+            </div>
           </div>
+
           <div class="filter-bar">
-            <button class="filter-chip active" data-filter="all">All</button>
-            <button class="filter-chip" data-filter="pending">Pending</button>
-            <button class="filter-chip" data-filter="in-progress">In Progress</button>
-            <button class="filter-chip" data-filter="completed">Completed</button>
+            <button class="filter-chip active" data-filter="all" onclick="setLogFilter('all')">All Submissions</button>
+            <button class="filter-chip" data-filter="Approved" onclick="setLogFilter('Approved')">Approved</button>
+            <button class="filter-chip" data-filter="Pending" onclick="setLogFilter('Pending')">Pending Review</button>
+            <button class="filter-chip" data-filter="Flagged" onclick="setLogFilter('Flagged')">Flagged Alerts</button>
           </div>
+
           <div class="card">
             <div class="table-wrap">
               <table class="data-table">
                 <thead>
-                  <tr><th>Task</th><th>Sector / Plot</th><th>Cabo</th><th>Date</th><th>Time</th><th>Target</th><th>Status</th><th>Actions</th></tr>
+                  <tr>
+                    <th>Log ID</th><th>Field ID / Owner</th><th>Schedule Type</th><th>Operation Description</th><th>Expense Amount</th><th>Submission Date</th><th>Status State</th><th>Administrative Actions</th>
+                  </tr>
                 </thead>
-                <tbody id="sched-table-body"></tbody>
+                <tbody id="logs-table-body"></tbody>
               </table>
             </div>
           </div>
         </section>
 
-        <!-- ═══ CABOS & WORKERS ═══ -->
-        <section class="page hidden" id="page-cabos">
-          <div class="page-toolbar">
-            <h2 class="section-title">Cabos &amp; Workers</h2>
-            <button class="btn-primary" id="add-cabo-btn">+ Add Cabo</button>
-          </div>
-          <div class="cabo-grid" id="cabo-grid"></div>
-        </section>
-
-        <!-- ═══ PLOTS & SECTORS ═══ -->
-        <section class="page hidden" id="page-plots">
-          <div class="page-toolbar">
-            <h2 class="section-title">Plots &amp; Sectors</h2>
-            <button class="btn-primary">+ Add Plot</button>
-          </div>
-          <div class="plots-grid" id="plots-grid"></div>
-        </section>
-
-        <!-- ═══ REPORTS ═══ -->
-        <section class="page hidden" id="page-reports">
-          <h2 class="section-title" style="margin-bottom:20px">Farm Analytics &amp; Reports</h2>
+        <!-- ═══ DESCRIPTIVE ANALYTICS ═══ -->
+        <section class="page hidden" id="page-analytics">
+          <h2 class="section-title">Descriptive Analytics Diagnostics</h2>
+          
           <div class="kpi-grid">
-            <div class="kpi-card"><div class="kpi-icon green"></div><div><p class="kpi-label">Total Est. Revenue (Crop Year)</p><p class="kpi-value">Php 4.2M</p></div></div>
-            <div class="kpi-card"><div class="kpi-icon blue"></div><div><p class="kpi-label">Total Hectares Managed</p><p class="kpi-value">28.5 Ha</p></div></div>
-            <div class="kpi-card"><div class="kpi-icon orange"></div><div><p class="kpi-label">Avg Yield / Ha</p><p class="kpi-value">118 Lkg</p></div></div>
-            <div class="kpi-card"><div class="kpi-icon purple"></div><div><p class="kpi-label">Tasks Completed (Month)</p><p class="kpi-value">47</p></div></div>
+            <div class="kpi-card">
+              <div class="kpi-icon green"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+              <div>
+                <p class="kpi-label">Cumulative Operations Cost</p>
+                <p class="kpi-value" id="diagnostics-total-cost">Php 136,830</p>
+                <p class="kpi-change neutral">Tracked across 4 operational domains</p>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon orange"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v8m-4-4h8"/></svg></div>
+              <div>
+                <p class="kpi-label">Most Efficient Block Hectare</p>
+                <p class="kpi-value" style="color:var(--success)">Php 8,900</p>
+                <p class="kpi-change neutral">Field ID: <strong>FLD-KTR-003</strong></p>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon purple" style="background:#feebeb; color:#d9534f;"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+              <div>
+                <p class="kpi-label">Least Efficient Block (Flagged)</p>
+                <p class="kpi-value" style="color:var(--danger)">Php 15,200</p>
+                <p class="kpi-change warn" style="color:var(--danger)">Field ID: <strong>FLD-KTR-007</strong></p>
+              </div>
+            </div>
           </div>
-          <div class="card" style="margin-top:20px">
-            <div class="card-header"><h3 class="card-title">Monthly Revenue Trend</h3></div>
-            <div class="line-chart-area" id="revenue-chart"></div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; align-items: stretch; margin-top:10px;">
+            <!-- Category Cost Distributions -->
+            <div class="card" style="display:flex; flex-direction:column; gap:16px;">
+              <h3 class="card-title">Expense Category Allocation</h3>
+              <div style="display:flex; flex-direction:column; gap:16px; justify-content:center; flex:1;" id="expense-distribution-bars">
+                <!-- Javascript will insert bars -->
+              </div>
+            </div>
+
+            <!-- Cost-Per-Hectare Comparison -->
+            <div class="card" style="display:flex; flex-direction:column; gap:16px;">
+              <h3 class="card-title">Cost per Hectare Diagnostics by Field ID</h3>
+              <div style="display:flex; flex-direction:column; gap:16px; justify-content:center; flex:1;" id="cost-per-hectare-bars">
+                <!-- Javascript will insert bars -->
+              </div>
+            </div>
           </div>
         </section>
 
-        <!-- ═══ SYNC MONITOR ═══ -->
+        <!-- ═══ USER MANAGEMENT ═══ -->
+        <section class="page hidden" id="page-users">
+          <div style="display:grid; grid-template-columns: 1fr 340px; gap:20px; align-items:flex-start;">
+            <!-- Left Side: Directory -->
+            <div class="card">
+              <h3 class="card-title" style="margin-bottom:12px">System Credentials &amp; Member Roles Directory</h3>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>Contact Number</th><th>Full Name</th><th>Assigned Core Role</th><th>Operations Handled</th><th>Registration Date</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody id="users-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Right Side: Pending Approvals -->
+            <div class="card">
+              <h3 class="card-title" style="margin-bottom:12px">Pending Mobile Registrations</h3>
+              <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">
+                Farmers and Farm Managers registering on the mobile application need administrative clearance before credentials allow login access.
+              </p>
+              <div style="display:flex; flex-direction:column; gap:12px;" id="pending-users-list">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══ FIELD REGISTRY (SUPER ADMIN ONLY) ═══ -->
+        <section class="page hidden" id="page-fields">
+          <div class="page-toolbar">
+            <h2 class="section-title">Block Farm Registry</h2>
+            <button class="btn-primary" onclick="showNewFieldForm()">+ Register Field ID</button>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 320px; gap:20px; align-items:flex-start;">
+            <!-- Active Registered Fields -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;" id="fields-grid-container">
+              <!-- JS Populates active field cards -->
+            </div>
+
+            <!-- Management Forms Panel -->
+            <div class="card" style="display:flex; flex-direction:column; gap:16px;">
+              <h3 class="card-title" id="field-form-title">Assign New Field ID</h3>
+              
+              <!-- Form contents -->
+              <div style="display:flex; flex-direction:column; gap:12px;" id="field-manager-form">
+                <div class="form-group">
+                  <label class="form-label">Field ID Code</label>
+                  <input class="form-input" id="f-id" placeholder="FLD-KTR-0XX"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Assigned Owner Name</label>
+                  <input class="form-input" id="f-owner" placeholder="e.g. Maria Clara"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Block Hectares Area</label>
+                  <input class="form-input" id="f-area" type="number" step="0.1" placeholder="e.g. 1.8"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Soil Diagnostic Crop Stage</label>
+                  <select id="f-stage" class="form-input">
+                    <option value="Land Preparation">Land Preparation</option>
+                    <option value="Planting">Planting</option>
+                    <option value="Fertilization Stage 2">Fertilization Stage 2</option>
+                    <option value="Weeding">Weeding</option>
+                    <option value="Harvesting">Harvesting</option>
+                  </select>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                  <button class="btn-outline" onclick="resetFieldForm()" style="flex:1;">Reset</button>
+                  <button class="btn-primary" onclick="saveFieldChanges()" style="flex:1;" id="save-field-action-btn">Register</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══ SYNC MONITOR (SUPER ADMIN ONLY) ═══ -->
         <section class="page hidden" id="page-sync">
-          <h2 class="section-title" style="margin-bottom:20px">Sync Monitor</h2>
           <div class="kpi-grid">
-            <div class="kpi-card"><div class="kpi-icon orange"></div><div><p class="kpi-label">Pending Offline Records</p><p class="kpi-value">5</p></div></div>
-            <div class="kpi-card"><div class="kpi-icon green"></div><div><p class="kpi-label">Synced Records (Cloud)</p><p class="kpi-value">142</p></div></div>
-            <div class="kpi-card"><div class="kpi-icon blue"></div><div><p class="kpi-label">Devices Active</p><p class="kpi-value">3</p></div></div>
+            <div class="kpi-card">
+              <div class="kpi-icon orange"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div>
+              <div>
+                <p class="kpi-label">Pending Sync Queue</p>
+                <p class="kpi-value text-warn" id="sync-pending-queue" style="color:var(--danger)">1 Device Lag</p>
+                <p class="kpi-change warn" style="color:var(--danger)">FLD-KTR-007 out of sync</p>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon green"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+              <div>
+                <p class="kpi-label">Successful Cloud Syncs</p>
+                <p class="kpi-value">142 Logs</p>
+                <p class="kpi-change neutral">Stored inside central encrypted SRA server</p>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon blue"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+              <div>
+                <p class="kpi-label">Active Terminals</p>
+                <p class="kpi-value">3 Terminals</p>
+                <p class="kpi-change neutral">Silay Area cached connections</p>
+              </div>
+            </div>
           </div>
           <div class="card" style="margin-top:20px">
-            <div class="card-header"><h3 class="card-title">Audit Log</h3><button class="btn-outline">Export CSV</button></div>
+            <div class="card-header">
+              <h3 class="card-title">Network Synchronization Transactions Auditor</h3>
+            </div>
             <div class="table-wrap">
               <table class="data-table">
-                <thead><tr><th>Time</th><th>Device</th><th>User</th><th>Action</th><th>Status</th></tr></thead>
+                <thead><tr><th>Transaction Time</th><th>Device Terminal</th><th>Staff Member</th><th>Synchronized Event</th><th>Audit State</th></tr></thead>
                 <tbody id="sync-log-body"></tbody>
               </table>
             </div>

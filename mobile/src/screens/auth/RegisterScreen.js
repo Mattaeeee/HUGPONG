@@ -7,15 +7,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../../theme';
 
-const ROLES = ['Lead Cabo', 'Cabo Supervisor', 'Hacienda Encargado', 'Agricultural Manager'];
-const SECTORS = ['Sector A', 'Sector B', 'Sector C', 'Sector D'];
+const ROLES = ['Member', 'Farm Manager', 'SRA Checker'];
 const TOTAL_STEPS = 4;
+
+const ROLE_DESCRIPTIONS = {
+  'Member': 'Logs weekly/monthly field operations',
+  'Farm Manager': 'Reviews logs & compiles SRA reports',
+  'SRA Checker': 'Scans QR & audits monthly reports',
+};
 
 const STEP_TITLES = [
   { title: 'Personal Info', sub: 'Tell us about yourself' },
-  { title: 'Role & Farm', sub: 'Your operational assignment' },
-  { title: 'Contact Details', sub: 'How we can reach you' },
-  { title: 'Set Password', sub: 'Secure your account' },
+  { title: 'Your Role', sub: 'Select your role in the block farm' },
+  { title: 'Contact Number', sub: 'Used as your login credential' },
+  { title: 'Set Password', sub: 'Secure your HUGPONG account' },
 ];
 
 function ProgressBar({ step }) {
@@ -65,27 +70,36 @@ const inp = StyleSheet.create({
   input: { flex: 1, fontSize: 15, color: COLORS.text, fontWeight: '500' },
 });
 
-function RoleChip({ label, selected, onPress }) {
+function RoleChip({ label, description, selected, onPress }) {
   return (
     <TouchableOpacity style={[rc.chip, selected && rc.selected]} onPress={onPress}>
-      {selected && <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />}
-      <Text style={[rc.text, selected && rc.textSelected]}>{label}</Text>
+      <View style={rc.chipInner}>
+        <View style={rc.chipHeader}>
+          {selected && <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />}
+          <Text style={[rc.text, selected && rc.textSelected]}>{label}</Text>
+        </View>
+        <Text style={[rc.desc, selected && rc.descSelected]}>{description}</Text>
+      </View>
     </TouchableOpacity>
   );
 }
 const rc = StyleSheet.create({
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.md, backgroundColor: '#fff' },
+  chip: { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.md, backgroundColor: '#fff' },
   selected: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg },
+  chipInner: { gap: 4 },
+  chipHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   text: { fontSize: 14, color: COLORS.textSecondary, fontWeight: '500' },
   textSelected: { color: COLORS.primary, fontWeight: '700' },
+  desc: { fontSize: 12, color: COLORS.textMuted, fontWeight: '400' },
+  descSelected: { color: COLORS.primary, opacity: 0.8 },
 });
 
 export default function RegisterScreen({ navigation }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
-    fullName: '', employeeId: '',
-    role: '', farm: '', sector: '',
-    mobile: '', email: '',
+    fullName: '',
+    role: '',
+    contactNumber: '',
     password: '', confirmPassword: '',
   });
   const [showPw, setShowPw] = useState(false);
@@ -102,12 +116,12 @@ export default function RegisterScreen({ navigation }) {
     }
     if (step === 2) {
       if (!form.role) e.role = 'Please select a role';
-      if (!form.farm.trim()) e.farm = 'Farm/Block is required';
-      if (!form.sector) e.sector = 'Please select a sector';
     }
     if (step === 3) {
-      if (!form.mobile.trim()) e.mobile = 'Mobile number is required';
-      if (!form.email.includes('@')) e.email = 'Valid email required';
+      const cleaned = form.contactNumber.replace(/\s/g, '');
+      if (!cleaned.startsWith('09') || cleaned.length !== 11) {
+        e.contactNumber = 'Enter a valid PH mobile number (09XXXXXXXXX)';
+      }
     }
     if (step === 4) {
       if (form.password.length < 8) e.password = 'Minimum 8 characters';
@@ -124,7 +138,7 @@ export default function RegisterScreen({ navigation }) {
     setTimeout(() => { setLoading(false); navigation.replace('MainTabs'); }, 1400);
   };
 
-  const back = () => step > 1 ? setStep(s => s - 1) : navigation.goBack();
+  const back = () => step > 1 ? setStep(s => s - 1) : navigation.replace('Login');
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
@@ -152,27 +166,20 @@ export default function RegisterScreen({ navigation }) {
               <Field label="Full Name *" error={errors.fullName}>
                 <InputBox icon="person-outline" value={form.fullName} onChangeText={v => set('fullName', v)} placeholder="e.g. Juan dela Cruz" error={errors.fullName} autoCapitalize="words" />
               </Field>
-              <Field label="Employee ID (Optional)">
-                <InputBox icon="card-outline" value={form.employeeId} onChangeText={v => set('employeeId', v)} placeholder="e.g. EMP-001" />
-              </Field>
             </>}
 
             {/* STEP 2 */}
             {step === 2 && <>
               <Field label="System Role *" error={errors.role}>
                 <View style={{ gap: 8 }}>
-                  {ROLES.map(r => <RoleChip key={r} label={r} selected={form.role === r} onPress={() => set('role', r)} />)}
-                </View>
-              </Field>
-              <Field label="Assigned Farm / Block *" error={errors.farm}>
-                <InputBox icon="home-outline" value={form.farm} onChangeText={v => set('farm', v)} placeholder="e.g. Silay Block Farm" error={errors.farm} />
-              </Field>
-              <Field label="Operational Sector *" error={errors.sector}>
-                <View style={s.chipRow}>
-                  {SECTORS.map(sec => (
-                    <TouchableOpacity key={sec} style={[s.secChip, form.sector === sec && s.secChipActive]} onPress={() => set('sector', sec)}>
-                      <Text style={[s.secChipText, form.sector === sec && s.secChipTextActive]}>{sec}</Text>
-                    </TouchableOpacity>
+                  {ROLES.map(r => (
+                    <RoleChip
+                      key={r}
+                      label={r}
+                      description={ROLE_DESCRIPTIONS[r]}
+                      selected={form.role === r}
+                      onPress={() => set('role', r)}
+                    />
                   ))}
                 </View>
               </Field>
@@ -180,11 +187,8 @@ export default function RegisterScreen({ navigation }) {
 
             {/* STEP 3 */}
             {step === 3 && <>
-              <Field label="Mobile Number *" error={errors.mobile}>
-                <InputBox icon="call-outline" value={form.mobile} onChangeText={v => set('mobile', v)} placeholder="+63 9XX XXX XXXX" keyboardType="phone-pad" error={errors.mobile} />
-              </Field>
-              <Field label="Email Address *" error={errors.email}>
-                <InputBox icon="mail-outline" value={form.email} onChangeText={v => set('email', v)} placeholder="your@email.com" keyboardType="email-address" autoCapitalize="none" error={errors.email} />
+              <Field label="Contact Number *" error={errors.contactNumber}>
+                <InputBox icon="call-outline" value={form.contactNumber} onChangeText={v => set('contactNumber', v)} placeholder="09XX XXX XXXX" keyboardType="phone-pad" maxLength={13} error={errors.contactNumber} />
               </Field>
             </>}
 
@@ -231,11 +235,6 @@ const s = StyleSheet.create({
   stepTitle: { fontSize: 24, fontWeight: '800', color: COLORS.text },
   stepSub: { fontSize: 14, color: COLORS.textMuted },
   card: { backgroundColor: '#fff', borderRadius: RADIUS.xl, padding: SPACING.xl, gap: SPACING.lg, ...SHADOW.card },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  secChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff' },
-  secChipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg },
-  secChipText: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '500' },
-  secChipTextActive: { color: COLORS.primary, fontWeight: '700' },
   btn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   btnDisabled: { opacity: 0.6 },
   btnText: { fontSize: 16, fontWeight: '700', color: '#fff' },

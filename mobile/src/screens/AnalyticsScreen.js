@@ -3,28 +3,56 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
-import { MOCK_WEEKLY_CHART } from '../data/mockData';
 
 const { width } = Dimensions.get('window');
 
-const MONTHLY_DATA = {
-  labels: ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May'],
-  prices: [2200, 2300, 2400, 2350, 2500, 2600, 2550, 2700, 2750, 2800],
-};
+// ── Mock Descriptive Data ──────────────────────────────────────────────────
+const COST_BREAKDOWN = [
+  { label: 'Land Prep & Planting', value: 38, color: '#8F3A8F', amount: 52000 },
+  { label: 'Fertilizer (All Stages)', value: 32, color: '#1A6B9A', amount: 43800 },
+  { label: 'Labor Wages', value: 18, color: '#4A7C2F', amount: 24600 },
+  { label: 'Chemical Spraying', value: 8, color: '#F5A623', amount: 10950 },
+  { label: 'Other', value: 4, color: '#8A9B7A', amount: 5480 },
+];
 
-const BAR_COLORS = ['#B8D4A0', '#8FBF6A', '#6BA045', '#4A7C2F', '#2D5016'];
+const FIELD_COSTS = [
+  { id: 'FLD-KTR-001', costPerHa: 12400, ha: 1.5 },
+  { id: 'FLD-KTR-003', costPerHa: 8900, ha: 2.0 },
+  { id: 'FLD-KTR-007', costPerHa: 15200, ha: 1.0 },
+  { id: 'FLD-KTR-009', costPerHa: 10100, ha: 0.8 },
+];
+
+const CROP_STAGES = [
+  { label: 'Land Prep', ha: 3.0, color: '#8F3A8F', icon: 'construct' },
+  { label: 'Planting', ha: 5.5, color: '#4A7C2F', icon: 'leaf' },
+  { label: 'Fertilizing', ha: 8.0, color: '#1A6B9A', icon: 'flask' },
+  { label: 'Weeding', ha: 4.5, color: '#F5A623', icon: 'water' },
+  { label: 'Harvesting', ha: 1.5, color: '#D9534F', icon: 'basket' },
+];
+
+const SRA_PRICE_HISTORY = [
+  { week: 'Wk1 Mar', price: 2450 },
+  { week: 'Wk2 Mar', price: 2500 },
+  { week: 'Wk3 Mar', price: 2480 },
+  { week: 'Wk4 Mar', price: 2550 },
+  { week: 'Wk1 Apr', price: 2600 },
+  { week: 'Wk2 Apr', price: 2580 },
+  { week: 'Wk3 Apr', price: 2650 },
+  { week: 'Wk4 Apr', price: 2700 },
+  { week: 'Wk1 May', price: 2720 },
+  { week: 'Wk2 May', price: 2750 },
+  { week: 'Wk3 May', price: 2800 },
+  { week: 'Wk4 May', price: 2800 },
+];
+
+const maxPrice = Math.max(...SRA_PRICE_HISTORY.map(p => p.price));
+const minPrice = Math.min(...SRA_PRICE_HISTORY.map(p => p.price));
+const maxFieldCost = Math.max(...FIELD_COSTS.map(f => f.costPerHa));
+const totalHa = CROP_STAGES.reduce((sum, s) => sum + s.ha, 0);
+const totalCost = COST_BREAKDOWN.reduce((sum, c) => sum + c.amount, 0);
 
 export default function AnalyticsScreen({ navigation }) {
-  const [period, setPeriod] = useState('monthly');
-  const chart = MOCK_WEEKLY_CHART;
-  const maxP = 3000, minP = 1800;
-
-  const data = period === 'monthly'
-    ? { labels: MONTHLY_DATA.labels, values: MONTHLY_DATA.prices }
-    : { labels: chart.months, values: chart.weeks[4] };
-
-  const barMax = Math.max(...data.values);
-  const barMin = Math.min(...data.values);
+  const [tab, setTab] = useState('financial');
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -33,99 +61,214 @@ export default function AnalyticsScreen({ navigation }) {
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={20} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Price Analytics</Text>
+        <Text style={s.headerTitle}>Descriptive Analytics</Text>
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        {/* Period Toggle */}
-        <View style={s.periodRow}>
-          {['weekly', 'monthly', 'crop-year'].map(p => (
-            <TouchableOpacity key={p} style={[s.periodBtn, period === p && s.periodBtnActive]} onPress={() => setPeriod(p)}>
-              <Text style={[s.periodText, period === p && s.periodTextActive]}>
-                {p === 'weekly' ? 'Weekly' : p === 'monthly' ? 'Monthly' : 'Crop Year'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      {/* Sync Stamp */}
+      <View style={s.syncBar}>
+        <Ionicons name="cloud-done-outline" size={13} color={COLORS.success} />
+        <Text style={s.syncText}>Data synced: May 21, 2026 · 6:30 PM  ·  Offline cached</Text>
+      </View>
 
-        {/* Main Chart */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>HPCo Price Trend (Php / Lkg)</Text>
-          <View style={s.lineChart}>
-            <View style={s.yAxis}>
-              {[3000, 2750, 2500, 2250, 2000].map(v => (
-                <Text key={v} style={s.yLabel}>{(v / 1000).toFixed(1)}k</Text>
+      {/* Tab Bar */}
+      <View style={s.tabBar}>
+        {[
+          { key: 'financial', label: 'Financial Diagnostics', icon: 'cash-outline' },
+          { key: 'crop', label: 'Crop Diagnostics', icon: 'leaf-outline' },
+        ].map(t => (
+          <TouchableOpacity
+            key={t.key}
+            style={[s.tab, tab === t.key && s.tabActive]}
+            onPress={() => setTab(t.key)}
+          >
+            <Text style={[s.tabText, tab === t.key && s.tabTextActive]}>{t.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+
+        {/* ════════════════════════════════════ */}
+        {/* FINANCIAL DIAGNOSTICS TAB */}
+        {/* ════════════════════════════════════ */}
+        {tab === 'financial' && (
+          <>
+            {/* Summary KPIs */}
+            <View style={s.kpiRow}>
+              <View style={s.kpiCard}>
+                <Text style={s.kpiLabel}>Total Op. Cost</Text>
+                <Text style={s.kpiValue}>Php {(totalCost / 1000).toFixed(1)}k</Text>
+              </View>
+              <View style={s.kpiCard}>
+                <Text style={s.kpiLabel}>Avg Cost / Ha</Text>
+                <Text style={s.kpiValue}>Php {Math.round(totalCost / totalHa).toLocaleString()}</Text>
+              </View>
+              <View style={s.kpiCard}>
+                <Text style={s.kpiLabel}>Active Fields</Text>
+                <Text style={s.kpiValue}>{FIELD_COSTS.length}</Text>
+              </View>
+            </View>
+
+            {/* Cost Breakdown Donut-style list */}
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Operational Cost Breakdown</Text>
+              <Text style={s.cardSub}>Block farm total: Php {totalCost.toLocaleString()}</Text>
+
+              {/* Donut Bar */}
+              <View style={s.donutBar}>
+                {COST_BREAKDOWN.map(c => (
+                  <View key={c.label} style={[s.donutSegment, { flex: c.value, backgroundColor: c.color }]} />
+                ))}
+              </View>
+
+              {/* Legend + Bars */}
+              {COST_BREAKDOWN.map(c => (
+                <View key={c.label} style={s.breakRow}>
+                  <View style={[s.breakDot, { backgroundColor: c.color }]} />
+                  <View style={s.breakBody}>
+                    <View style={s.breakTop}>
+                      <Text style={s.breakLabel}>{c.label}</Text>
+                      <Text style={s.breakPct}>{c.value}%</Text>
+                    </View>
+                    <View style={s.breakTrack}>
+                      <View style={[s.breakFill, { width: `${c.value}%`, backgroundColor: c.color }]} />
+                    </View>
+                    <Text style={s.breakAmt}>Php {c.amount.toLocaleString()}</Text>
+                  </View>
+                </View>
               ))}
             </View>
-            <View style={s.barsArea}>
-              {data.labels.map((label, i) => {
-                const pct = ((data.values[i] - 1500) / (3000 - 1500)) * 100;
-                const isLatest = i === data.values.length - 1;
+
+            {/* Cost per Hectare Comparison */}
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Cost-per-Hectare Efficiency</Text>
+              <Text style={s.cardSub}>Compare operational cost efficiency across active fields</Text>
+              {FIELD_COSTS.map(f => {
+                const pct = (f.costPerHa / maxFieldCost) * 100;
+                const isHigh = f.costPerHa === maxFieldCost;
                 return (
-                  <View key={i} style={s.barCol}>
-                    <View style={s.barTrack}>
-                      <View style={[s.barFill, { height: `${pct}%`, backgroundColor: isLatest ? COLORS.primary : COLORS.primaryLight }]} />
+                  <View key={f.id} style={s.effRow}>
+                    <View style={s.effLeft}>
+                      <Text style={s.effId}>{f.id}</Text>
+                      <Text style={s.effHa}>{f.ha} Ha</Text>
                     </View>
-                    <Text style={s.barLabel}>{label}</Text>
-                    {isLatest && <View style={s.latestDot} />}
+                    <View style={s.effBarWrap}>
+                      <View style={[s.effBar, { width: `${pct}%`, backgroundColor: isHigh ? '#D9534F' : COLORS.primary }]} />
+                    </View>
+                    <Text style={[s.effCost, isHigh && { color: '#D9534F' }]}>₱{(f.costPerHa / 1000).toFixed(1)}k</Text>
                   </View>
                 );
               })}
-            </View>
-          </View>
-        </View>
-
-        {/* Key Metrics */}
-        <View style={s.metricsGrid}>
-          {[
-            { icon: 'trending-up', label: 'Highest Price', value: 'Php 2,900', color: COLORS.success },
-            { icon: 'trending-down', label: 'Lowest Price', value: 'Php 2,100', color: '#D9534F' },
-            { icon: 'analytics', label: 'Average Price', value: 'Php 2,650', color: COLORS.blue },
-            { icon: 'pulse', label: 'Volatility', value: '±2.1%', color: COLORS.accent },
-          ].map(m => (
-            <View key={m.label} style={s.metricCard}>
-              <View style={[s.metricIcon, { backgroundColor: m.color + '18' }]}>
-                <Ionicons name={m.icon} size={18} color={m.color} />
+              <View style={s.effNote}>
+                <Ionicons name="information-circle-outline" size={13} color={COLORS.blue} />
+                <Text style={s.effNoteText}>FLD-KTR-007 is the highest cost field. Manager may want to review its operations.</Text>
               </View>
-              <Text style={s.metricValue}>{m.value}</Text>
-              <Text style={s.metricLabel}>{m.label}</Text>
             </View>
-          ))}
-        </View>
+          </>
+        )}
 
-        {/* Weekly Breakdown */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Weekly Breakdown</Text>
-          {chart.months.map((month, mi) => (
-            <View key={mi} style={s.weekRow}>
-              <Text style={s.weekMonth}>{month}</Text>
-              <View style={s.weekBars}>
-                {chart.weeks.map((wk, wi) => {
-                  const h = Math.max(6, ((wk[mi] - 1800) / (3000 - 1800)) * 32);
-                  return <View key={wi} style={[s.weekBar, { height: h, backgroundColor: BAR_COLORS[wi] }]} />;
-                })}
+        {/* ════════════════════════════════════ */}
+        {/* CROP DIAGNOSTICS TAB */}
+        {/* ════════════════════════════════════ */}
+        {tab === 'crop' && (
+          <>
+            {/* Crop Stage Distribution */}
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Hectares by Crop Stage</Text>
+              <Text style={s.cardSub}>Total: {totalHa} Ha across {FIELD_COSTS.length} active fields</Text>
+
+              {/* Stage Bar */}
+              <View style={s.stageBar}>
+                {CROP_STAGES.map(st => (
+                  <View key={st.label} style={[s.stageSegment, { flex: st.ha, backgroundColor: st.color }]} />
+                ))}
               </View>
-              <Text style={s.weekPrice}>Php {chart.weeks[4][mi].toLocaleString()}</Text>
-            </View>
-          ))}
-        </View>
 
-        {/* Trend Analysis */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Trend Analysis</Text>
-          {[
-            { label: '7-day change', value: '+Php 50', positive: true },
-            { label: '30-day change', value: '+Php 150', positive: true },
-            { label: 'vs. same period last year', value: '+Php 200', positive: true },
-            { label: 'Forecast (next 2 weeks)', value: 'Php 2,820–2,850', positive: true },
-          ].map(t => (
-            <View key={t.label} style={s.trendRow}>
-              <Text style={s.trendLabel}>{t.label}</Text>
-              <Text style={[s.trendValue, { color: t.positive ? COLORS.success : '#D9534F' }]}>{t.value}</Text>
+              {CROP_STAGES.map(st => (
+                <View key={st.label} style={s.stageRow}>
+                  <View style={[s.stageDot, { backgroundColor: st.color }]} />
+                  <Ionicons name={st.icon} size={14} color={st.color} />
+                  <Text style={s.stageLabel}>{st.label}</Text>
+                  <View style={s.stageBarMini}>
+                    <View style={[s.stageBarFill, { width: `${(st.ha / totalHa) * 100}%`, backgroundColor: st.color + '50' }]} />
+                  </View>
+                  <Text style={s.stageHa}>{st.ha} Ha</Text>
+                  <Text style={s.stagePct}>{((st.ha / totalHa) * 100).toFixed(0)}%</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+
+            {/* SRA Price Monitor */}
+            <View style={s.card}>
+              <View style={s.priceChartHeader}>
+                <View>
+                  <Text style={s.cardTitle}>SRA Weekly Price Monitor</Text>
+                  <Text style={s.cardSub}>Raw sugar price per Lkg (Php) — Posted by SRA</Text>
+                </View>
+                <View style={s.liveBadge}>
+                  <View style={s.liveDot} />
+                  <Text style={s.liveText}>Cached</Text>
+                </View>
+              </View>
+
+              {/* KPI row */}
+              <View style={s.priceKpiRow}>
+                <View style={s.priceKpi}>
+                  <Text style={s.priceKpiLabel}>Current</Text>
+                  <Text style={[s.priceKpiVal, { color: COLORS.primary }]}>₱{SRA_PRICE_HISTORY[SRA_PRICE_HISTORY.length - 1].price.toLocaleString()}</Text>
+                </View>
+                <View style={s.priceKpiDiv} />
+                <View style={s.priceKpi}>
+                  <Text style={s.priceKpiLabel}>Season High</Text>
+                  <Text style={[s.priceKpiVal, { color: COLORS.success }]}>₱{maxPrice.toLocaleString()}</Text>
+                </View>
+                <View style={s.priceKpiDiv} />
+                <View style={s.priceKpi}>
+                  <Text style={s.priceKpiLabel}>Season Low</Text>
+                  <Text style={[s.priceKpiVal, { color: '#D9534F' }]}>₱{minPrice.toLocaleString()}</Text>
+                </View>
+              </View>
+
+              {/* Bar Chart */}
+              <View style={s.priceChartWrap}>
+                <View style={s.priceYAxis}>
+                  {[2800, 2650, 2500, 2350].map(v => (
+                    <Text key={v} style={s.priceYLabel}>{(v / 1000).toFixed(1)}k</Text>
+                  ))}
+                </View>
+                <View style={s.pricePlotArea}>
+                  <View style={s.priceBarsRow}>
+                    {SRA_PRICE_HISTORY.map((item, i) => {
+                      const pct = ((item.price - 2300) / (2900 - 2300)) * 100;
+                      const isLatest = i === SRA_PRICE_HISTORY.length - 1;
+                      return (
+                        <View key={i} style={s.priceBarCol}>
+                          <View style={s.priceBarTrack}>
+                            <View style={[s.priceBarFill, { height: `${pct}%`, backgroundColor: isLatest ? COLORS.primary : COLORS.primaryLight }]} />
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                  <View style={s.priceXAxisRow}>
+                    {SRA_PRICE_HISTORY.map((item, i) => (
+                      <View key={i} style={s.priceXAxisCol}>
+                        {i % 3 === 0 ? (
+                          <Text style={s.priceXLabel}>{item.week.replace(' ', '\n')}</Text>
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </View>
+
+              <Text style={s.priceNote}>Last updated by SRA: May 21, 2026  ·  Cached offline</Text>
+            </View>
+          </>
+        )}
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -136,34 +279,81 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.border },
   backBtn: { padding: 8 },
   headerTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text },
+  syncBar: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: SPACING.lg, paddingVertical: 7, backgroundColor: COLORS.successLight },
+  syncText: { fontSize: 11, color: COLORS.success, fontWeight: '500' },
+  tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  tab: { flex: 1, paddingVertical: 13, alignItems: 'center', borderBottomWidth: 2.5, borderBottomColor: 'transparent' },
+  tabActive: { borderBottomColor: COLORS.primary },
+  tabText: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
+  tabTextActive: { color: COLORS.primary, fontWeight: '800' },
   scroll: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 32 },
-  periodRow: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: RADIUS.md, padding: 4, gap: 4, ...SHADOW.card },
-  periodBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: RADIUS.sm },
-  periodBtnActive: { backgroundColor: COLORS.primary },
-  periodText: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
-  periodTextActive: { color: '#fff' },
-  card: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.lg, ...SHADOW.card },
-  cardTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginBottom: SPACING.md },
-  lineChart: { flexDirection: 'row', height: 180 },
-  yAxis: { width: 32, justifyContent: 'space-between', paddingBottom: 20 },
-  yLabel: { fontSize: 9, color: COLORS.textMuted, textAlign: 'right' },
-  barsArea: { flex: 1, flexDirection: 'row', alignItems: 'flex-end', gap: 4, paddingBottom: 20, paddingLeft: 8 },
-  barCol: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
-  barTrack: { flex: 1, width: '70%', justifyContent: 'flex-end' },
-  barFill: { width: '100%', borderRadius: 3, minHeight: 4 },
-  barLabel: { fontSize: 8, color: COLORS.textMuted, marginTop: 4 },
-  latestDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.primary, position: 'absolute', top: 0 },
-  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  metricCard: { width: (width - SPACING.lg * 2 - 10) / 2, backgroundColor: '#fff', borderRadius: RADIUS.md, padding: SPACING.md, ...SHADOW.card, gap: 6 },
-  metricIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  metricValue: { fontSize: 16, fontWeight: '800', color: COLORS.text },
-  metricLabel: { fontSize: 11, color: COLORS.textMuted },
-  weekRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: 8, borderTopWidth: 1, borderTopColor: COLORS.border },
-  weekMonth: { width: 32, fontSize: 12, color: COLORS.textMuted, fontWeight: '500' },
-  weekBars: { flex: 1, flexDirection: 'row', gap: 3, alignItems: 'flex-end', height: 32 },
-  weekBar: { flex: 1, borderRadius: 2 },
-  weekPrice: { fontSize: 12, fontWeight: '700', color: COLORS.text, width: 70, textAlign: 'right' },
-  trendRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
-  trendLabel: { fontSize: 13, color: COLORS.textSecondary },
-  trendValue: { fontSize: 13, fontWeight: '700' },
+  card: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.lg, gap: SPACING.sm, ...SHADOW.card },
+  cardTitle: { fontSize: 14, fontWeight: '800', color: COLORS.text },
+  cardSub: { fontSize: 11, color: COLORS.textMuted, marginTop: -2 },
+
+  // KPI Row
+  kpiRow: { flexDirection: 'row', gap: 8 },
+  kpiCard: { flex: 1, backgroundColor: '#fff', borderRadius: RADIUS.md, padding: SPACING.md, alignItems: 'center', gap: 4, ...SHADOW.card },
+  kpiLabel: { fontSize: 10, color: COLORS.textMuted, textAlign: 'center' },
+  kpiValue: { fontSize: 15, fontWeight: '800', color: COLORS.text },
+
+  // Donut Bar
+  donutBar: { flexDirection: 'row', height: 16, borderRadius: 8, overflow: 'hidden', marginVertical: SPACING.sm },
+  donutSegment: { height: '100%' },
+
+  // Cost Breakdown
+  breakRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.border },
+  breakDot: { width: 10, height: 10, borderRadius: 5, marginTop: 5, flexShrink: 0 },
+  breakBody: { flex: 1, gap: 4 },
+  breakTop: { flexDirection: 'row', justifyContent: 'space-between' },
+  breakLabel: { fontSize: 12, fontWeight: '600', color: COLORS.text, flex: 1 },
+  breakPct: { fontSize: 12, fontWeight: '800', color: COLORS.textSecondary },
+  breakTrack: { height: 5, backgroundColor: COLORS.border, borderRadius: 3, overflow: 'hidden' },
+  breakFill: { height: '100%', borderRadius: 3 },
+  breakAmt: { fontSize: 11, color: COLORS.textMuted },
+
+  // Efficiency
+  effRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
+  effLeft: { width: 90 },
+  effId: { fontSize: 11, fontWeight: '700', color: COLORS.text },
+  effHa: { fontSize: 10, color: COLORS.textMuted },
+  effBarWrap: { flex: 1, height: 10, backgroundColor: COLORS.border, borderRadius: 5, overflow: 'hidden' },
+  effBar: { height: '100%', borderRadius: 5 },
+  effCost: { fontSize: 12, fontWeight: '800', color: COLORS.primary, width: 42, textAlign: 'right' },
+  effNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: '#E0F0FA', borderRadius: RADIUS.sm, padding: SPACING.sm, marginTop: 4 },
+  effNoteText: { flex: 1, fontSize: 11, color: COLORS.blue, lineHeight: 16 },
+
+  // Stage Distribution
+  stageBar: { flexDirection: 'row', height: 18, borderRadius: 9, overflow: 'hidden', marginVertical: SPACING.sm },
+  stageSegment: { height: '100%' },
+  stageRow: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 8, borderTopWidth: 1, borderTopColor: COLORS.border },
+  stageDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  stageLabel: { fontSize: 12, fontWeight: '600', color: COLORS.text, width: 80 },
+  stageBarMini: { flex: 1, height: 6, backgroundColor: COLORS.border, borderRadius: 3, overflow: 'hidden' },
+  stageBarFill: { height: '100%', borderRadius: 3 },
+  stageHa: { fontSize: 12, fontWeight: '700', color: COLORS.text, width: 36, textAlign: 'right' },
+  stagePct: { fontSize: 10, color: COLORS.textMuted, width: 28, textAlign: 'right' },
+
+  // Price Chart
+  priceChartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.successLight, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.success },
+  liveText: { fontSize: 10, fontWeight: '700', color: COLORS.success },
+  priceKpiRow: { flexDirection: 'row', backgroundColor: COLORS.background, borderRadius: RADIUS.md, padding: SPACING.md },
+  priceKpi: { flex: 1, alignItems: 'center', gap: 3 },
+  priceKpiDiv: { width: 1, backgroundColor: COLORS.border },
+  priceKpiLabel: { fontSize: 10, color: COLORS.textMuted },
+  priceKpiVal: { fontSize: 15, fontWeight: '800' },
+  priceChartWrap: { flexDirection: 'row', height: 160, marginTop: SPACING.sm },
+  priceYAxis: { width: 30, justifyContent: 'space-between', height: 130 },
+  priceYLabel: { fontSize: 8, color: COLORS.textMuted, textAlign: 'right' },
+  pricePlotArea: { flex: 1, paddingLeft: 4 },
+  priceBarsRow: { flex: 1, flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 130 },
+  priceBarCol: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
+  priceBarTrack: { flex: 1, width: '80%', justifyContent: 'flex-end' },
+  priceBarFill: { width: '100%', borderRadius: 2, minHeight: 4 },
+  priceXAxisRow: { flexDirection: 'row', gap: 2, marginTop: 6, height: 24 },
+  priceXAxisCol: { flex: 1, alignItems: 'center' },
+  priceXLabel: { fontSize: 8, color: COLORS.textSecondary, fontWeight: '600', textAlign: 'center', lineHeight: 10 },
+  priceNote: { fontSize: 10, color: COLORS.textMuted, textAlign: 'center', paddingTop: 4 },
 });

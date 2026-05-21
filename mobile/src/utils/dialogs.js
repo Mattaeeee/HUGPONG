@@ -22,7 +22,7 @@ export const confirmSignOut = ({ pendingCount, onSyncFirst, onSignOut }) => {
   Alert.alert(
     'Sign Out?',
     hasPending
-      ? `⚠️ You have ${pendingCount} unsynced record${pendingCount !== 1 ? 's' : ''}.\n\nSigning out without syncing may cause data loss.`
+      ? `You have ${pendingCount} unsynced record${pendingCount !== 1 ? 's' : ''}.\n\nSigning out without syncing may cause data loss.`
       : 'Are you sure you want to sign out?',
     [
       hasPending && { text: 'Sync First', style: 'default', onPress: onSyncFirst },
@@ -69,7 +69,7 @@ export const confirmConflictKeepLocal = ({ recordName, onConfirm }) => confirm({
 
 // Security warning
 export const securityWarning = ({ feature, onProceed }) => Alert.alert(
-  '⚠️  Security Warning',
+  'Security Warning',
   `Changing your ${feature} will log out all other active sessions.\n\nMake sure you're in a secure environment before proceeding.`,
   [
     { text: 'Cancel', style: 'cancel' },
@@ -97,7 +97,7 @@ export const confirmDiscard = ({ onDiscard }) => confirm({
 // Sign out all devices
 export const confirmSignOutAllDevices = ({ onConfirm }) => Alert.alert(
   'Sign Out All Devices?',
-  '🔒 This will immediately revoke all active sessions on every device.\n\nYou will need to log in again on each device.',
+  'This will immediately revoke all active sessions on every device.\n\nYou will need to log in again on each device.',
   [
     { text: 'Cancel', style: 'cancel' },
     { text: 'Sign Out All', style: 'destructive', onPress: onConfirm },

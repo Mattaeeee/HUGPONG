@@ -28,8 +28,8 @@ const ProfileStack = createNativeStackNavigator();
 
 const TAB_ICONS = {
   Home: { active: 'home', inactive: 'home-outline' },
-  Calculator: { active: 'calculator', inactive: 'calculator-outline' },
-  Schedules: { active: 'calendar', inactive: 'calendar-outline' },
+  Planner: { active: 'construct', inactive: 'construct-outline' },
+  'Field Ops': { active: 'book', inactive: 'book-outline' },
   Profile: { active: 'person', inactive: 'person-outline' },
 };
 
@@ -93,8 +93,8 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeNavigator} />
-      <Tab.Screen name="Calculator" component={CalcNavigator} />
-      <Tab.Screen name="Schedules" component={SchedNavigator} />
+      <Tab.Screen name="Planner" component={CalcNavigator} />
+      <Tab.Screen name="Field Ops" component={SchedNavigator} />
       <Tab.Screen name="Profile" component={ProfileNavigator} />
     </Tab.Navigator>
   );
