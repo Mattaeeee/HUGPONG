@@ -7,35 +7,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
-import { subscribe, getCurrentSession, setSynced, setSession, updateSessionFieldId } from '../data/mockData';
+import { subscribe, getCurrentSession, setSynced, setSession, updateSessionFieldId, getIsSynced, MOCK_ASSIGNMENT_REQUESTS, resolveAssignmentRequest, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS, notifyDataUpdate } from '../data/mockData';
 
 const { height, width } = Dimensions.get('window');
 
-// ── Mock Data ──────────────────────────────────────────────────────────────
-const MOCK_FIELDS = [
-  { id: 'FLD-KTR-001', member: 'Juan dela Cruz', ha: '1.5', stage: 'Fertilization Stage 2', month: 3.2, synced: true, lastSync: '10 mins ago' },
-  { id: 'FLD-KTR-003', member: 'Maria Santos', ha: '2.0', stage: 'Land Preparation', month: 0.3, synced: true, lastSync: '2 hrs ago' },
-  { id: 'FLD-KTR-007', member: 'Pedro Reyes', ha: '1.0', stage: 'Harvesting', month: 10.5, synced: false, lastSync: '4 days ago' },
-  { id: 'FLD-KTR-009', member: 'Ana Gomez', ha: '0.8', stage: 'Weeding', month: 5.1, synced: true, lastSync: '1 hr ago' },
-];
 
 const MEMBER_FIELD = MOCK_FIELDS[0]; // The currently logged-in member's field
 
 const CYCLE_TASKS = [
-  { id: 'T1', phase: 'Land Prep', icon: 'construct', color: '#8F3A8F', month: 0, label: 'Land Prep: Plowing (4h/ha), Dragging (2-3h), Hauling points before Subsoiler', done: true },
-  { id: 'T2', phase: 'Planting', icon: 'leaf', color: '#4A7C2F', month: 1, label: 'Planting: Patdan (40,000 cane points/ha, 10-15 farmers for 1 day)', done: true },
-  { id: 'T3', phase: 'Pre-emergence', icon: 'water', color: '#1A6B9A', month: 1.25, label: 'Pre-emergence Spraying (1 week post-planting)', done: true },
-  { id: 'T4', phase: 'Fert Stage 1', icon: 'archive', color: '#1A6B9A', month: 2.5, label: 'Fertilization Stage 1 (18-46) & Ridge Busting (1.5–2 months post-planting)', done: true },
-  { id: 'T5', phase: 'Fert Stage 2', icon: 'flask', color: '#4A7C2F', month: 3.5, label: 'Weeding, Fertilization Stage 2 (Urea) & Off-barring (1 month later)', done: false, active: true },
-  { id: 'T6', phase: 'Fert Stage 3', icon: 'flask', color: '#F5A623', month: 4.5, label: 'Weeding, Fertilization Stage 3 (Urea + Potash) & On-barring (1 month later)', done: false },
-  { id: 'T7', phase: 'Off-barring', icon: 'git-branch', color: '#8A9B7A', month: 5.5, label: 'Final Off-barring (1 month later)', done: false },
-  { id: 'T8', phase: 'Harvest', icon: 'basket', color: '#D9534F', month: 10.5, label: 'Harvesting & Milling (5 months post-off-barring)', done: false },
-];
-
-const MOCK_LOGS = [
-  { id: 'L1', fieldId: 'FLD-KTR-001', type: 'weekly', week: 'Week 1 – May', activity: 'Weeding labor', cost: 1200, date: 'May 7, 2026', approved: true },
-  { id: 'L2', fieldId: 'FLD-KTR-001', type: 'monthly', month: 'May 2026', activity: 'Urea fertilizer (4 bags)', cost: 6400, date: 'May 1, 2026', approved: false },
-  { id: 'L3', fieldId: 'FLD-KTR-003', type: 'weekly', week: 'Week 2 – May', activity: 'Land plowing (tractor)', cost: 5000, date: 'May 14, 2026', approved: true },
+  { id: 'T1', phase: 'Land Prep', icon: 'construct', color: '#8F3A8F', month: 0, label: 'Land Preparation', done: true },
+  { id: 'T2', phase: 'Planting', icon: 'leaf', color: '#4A7C2F', month: 1, label: 'Planting', done: true },
+  { id: 'T3', phase: 'Pre-emergence', icon: 'water', color: '#1A6B9A', month: 1.25, label: 'Pre-emergence Spraying', done: true },
+  { id: 'T4', phase: 'Fert Stage 1', icon: 'archive', color: '#1A6B9A', month: 2.5, label: 'Fertilization Stage 1 (18-46) & Ridge Busting', done: true },
+  { id: 'T5', phase: 'Fert Stage 2', icon: 'flask', color: '#4A7C2F', month: 3.5, label: 'Weeding, Fertilization Stage 2 (Urea) & Off-barring', done: false, active: true },
+  { id: 'T6', phase: 'Fert Stage 3', icon: 'flask', color: '#F5A623', month: 4.5, label: 'Weeding, Fertilization Stage 3 (Urea + Potash) & On-barring', done: false },
+  { id: 'T7', phase: 'Off-barring', icon: 'git-branch', color: '#8A9B7A', month: 5.5, label: 'Final Off-barring', done: false },
+  { id: 'T8', phase: 'Harvest', icon: 'basket', color: '#D9534F', month: 10.5, label: 'Harvesting & Milling', done: false },
 ];
 
 const STATUS_COLORS = { approved: COLORS.success, pending: '#F5A623', flagged: '#D9534F' };
@@ -47,8 +34,117 @@ export default function SchedulesScreen({ navigation }) {
   const [showLog, setShowLog] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
-  const [logForm, setLogForm] = useState({ type: 'weekly', activity: '', cost: '', period: '' });
+  const [logForm, setLogForm] = useState({ type: 'weekly', fieldId: '', saveFieldId: true, activity: '', cost: '', period: '', hours: '', hectares: '', people: '', taskId: null });
+  const [draftLogs, setDraftLogs] = useState([]);
+  const [synced, setSyncedState] = useState(getIsSynced());
+  const [requests, setRequests] = useState(MOCK_ASSIGNMENT_REQUESTS);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [showAddField, setShowAddField] = useState(false);
+  const [reqFieldId, setReqFieldId] = useState('');
+  const [reqFieldHa, setReqFieldHa] = useState('');
+  const [cycleTasksByField, setCycleTasksByField] = useState({
+    [MOCK_FIELDS[0].id]: CYCLE_TASKS,
+  });
   const slideAnim = useRef(new Animated.Value(height)).current;
+
+  const toggleTaskStatus = (taskId) => {
+    if (activeRole === 'SRA Checker') return;
+    
+    const fieldTasks = cycleTasksByField[selectedField.id] || CYCLE_TASKS.map(t => ({...t, done: false, active: false}));
+    const taskIndex = fieldTasks.findIndex(t => t.id === taskId);
+    const targetTask = fieldTasks[taskIndex];
+
+    const applyToggle = () => {
+      setCycleTasksByField(prev => {
+        const currentTasks = prev[selectedField.id] || CYCLE_TASKS.map(t => ({...t, done: false, active: false}));
+        const updated = currentTasks.map(t => {
+          if (t.id === taskId) {
+            if (t.done) return { ...t, done: false, active: false };
+            if (t.active) return { ...t, done: true, active: false };
+            return { ...t, done: false, active: true };
+          }
+          if (!targetTask.active && !targetTask.done && t.active) {
+            return { ...t, active: false };
+          }
+          return t;
+        });
+        return { ...prev, [selectedField.id]: updated };
+      });
+    };
+
+    const isProgressing = !targetTask.done;
+    
+    if (isProgressing && taskIndex > 0) {
+      const hasPendingPrior = fieldTasks.slice(0, taskIndex).some(t => !t.done);
+      if (hasPendingPrior) {
+        Alert.alert(
+          'Skip Stage Warning',
+          'Previous stages in the crop cycle are not yet completed. Are you sure you want to jump ahead?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Yes, Skip Ahead', onPress: applyToggle, style: 'destructive' }
+          ]
+        );
+        return;
+      }
+    } 
+
+    if (targetTask.active) {
+      const hasOtherDrafts = draftLogs.some(d => d.fieldId === selectedField.id && d.taskId !== targetTask.id);
+      Alert.alert(
+        `Stage: ${targetTask.phase}`,
+        'What would you like to do?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Add Log (Draft)', onPress: () => {
+              setLogForm(p => ({...p, fieldId: selectedField.id, activity: targetTask.label, taskId: targetTask.id}));
+              setShowLog(true);
+              Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
+          }},
+          { text: 'Mark Stage Complete & Submit Logs', onPress: () => {
+              if (hasOtherDrafts) {
+                 Alert.alert('Action Blocked', 'You have unsubmitted drafts for a different stage. Please submit or delete them before completing this stage.');
+                 return;
+              }
+              const stageDrafts = draftLogs.filter(d => d.taskId === targetTask.id && d.fieldId === selectedField.id);
+              if (stageDrafts.length > 0) {
+                setLogs(prev => [...stageDrafts, ...prev]);
+                setDraftLogs(prev => prev.filter(d => !(d.taskId === targetTask.id && d.fieldId === selectedField.id)));
+                setSynced(false);
+              }
+              applyToggle();
+              
+              if (targetTask.id === 'T8') {
+                Alert.alert('Crop Cycle Complete', 'Harvest is done. Reset timeline for a new cycle?', [
+                  { text: 'No', style: 'cancel' },
+                  { text: 'Yes, Reset', onPress: () => {
+                     setCycleTasksByField(p => ({ ...p, [selectedField.id]: CYCLE_TASKS.map(t => ({...t, done: false, active: t.id === 'T1'})) }));
+                  }, style: 'destructive' }
+                ]);
+              }
+          }}
+        ]
+      );
+      return;
+    } else if (!isProgressing) {
+      const hasSubmittedLogs = logs.some(l => l.fieldId === selectedField.id && l.taskId === taskId);
+      if (hasSubmittedLogs) {
+        Alert.alert('Cannot Revert', 'This stage already has submitted logs. Please contact your manager to revert it.');
+        return;
+      }
+      Alert.alert(
+        'Revert Stage',
+        'Are you sure you want to revert this completed stage back to pending?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Yes, Revert', onPress: applyToggle, style: 'destructive' }
+        ]
+      );
+      return;
+    }
+
+    applyToggle();
+  };
 
   useEffect(() => {
     // Initial sync
@@ -66,11 +162,33 @@ export default function SchedulesScreen({ navigation }) {
           setSelectedField(found);
         }
       }
+      setSyncedState(getIsSynced());
+      setRequests([...MOCK_ASSIGNMENT_REQUESTS]);
+      setLogs([...MOCK_LOGS]);
+      setDraftLogs([...DRAFT_LOGS]);
     });
     return unsubscribe;
   }, []);
 
+  const handleRequestField = () => {
+    if (!reqFieldId.trim() || !reqFieldHa.trim()) {
+      Alert.alert('Required', 'Please enter a Field ID and Hectares (HA).');
+      return;
+    }
+    const haValue = parseFloat(reqFieldHa);
+    if (isNaN(haValue) || haValue <= 0 || haValue > 100) {
+      Alert.alert('Invalid', 'Please enter a valid hectare size (between 0.1 and 100).');
+      return;
+    }
+    requestFieldAssignment(reqFieldId.trim().toUpperCase(), getCurrentSession().name, haValue.toFixed(1));
+    Alert.alert('Request Sent', `Assignment request for ${reqFieldId.toUpperCase()} (${haValue.toFixed(1)} Ha) has been sent to the Farm Manager for approval.`);
+    setReqFieldId('');
+    setReqFieldHa('');
+    setShowAddField(false);
+  };
+
   const openLog = () => {
+    setLogForm(p => ({ ...p, fieldId: selectedField.id, saveFieldId: true }));
     setShowLog(true);
     Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
   };
@@ -79,29 +197,108 @@ export default function SchedulesScreen({ navigation }) {
   };
 
   const submitLog = () => {
-    if (!logForm.activity.trim() || !logForm.cost) {
-      Alert.alert('Required', 'Please fill in the activity and cost fields.');
+    if (!logForm.activity.trim() || !logForm.cost || !logForm.fieldId?.trim() || !logForm.period?.trim() || !logForm.hours || !logForm.hectares || !logForm.people) {
+      Alert.alert('Required', 'Please fill in all fields including hours, hectares, and people.');
       return;
     }
+    
+    const costValue = parseFloat(logForm.cost);
+    const hrs = parseFloat(logForm.hours);
+    const ha = parseFloat(logForm.hectares);
+    const ppl = parseInt(logForm.people);
+
+    if (isNaN(costValue) || costValue < 0) {
+      Alert.alert('Invalid Input', 'Please enter a valid positive number for Operational Cost.');
+      return;
+    }
+    if (isNaN(hrs) || hrs <= 0 || isNaN(ha) || ha <= 0 || isNaN(ppl) || ppl <= 0) {
+      Alert.alert('Invalid Input', 'Hours, Hectares, and People must be positive numbers greater than 0.');
+      return;
+    }
+    if (hrs > 24) { Alert.alert('Invalid Input', 'Hours cannot exceed 24 per log.'); return; }
+    if (ha > 50) { Alert.alert('Invalid Input', 'Hectares cannot exceed 50 per log.'); return; }
+    if (ppl > 100) { Alert.alert('Invalid Input', 'People count cannot exceed 100 per log.'); return; }
+
+    const submittedFieldId = logForm.fieldId.trim().toUpperCase();
     const newLog = {
       id: `L${Date.now()}`,
-      fieldId: selectedField.id,
+      fieldId: submittedFieldId,
       type: logForm.type,
       week: logForm.type === 'weekly' ? logForm.period || 'This Week' : undefined,
       month: logForm.type === 'monthly' ? logForm.period || 'This Month' : undefined,
       activity: logForm.activity,
-      cost: parseFloat(logForm.cost) || 0,
+      cost: costValue,
+      hours: logForm.hours,
+      hectares: logForm.hectares,
+      people: logForm.people,
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       approved: false,
+      taskId: logForm.taskId,
     };
-    setLogs(prev => [newLog, ...prev]);
-    setSynced(false); // Trigger unsynced state in AppHeader and ProfileScreen
-    setLogForm({ type: 'weekly', activity: '', cost: '', period: '' });
+
+    if (!MOCK_FIELDS.find(f => f.id === submittedFieldId)) {
+      MOCK_FIELDS.push({ id: submittedFieldId, member: getCurrentSession().name || 'Current User', ha: '0.0', stage: 'Newly Logged', month: 0, synced: false, lastSync: 'Just now' });
+    }
+
+    if (logForm.id) {
+      const idx = DRAFT_LOGS.findIndex(d => d.id === logForm.id);
+      if (idx >= 0) DRAFT_LOGS[idx] = { ...newLog, id: logForm.id };
+      setDraftLogs([...DRAFT_LOGS]);
+    } else {
+      DRAFT_LOGS.unshift(newLog);
+      setDraftLogs([...DRAFT_LOGS]);
+    }
+    
+    notifyDataUpdate();
+
+    if (logForm.saveFieldId && submittedFieldId !== selectedField.id) {
+      updateSessionFieldId(submittedFieldId);
+    }
+
+    setLogForm({ type: 'weekly', fieldId: selectedField.id, saveFieldId: true, activity: '', cost: '', period: '', hours: '', hectares: '', people: '', taskId: null });
     closeLog();
   };
 
-  const approveLog = (id) => {
-    setLogs(prev => prev.map(l => l.id === id ? { ...l, approved: true } : l));
+  const submitDraft = (log) => {
+    const idx = DRAFT_LOGS.findIndex(d => d.id === log.id);
+    if (idx >= 0) DRAFT_LOGS.splice(idx, 1);
+    setDraftLogs([...DRAFT_LOGS]);
+    MOCK_LOGS.unshift({ ...log, approved: false, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) });
+    setLogs([...MOCK_LOGS]);
+    notifyDataUpdate();
+    Alert.alert('Log Submitted', `Log #${log.id} has been sent to Farm Manager for approval.`);
+  };
+
+  const editDraftLog = (log) => {
+    setLogForm({
+      id: log.id,
+      type: log.type,
+      fieldId: log.fieldId,
+      saveFieldId: false,
+      activity: log.activity,
+      cost: log.cost.toString(),
+      period: log.type === 'weekly' ? log.week : log.month,
+      hours: log.hours ? log.hours.toString() : '',
+      hectares: log.hectares ? log.hectares.toString() : '',
+      people: log.people ? log.people.toString() : '',
+      taskId: log.taskId
+    });
+    setShowLog(true);
+    Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
+  };
+
+  const approveLog = (logId) => {
+    const l = MOCK_LOGS.find(x => x.id === logId);
+    if (l) l.approved = true;
+    setLogs([...MOCK_LOGS]);
+    notifyDataUpdate();
+  };
+
+  const rejectLog = (logId) => {
+    const idx = MOCK_LOGS.findIndex(x => x.id === logId);
+    if (idx >= 0) MOCK_LOGS.splice(idx, 1);
+    setLogs([...MOCK_LOGS]);
+    notifyDataUpdate();
   };
 
   const fieldLogs = logs.filter(l => l.fieldId === selectedField.id);
@@ -112,6 +309,40 @@ export default function SchedulesScreen({ navigation }) {
   const uniqueFieldsCount = new Set(logs.map(l => l.fieldId)).size;
   const totalLogsCount = logs.length;
   const totalOperationalCost = logs.reduce((sum, l) => sum + l.cost, 0);
+
+  const renderTimeline = () => {
+    const tasks = cycleTasksByField[selectedField.id] || CYCLE_TASKS.map(t => ({...t, done: false, active: false}));
+    return (
+      <View style={{ marginBottom: SPACING.md }}>
+        <View style={s.sectionRow}>
+          <Text style={s.sectionLabel}>Crop Cycle Timeline</Text>
+          <Text style={{fontSize: 10, color: COLORS.textMuted}}>Tap to update stage</Text>
+        </View>
+        <View style={s.timelineCard}>
+          {tasks.map((task, i) => (
+            <TouchableOpacity key={task.id} style={s.timelineRow} onPress={() => toggleTaskStatus(task.id)} activeOpacity={0.7}>
+              <View style={s.timelineLeft}>
+                <View style={[s.timelineDot, { backgroundColor: task.done ? COLORS.success : task.active ? task.color : COLORS.border }]}>
+                  {task.done && <Ionicons name="checkmark" size={10} color="#fff" />}
+                  {task.active && !task.done && <View style={s.activePulse} />}
+                </View>
+                {i < tasks.length - 1 && <View style={[s.timelineLine, { backgroundColor: task.done ? COLORS.success : COLORS.border }]} />}
+              </View>
+              <View style={[s.timelineContent, task.active && s.timelineContentActive]}>
+                <Text style={[s.timelineLabel, task.active && { color: task.color, fontWeight: '800' }]}>{task.label}</Text>
+                <Text style={s.timelineMonth}>{task.done ? 'Completed' : task.active ? 'In Progress' : 'Pending'}</Text>
+                {task.active && (
+                  <View style={[s.activeBadge, { backgroundColor: task.color }]}>
+                    <Text style={s.activeBadgeText}>CURRENT STAGE</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -152,59 +383,132 @@ export default function SchedulesScreen({ navigation }) {
         {/* ═══════════════════════════════════════════════════════════════ */}
         {activeRole === 'Member' && (
           <>
-            {/* Field Selector */}
-            <Text style={s.sectionLabel}>Your Field</Text>
+            {/* My Fields Selector */}
+            <Text style={s.sectionLabel}>My Assigned Fields</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: SPACING.md }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8 }}>
+              {MOCK_FIELDS.filter(f => f.member === getCurrentSession().name || f.id === selectedField.id).map(field => (
+                <TouchableOpacity
+                  key={field.id}
+                  style={[s.fieldChip, selectedField.id === field.id && s.fieldChipActive]}
+                  onPress={() => {
+                    setSelectedField(field);
+                    updateSessionFieldId(field.id);
+                  }}
+                >
+                  <Text style={[s.fieldChipText, selectedField.id === field.id && s.fieldChipTextActive]}>{field.id}</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={[s.fieldChip, { backgroundColor: COLORS.primaryBg, borderColor: COLORS.primaryLight, borderWidth: 1, borderStyle: 'dashed' }]}
+                onPress={() => setShowAddField(!showAddField)}
+              >
+                <Ionicons name={showAddField ? 'close' : 'add'} size={14} color={COLORS.primary} />
+                <Text style={[s.fieldChipText, { color: COLORS.primary, marginLeft: -2 }]}>{showAddField ? 'Cancel' : 'Add'}</Text>
+              </TouchableOpacity>
+            </ScrollView>
+
+            {showAddField && (
+              <View style={{ marginBottom: SPACING.md, padding: SPACING.md, backgroundColor: '#fff', borderRadius: RADIUS.md, ...SHADOW.card, borderWidth: 1, borderColor: COLORS.primaryLight }}>
+                <Text style={[s.sectionLabel, { marginBottom: 8, marginTop: 0 }]}>Request Field Assignment</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput
+                    style={[s.formInput, { flex: 2, paddingVertical: 8, height: 36, fontSize: 13, marginBottom: 0 }]}
+                    value={reqFieldId}
+                    onChangeText={setReqFieldId}
+                    placeholder='e.g. FLD-999'
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+                  <TextInput
+                    style={[s.formInput, { flex: 1, paddingVertical: 8, height: 36, fontSize: 13, marginBottom: 0 }]}
+                    value={reqFieldHa}
+                    onChangeText={setReqFieldHa}
+                    placeholder='HA'
+                    keyboardType='decimal-pad'
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+                  <TouchableOpacity style={[s.submitBtn, { marginTop: 0, paddingVertical: 8, paddingHorizontal: 16, height: 36, borderRadius: 6 }]} onPress={handleRequestField}>
+                    <Text style={[s.submitBtnText, { fontSize: 13 }]}>Request</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            <Text style={s.sectionLabel}>Selected Field Details</Text>
             <View style={s.fieldCard}>
               <View style={s.fieldCardTop}>
-                <View style={s.fieldIdBadge}><Text style={s.fieldIdText}>{MEMBER_FIELD.id}</Text></View>
-                <Text style={s.fieldHa}>{MEMBER_FIELD.ha} Ha</Text>
+                <View style={s.fieldIdBadge}><Text style={s.fieldIdText}>{selectedField.id}</Text></View>
+                <Text style={s.fieldHa}>{selectedField.ha} Ha</Text>
               </View>
-              <Text style={s.fieldStage}>Current Stage: <Text style={s.fieldStageVal}>{MEMBER_FIELD.stage}</Text></Text>
+              <Text style={s.fieldStage}>Current Stage: <Text style={s.fieldStageVal}>{selectedField.stage}</Text></Text>
               <Text style={s.fieldSync}>
-                <Ionicons name={MEMBER_FIELD.synced ? 'cloud-done-outline' : 'cloud-offline-outline'} size={12} color={MEMBER_FIELD.synced ? '#267326' : '#C97A00'} />
-                {' '}{MEMBER_FIELD.synced ? `Synced ${MEMBER_FIELD.lastSync}` : `Last synced ${MEMBER_FIELD.lastSync} — queued for upload`}
+                <Ionicons name={selectedField.synced ? 'cloud-done-outline' : 'cloud-offline-outline'} size={12} color={selectedField.synced ? '#267326' : '#C97A00'} />
+                {' '}{selectedField.synced ? `Synced ${selectedField.lastSync}` : `Last synced ${selectedField.lastSync} — queued for upload`}
               </Text>
             </View>
 
             {/* Crop Cycle Timeline */}
-            <Text style={s.sectionLabel}>Crop Cycle Timeline</Text>
-            <View style={s.timelineCard}>
-              {CYCLE_TASKS.map((task, i) => (
-                <View key={task.id} style={s.timelineRow}>
-                  <View style={s.timelineLeft}>
-                    <View style={[s.timelineDot, { backgroundColor: task.done ? COLORS.success : task.active ? task.color : COLORS.border }]}>
-                      {task.done && <Ionicons name="checkmark" size={10} color="#fff" />}
-                      {task.active && !task.done && <View style={s.activePulse} />}
-                    </View>
-                    {i < CYCLE_TASKS.length - 1 && <View style={[s.timelineLine, { backgroundColor: task.done ? COLORS.success : COLORS.border }]} />}
-                  </View>
-                  <View style={[s.timelineContent, task.active && s.timelineContentActive]}>
-                    <Text style={[s.timelineLabel, task.active && { color: task.color, fontWeight: '800' }]}>{task.label}</Text>
-                    <Text style={s.timelineMonth}>Month {task.month}</Text>
-                    {task.active && (
-                      <View style={[s.activeBadge, { backgroundColor: task.color }]}>
-                        <Text style={s.activeBadgeText}>CURRENT STAGE</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              ))}
-            </View>
+            {renderTimeline()}
 
             {/* Log History */}
             <View style={s.sectionRow}>
               <Text style={s.sectionLabel}>My Operation Logs</Text>
-              <TouchableOpacity style={s.addLogBtn} onPress={openLog}>
-                <Ionicons name="add" size={16} color="#fff" />
-                <Text style={s.addLogBtnText}>Add Log</Text>
+              <TouchableOpacity style={[s.addLogBtn, { backgroundColor: '#F5A623', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, flexDirection: 'row', gap: 4 }]} onPress={() => {
+                setLogForm(p => ({...p, fieldId: selectedField.id, activity: '', taskId: 'Emergency'}));
+                setShowLog(true);
+                Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
+              }}>
+                <Ionicons name="warning-outline" size={14} color="#fff" />
+                <Text style={[s.addLogBtnText, { fontSize: 11 }]}>Unplanned Work</Text>
               </TouchableOpacity>
             </View>
-            {fieldLogs.length === 0 && (
+            {fieldLogs.length === 0 && draftLogs.filter(l => l.fieldId === selectedField.id).length === 0 && (
               <View style={s.emptyCard}>
                 <Ionicons name="document-outline" size={32} color={COLORS.border} />
-                <Text style={s.emptyText}>No logs yet. Tap 'Add Log' to record an operation.</Text>
+                <Text style={s.emptyText}>No logs yet. Tap an active stage in the timeline above to start logging.</Text>
               </View>
             )}
+            
+            {/* Draft Logs */}
+            {draftLogs.filter(l => l.fieldId === selectedField.id).length > 0 && (
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#C97A00', marginTop: 8, marginBottom: -4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Draft Logs (Tap to Edit)</Text>
+            )}
+            {draftLogs.filter(l => l.fieldId === selectedField.id).map(log => (
+              <View key={log.id} style={[s.receiptCard, { borderColor: '#F5A623', backgroundColor: '#FFFBF0' }]}>
+                <TouchableOpacity onPress={() => editDraftLog(log)} activeOpacity={0.7}>
+                  <View style={s.receiptHeader}>
+                    <Text style={[s.receiptTitle, { color: '#C97A00' }]}>{log.type === 'weekly' ? 'Draft Weekly Log' : 'Draft Monthly Log'}</Text>
+                    <Text style={s.receiptId}>#{log.id}</Text>
+                  </View>
+                  <View style={s.receiptDivider} />
+                  <View style={s.receiptBody}>
+                    <View style={s.receiptRow}><Text style={s.receiptLabel}>Activity</Text><Text style={s.receiptValueBold}>{log.activity}</Text></View>
+                    <View style={s.receiptRow}><Text style={s.receiptLabel}>Work Done</Text><Text style={s.receiptValue}>{log.hours} hrs · {log.hectares} ha · {log.people} people</Text></View>
+                    <View style={s.receiptRow}><Text style={s.receiptLabel}>Total Cost</Text><Text style={[s.receiptCostText, { color: '#C97A00' }]}>Php {log.cost.toLocaleString()}</Text></View>
+                    <View style={s.receiptRow}>
+                      <Text style={s.receiptLabel}>Status</Text>
+                      <View style={[s.receiptStatusBadge, { backgroundColor: '#F5A62320', borderColor: '#F5A623' }]}>
+                        <Ionicons name="create-outline" size={14} color="#C97A00" />
+                        <Text style={[s.receiptStatusText, { color: '#C97A00' }]}>Draft (Stage In Progress)</Text>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[s.receiptApproveBtn, { backgroundColor: '#F5A623', marginTop: 12 }]} 
+                  onPress={() => {
+                    setLogs(prev => [log, ...prev]);
+                    setDraftLogs(prev => prev.filter(d => d.id !== log.id));
+                    setSynced(false);
+                    Alert.alert('Progress Submitted', 'Log sent to Farm Manager. The stage remains Active.');
+                  }}
+                >
+                  <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
+                  <Text style={s.receiptApproveBtnText}>Submit as Progress Log</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            {/* Submitted Logs */}
             {fieldLogs.map(log => (
               <View key={log.id} style={s.receiptCard}>
                 <View style={s.receiptHeader}>
@@ -217,6 +521,12 @@ export default function SchedulesScreen({ navigation }) {
                     <Text style={s.receiptLabel}>Activity</Text>
                     <Text style={s.receiptValueBold}>{log.activity}</Text>
                   </View>
+                  {log.hours && (
+                    <View style={s.receiptRow}>
+                      <Text style={s.receiptLabel}>Work Done</Text>
+                      <Text style={s.receiptValue}>{log.hours} hrs · {log.hectares} ha · {log.people} people</Text>
+                    </View>
+                  )}
                   <View style={s.receiptRow}>
                     <Text style={s.receiptLabel}>Date Logged</Text>
                     <Text style={s.receiptValue}>{log.date}</Text>
@@ -230,7 +540,7 @@ export default function SchedulesScreen({ navigation }) {
                     <View style={[s.receiptStatusBadge, { backgroundColor: log.approved ? '#F2FBF2' : '#FFFBF0', borderColor: log.approved ? '#E8F5E8' : '#FEF0D0' }]}>
                       <Ionicons name={log.approved ? 'checkmark-circle-outline' : 'time-outline'} size={14} color={log.approved ? '#267326' : '#C97A00'} />
                       <Text style={[s.receiptStatusText, { color: log.approved ? '#267326' : '#C97A00' }]}>
-                        {log.approved ? 'Approved by Manager' : 'Pending Manager Review'}
+                        {log.approved ? 'Approved by Manager' : (!synced ? 'Pending Sync (Offline)' : 'Pending Manager Review')}
                       </Text>
                     </View>
                   </View>
@@ -245,6 +555,43 @@ export default function SchedulesScreen({ navigation }) {
         {/* ═══════════════════════════════════════════════════════════════ */}
         {activeRole === 'Farm Manager' && (
           <>
+            {/* Field Assignment Requests */}
+            {requests.filter(r => r.status === 'pending').length > 0 && (
+              <View style={{ marginBottom: SPACING.md }}>
+                <Text style={[s.sectionLabel, { color: '#D9534F' }]}>Pending Field Assignments ({requests.filter(r => r.status === 'pending').length})</Text>
+                {requests.filter(r => r.status === 'pending').map(req => (
+                  <View key={req.id} style={[s.receiptCard, { borderColor: COLORS.primary }]}>
+                    <View style={s.receiptHeader}>
+                      <Text style={s.receiptTitle}>Assignment Request</Text>
+                      <Text style={s.receiptId}>#{req.id}</Text>
+                    </View>
+                    <View style={s.receiptDivider} />
+                    <View style={s.receiptBody}>
+                      <View style={s.receiptRow}><Text style={s.receiptLabel}>Member</Text><Text style={s.receiptValueBold}>{req.memberName}</Text></View>
+                      <View style={s.receiptRow}><Text style={s.receiptLabel}>Requested Field</Text><Text style={s.receiptValueBold}>{req.fieldId} · {req.ha} Ha</Text></View>
+                      <View style={s.receiptRow}><Text style={s.receiptLabel}>Date</Text><Text style={s.receiptValue}>{req.date}</Text></View>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                      <TouchableOpacity style={[s.receiptApproveBtn, { flex: 1, backgroundColor: '#D9534F' }]} onPress={() => resolveAssignmentRequest(req.id, false)}>
+                        <Text style={s.receiptApproveBtnText}>Reject</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[s.receiptApproveBtn, { flex: 1, backgroundColor: COLORS.success }]} onPress={() => {
+                        resolveAssignmentRequest(req.id, true);
+                        if (!MOCK_FIELDS.find(f => f.id === req.fieldId)) {
+                           MOCK_FIELDS.push({ id: req.fieldId, member: req.memberName, ha: req.ha, stage: 'Land Preparation', month: 0, synced: false, lastSync: 'Just now' });
+                        } else {
+                           MOCK_FIELDS.find(f => f.id === req.fieldId).member = req.memberName;
+                           if(req.ha !== '0.0') MOCK_FIELDS.find(f => f.id === req.fieldId).ha = req.ha;
+                        }
+                        Alert.alert('Approved', `${req.fieldId} assigned to ${req.memberName}.`);
+                      }}>
+                        <Text style={s.receiptApproveBtnText}>Approve</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
             {/* Sync Status Warning */}
             {unsynced.length > 0 && (
               <View style={s.syncWarning}>
@@ -287,6 +634,9 @@ export default function SchedulesScreen({ navigation }) {
               </Text>
             </View>
 
+            {/* Crop Cycle Timeline */}
+            {renderTimeline()}
+
             {/* Logs for selected field */}
             <Text style={s.sectionLabel}>Operation Logs — {selectedField.id}</Text>
             {fieldLogs.length === 0 && (
@@ -307,6 +657,12 @@ export default function SchedulesScreen({ navigation }) {
                     <Text style={s.receiptLabel}>Activity</Text>
                     <Text style={s.receiptValueBold}>{log.activity}</Text>
                   </View>
+                  {log.hours && (
+                    <View style={s.receiptRow}>
+                      <Text style={s.receiptLabel}>Work Done</Text>
+                      <Text style={s.receiptValue}>{log.hours} hrs · {log.hectares} ha · {log.people} people</Text>
+                    </View>
+                  )}
                   <View style={s.receiptRow}>
                     <Text style={s.receiptLabel}>Date Logged</Text>
                     <Text style={s.receiptValue}>{log.date}</Text>
@@ -320,17 +676,23 @@ export default function SchedulesScreen({ navigation }) {
                     <View style={[s.receiptStatusBadge, { backgroundColor: log.approved ? '#F2FBF2' : '#FFFBF0', borderColor: log.approved ? '#E8F5E8' : '#FEF0D0' }]}>
                       <Ionicons name={log.approved ? 'checkmark-circle-outline' : 'time-outline'} size={14} color={log.approved ? '#267326' : '#C97A00'} />
                       <Text style={[s.receiptStatusText, { color: log.approved ? '#267326' : '#C97A00' }]}>
-                        {log.approved ? 'Approved' : 'Awaiting Approval'}
+                        {log.approved ? 'Approved' : (!synced ? 'Pending Sync (Offline)' : 'Awaiting Approval')}
                       </Text>
                     </View>
                   </View>
                 </View>
 
-                {!log.approved && (
+                {!log.approved && synced && (
                   <TouchableOpacity style={s.receiptApproveBtn} onPress={() => approveLog(log.id)}>
                     <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
                     <Text style={s.receiptApproveBtnText}>Approve Log</Text>
                   </TouchableOpacity>
+                )}
+                {!log.approved && !synced && (
+                  <View style={[s.receiptApproveBtn, { backgroundColor: '#E2E8F0' }]}>
+                    <Ionicons name="cloud-offline-outline" size={16} color="#64748B" />
+                    <Text style={[s.receiptApproveBtnText, { color: '#64748B' }]}>Pending Sync</Text>
+                  </View>
                 )}
               </View>
             ))}
@@ -408,37 +770,83 @@ export default function SchedulesScreen({ navigation }) {
                   onPress={() => setLogForm(p => ({ ...p, type: t }))}
                 >
                   <Text style={[s.typeBtnText, logForm.type === t && s.typeBtnTextActive]}>
-                    {t === 'weekly' ? '📅 Weekly Log' : '🗓️ Monthly Log'}
+                    {t === 'weekly' ? 'Weekly Log' : 'Monthly Log'}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <Text style={s.formLabel}>{logForm.type === 'weekly' ? 'Week' : 'Month'}</Text>
-            <TextInput
-              style={s.formInput}
-              value={logForm.period}
-              onChangeText={v => setLogForm(p => ({ ...p, period: v }))}
-              placeholder={logForm.type === 'weekly' ? 'e.g. Week 3 – May' : 'e.g. May 2026'}
-              placeholderTextColor={COLORS.textMuted}
-            />
+            <Text style={s.formLabel}>Field ID *</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: SPACING.md }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8 }}>
+              {MOCK_FIELDS.filter(f => f.member === getCurrentSession().name || f.id === selectedField.id).map(field => (
+                <TouchableOpacity
+                  key={field.id}
+                  style={[s.fieldChip, logForm.fieldId === field.id && s.fieldChipActive]}
+                  onPress={() => setLogForm(p => ({ ...p, fieldId: field.id }))}
+                >
+                  <Text style={[s.fieldChipText, logForm.fieldId === field.id && s.fieldChipTextActive]}>{field.id}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <Text style={s.formLabel}>Date *</Text>
+            <TouchableOpacity onPress={() => setShowCalendar(true)}>
+              <View pointerEvents="none">
+                <TextInput
+                  style={[s.formInput, { color: COLORS.text }]}
+                  value={logForm.period}
+                  editable={false}
+                  placeholder='Tap to select date'
+                  placeholderTextColor={COLORS.textMuted}
+                />
+              </View>
+            </TouchableOpacity>
 
             <Text style={s.formLabel}>Activity / Operation *</Text>
             <TextInput
-              style={s.formInput}
+              style={[s.formInput, { backgroundColor: '#f0f0f0', color: COLORS.textMuted }]}
               value={logForm.activity}
-              onChangeText={v => setLogForm(p => ({ ...p, activity: v }))}
-              placeholder='e.g. Weeding labor, Urea fertilizer (4 bags)'
-              placeholderTextColor={COLORS.textMuted}
+              editable={false}
             />
 
             <Text style={s.formLabel}>Operational Cost (Php) *</Text>
             <TextInput
-              style={s.formInput}
+              style={[s.formInput, { marginBottom: SPACING.md }]}
               value={logForm.cost}
               onChangeText={v => setLogForm(p => ({ ...p, cost: v }))}
               keyboardType="decimal-pad"
               placeholder='e.g. 4500'
+              placeholderTextColor={COLORS.textMuted}
+            />
+
+            {/* New Work Logs */}
+            <Text style={s.formLabel}>Time Taken (Hours) *</Text>
+            <TextInput
+              style={s.formInput}
+              value={logForm.hours}
+              onChangeText={v => setLogForm(p => ({ ...p, hours: v }))}
+              keyboardType="decimal-pad"
+              placeholder='e.g. 8'
+              placeholderTextColor={COLORS.textMuted}
+            />
+
+            <Text style={s.formLabel}>Hectares Covered *</Text>
+            <TextInput
+              style={s.formInput}
+              value={logForm.hectares}
+              onChangeText={v => setLogForm(p => ({ ...p, hectares: v }))}
+              keyboardType="decimal-pad"
+              placeholder='e.g. 1.5'
+              placeholderTextColor={COLORS.textMuted}
+            />
+
+            <Text style={s.formLabel}>Number of People / Workers *</Text>
+            <TextInput
+              style={s.formInput}
+              value={logForm.people}
+              onChangeText={v => setLogForm(p => ({ ...p, people: v }))}
+              keyboardType="number-pad"
+              placeholder='e.g. 10'
               placeholderTextColor={COLORS.textMuted}
             />
 
@@ -447,8 +855,8 @@ export default function SchedulesScreen({ navigation }) {
                 <Text style={s.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.submitBtn} onPress={submitLog}>
-                <Ionicons name="save-outline" size={16} color="#fff" />
-                <Text style={s.submitBtnText}>Save Log (Offline)</Text>
+                <Ionicons name="create-outline" size={16} color="#fff" />
+                <Text style={s.submitBtnText}>Save Draft</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -484,6 +892,80 @@ export default function SchedulesScreen({ navigation }) {
             <TouchableOpacity style={s.qrCloseBtn} onPress={() => setShowQR(false)}>
               <Text style={s.qrCloseBtnText}>Close</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Custom Calendar Modal ── */}
+      <Modal visible={showCalendar} transparent animationType="fade">
+        <View style={s.qrOverlay}>
+          <View style={[s.qrModal, { width: 320, padding: 0, overflow: 'hidden' }]}>
+            
+            {/* Calendar Header */}
+            <View style={{ backgroundColor: COLORS.primary, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Ionicons name="chevron-back" size={20} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>May 2026</Text>
+              <Ionicons name="chevron-forward" size={20} color="#fff" />
+            </View>
+
+            {/* Calendar Grid */}
+            <View style={{ padding: 16, paddingBottom: 8 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+                  <Text key={d} style={{ width: 32, textAlign: 'center', fontSize: 12, color: COLORS.textMuted, fontWeight: '700' }}>{d}</Text>
+                ))}
+              </View>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8, justifyContent: 'space-between' }}>
+                {/* Blank days for padding (May 2026 starts on Friday) */}
+                {Array.from({ length: 5 }).map((_, i) => <View key={`blank-${i}`} style={{ width: 32, height: 32 }} />)}
+                
+                {Array.from({ length: 31 }).map((_, i) => {
+                  const day = i + 1;
+                  const isToday = day === 21; // Simulate May 21, 2026 as today
+                  return (
+                    <TouchableOpacity
+                      key={day}
+                      style={{ width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', backgroundColor: isToday ? COLORS.primary : 'transparent' }}
+                      onPress={() => {
+                        setLogForm(p => ({...p, period: `May ${day}, 2026`}));
+                      }}
+                    >
+                      <Text style={{ fontSize: 14, color: isToday ? '#fff' : COLORS.text, fontWeight: isToday ? '700' : '500' }}>{day}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Time Selector */}
+            <View style={{ borderTopWidth: 1, borderTopColor: COLORS.border, padding: 16 }}>
+              <Text style={{ fontSize: 12, color: COLORS.textSecondary, fontWeight: '600', marginBottom: 8 }}>Select Time</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity 
+                  style={{ flex: 1, paddingVertical: 10, backgroundColor: COLORS.primaryBg, borderRadius: RADIUS.sm, alignItems: 'center' }}
+                  onPress={() => setLogForm(p => ({...p, period: (p.period || 'May 21, 2026') + ' - 08:00 AM'}))}
+                >
+                  <Text style={{ color: COLORS.primary, fontWeight: '600' }}>08:00 AM</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={{ flex: 1, paddingVertical: 10, backgroundColor: COLORS.primaryBg, borderRadius: RADIUS.sm, alignItems: 'center' }}
+                  onPress={() => setLogForm(p => ({...p, period: (p.period || 'May 21, 2026') + ' - 01:00 PM'}))}
+                >
+                  <Text style={{ color: COLORS.primary, fontWeight: '600' }}>01:00 PM</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Actions */}
+            <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: COLORS.border }}>
+              <TouchableOpacity style={{ flex: 1, paddingVertical: 14, alignItems: 'center' }} onPress={() => setShowCalendar(false)}>
+                <Text style={{ color: COLORS.textMuted, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{ flex: 1, paddingVertical: 14, alignItems: 'center', backgroundColor: COLORS.primary }} onPress={() => setShowCalendar(false)}>
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Confirm Date</Text>
+              </TouchableOpacity>
+            </View>
+
           </View>
         </View>
       </Modal>

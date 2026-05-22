@@ -86,32 +86,36 @@ const PAGES = {
 let currentPage = 'dashboard';
 let logStatusFilter = 'all';
 
+function toast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
+  t.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
+  setTimeout(() => {
+    t.classList.remove('opacity-100', 'pointer-events-auto', 'translate-y-0');
+    t.classList.add('opacity-0', 'pointer-events-none', 'translate-y-2');
+  }, 3000);
+}
+
 function navigate(page) {
   const currentRole = localStorage.getItem('hugpong_role') || 'admin';
-  
-  // Guard access to super admin only screens
-  if (currentRole === 'admin' && (page === 'fields' || page === 'sync')) {
+  if (currentRole === 'admin' && page === 'sync') {
     toast('Access Denied: Requires Super Admin clearance.');
     navigate('dashboard');
     return;
   }
-
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
-  const targetEl = document.getElementById(`page-${page}`);
+  const targetEl = document.getElementById('page-' + page);
   if (targetEl) targetEl.classList.remove('hidden');
-
-  document.querySelectorAll('.nav-item').forEach(n => {
-    n.classList.toggle('active', n.dataset.page === page);
-  });
-
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const activeBtn = document.querySelector('.nav-item[data-page="' + page + '"]');
+  if (activeBtn) activeBtn.classList.add('active');
   const headingEl = document.getElementById('page-heading');
   const subEl = document.getElementById('page-sub');
   if (headingEl) headingEl.textContent = PAGES[page].heading;
   if (subEl) subEl.textContent = PAGES[page].sub;
-
   currentPage = page;
-
-  // Trigger page renders
   if (page === 'dashboard') renderDashboard();
   if (page === 'audit') resetAuditCenter();
   if (page === 'prices') renderPrices();
@@ -122,16 +126,6 @@ function navigate(page) {
   if (page === 'sync') renderSync();
 }
 
-// ── SYSTEM NOTIFICATIONS ─────────────────────────────────
-function toast(msg) {
-  const t = document.getElementById('toast');
-  if (!t) return;
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-// ── ROLE INTERACTIVES ────────────────────────────────────
 function switchRole(role) {
   localStorage.setItem('hugpong_role', role);
   applyRoleLayout(role);
@@ -145,35 +139,19 @@ function applyRoleLayout(role) {
   const roleEl = document.getElementById('sidebar-admin-role');
   const resetBtn = document.getElementById('reset-demo-btn');
   const toggleSelect = document.getElementById('role-toggle-select');
-
   if (toggleSelect) toggleSelect.value = role;
-
   if (role === 'superadmin') {
-    if (avatarEl) {
-      avatarEl.textContent = 'S';
-      avatarEl.classList.add('superadmin');
-    }
+    if (avatarEl) { avatarEl.textContent = 'S'; avatarEl.style.background = 'linear-gradient(135deg, #F5A623, #ff8c00)'; avatarEl.style.boxShadow = '0 0 8px rgba(245,166,35,0.5)'; }
     if (nameEl) nameEl.textContent = 'Capstone Team';
     if (roleEl) roleEl.textContent = 'Super Admin';
-    if (resetBtn) resetBtn.style.display = 'block';
-
-    // Show superadmin sidebar options
-    document.querySelectorAll('.superadmin-only').forEach(el => {
-      el.style.setProperty('display', 'flex', 'important');
-    });
+    if (resetBtn) resetBtn.classList.remove('hidden');
+    document.querySelectorAll('.superadmin-only').forEach(el => el.classList.remove('hidden'));
   } else {
-    if (avatarEl) {
-      avatarEl.textContent = 'A';
-      avatarEl.classList.remove('superadmin');
-    }
+    if (avatarEl) { avatarEl.textContent = 'A'; avatarEl.style.background = ''; avatarEl.style.boxShadow = ''; }
     if (nameEl) nameEl.textContent = 'Juan dela Cruz';
     if (roleEl) roleEl.textContent = 'SRA Checker';
-    if (resetBtn) resetBtn.style.display = 'none';
-
-    // Hide superadmin sidebar options
-    document.querySelectorAll('.superadmin-only').forEach(el => {
-      el.style.setProperty('display', 'none', 'important');
-    });
+    if (resetBtn) resetBtn.classList.add('hidden');
+    document.querySelectorAll('.superadmin-only').forEach(el => el.classList.add('hidden'));
   }
 }
 
@@ -195,14 +173,13 @@ function renderDashboard() {
   
   if (dashChangeEl) {
     if (change > 0) {
-      dashChangeEl.className = 'kpi-change up';
+      dashChangeEl.className = 'text-xs font-medium text-success';
       dashChangeEl.textContent = `↑ +Php ${change} from last week`;
     } else if (change < 0) {
-      dashChangeEl.className = 'kpi-change warn';
-      dashChangeEl.style.color = 'var(--danger)';
+      dashChangeEl.className = 'text-xs font-medium text-danger';
       dashChangeEl.textContent = `↓ -Php ${Math.abs(change)} from last week`;
     } else {
-      dashChangeEl.className = 'kpi-change neutral';
+      dashChangeEl.className = 'text-xs font-medium text-hug-muted';
       dashChangeEl.textContent = `Steady weekly price`;
     }
   }
@@ -213,10 +190,7 @@ function renderDashboard() {
   if (countEl) countEl.textContent = `${db.users.length} Users`;
   if (pendingEl) pendingEl.textContent = `${db.pendingUsers.length} pending approvals`;
 
-  // Render Price Trend Visual Chart (12 Bars)
   renderPriceHistoryChart();
-
-  // Render Crop Distribution (SVG visual bars)
   renderCropStageDistribution();
 
   // Render dashboard pending reviews table
@@ -224,85 +198,86 @@ function renderDashboard() {
   const activitiesBody = document.getElementById('dashboard-activities-body');
   if (activitiesBody) {
     if (pendingLogs.length === 0) {
-      activitiesBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">✓ All operation logs synced & approved.</td></tr>`;
+      activitiesBody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:#8A9B7A;font-size:13px;">All operation logs are synced and approved.</td></tr>`;
     } else {
-      activitiesBody.innerHTML = pendingLogs.map(l => `
-        <tr>
-          <td><strong>${l.id}</strong></td>
-          <td>${l.fieldId}</td>
-          <td>${l.schedule}</td>
-          <td>${l.task}</td>
-          <td>Php ${l.cost.toLocaleString()}</td>
-          <td><span class="status-badge status-pending">Pending</span></td>
-        </tr>
-      `).join('');
+      activitiesBody.innerHTML = pendingLogs.map(l => `<tr onmouseover="this.style.background='#F2F4EF'" onmouseout="this.style.background=''"><td style="padding:12px 16px;font-weight:700;color:#1A2212;font-size:11px;">${l.id}</td><td style="padding:12px 16px;font-size:12px;color:#5A6B4A;">${l.fieldId}</td><td style="padding:12px 16px;"><span style="font-size:10px;font-weight:600;color:#5A6B4A;background:#F2F4EF;border:1px solid #E2E8DC;padding:2px 8px;border-radius:999px;">${l.schedule}</span></td><td style="padding:12px 16px;font-size:13px;color:#1A2212;">${l.task}</td><td style="padding:12px 16px;font-weight:700;color:#1A2212;">Php ${l.cost.toLocaleString()}</td><td style="padding:12px 16px;"><span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#FFF3DC;color:#F5A623;">Pending</span></td></tr>`).join('');
     }
   }
 }
 
-// Draw dynamic HSL tailored bar chart for weekly price history (12 weeks)
 function renderPriceHistoryChart() {
   const el = document.getElementById('price-trend-chart');
   if (!el) return;
-
   const db = getDB();
-  const history = [...db.priceHistory].reverse(); // oldest first
+  const history = [...db.priceHistory].reverse();
   const prices = history.map(h => h.price);
-  const labels = history.map(h => h.week);
-  
-  const min = Math.min(...prices) - 50;
-  const max = Math.max(...prices) + 50;
-  const range = max - min;
-
-  el.innerHTML = labels.map((l, i) => {
-    const heightPct = Math.round(((prices[i] - min) / range) * 100);
-    return `
-      <div class="lc-bar-wrap" style="position:relative;" title="Price: Php ${prices[i].toLocaleString()} (Week: ${l})">
-        <div style="font-size: 8px; font-weight:700; color:var(--primary); margin-bottom:2px;">${prices[i]}</div>
-        <div class="lc-bar" style="height:${Math.max(15, heightPct)}%; width: 24px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--primary-light), var(--primary)); transition: height 0.6s ease;"></div>
-        <span class="lc-label" style="font-size:9px; font-weight:600; margin-top:4px; transform: rotate(-30deg); display:inline-block; white-space:nowrap;">${l.replace('Wk', 'W')}</span>
-      </div>
-    `;
+  const weeks = history.map(h => h.week);
+  const n = prices.length;
+  if (!n) { el.innerHTML = '<p style="color:#8A9B7A;font-size:12px;text-align:center;padding:20px;">No price data available.</p>'; return; }
+  const minP = Math.min(...prices);
+  const maxP = Math.max(...prices);
+  const padB = 72, padT = 28, padL = 50, padR = 10;
+  const W = 520, H = 150;
+  const svgW = W + padL + padR;
+  const svgH = H + padT + padB;
+  const barW = Math.max(14, Math.floor((W - (n - 1) * 5) / n));
+  const range = maxP - minP || 100;
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(frac => ({ val: Math.round(minP + frac * range), y: padT + H - frac * H }));
+  const gridLines = yTicks.map(t =>
+    '<line x1="' + padL + '" y1="' + t.y + '" x2="' + (padL + W) + '" y2="' + t.y + '" stroke="#E2E8DC" stroke-width="1"/>'
+    + '<text x="' + (padL - 6) + '" y="' + (t.y + 4) + '" text-anchor="end" font-size="10" fill="#8A9B7A" font-family="Inter,sans-serif">' + t.val.toLocaleString() + '</text>'
+  ).join('');
+  const bars = prices.map((p, i) => {
+    const frac = (p - minP) / range;
+    const bH = Math.max(8, Math.round(frac * H));
+    const x = padL + i * (barW + 5);
+    const y = padT + H - bH;
+    const isLatest = i === n - 1;
+    const fill = isLatest ? '#2D5016' : '#4A7C2F';
+    const opacity = (0.55 + 0.45 * (i / Math.max(n - 1, 1))).toFixed(2);
+    const lx = x + barW / 2;
+    const ly = padT + H + 14;
+    return '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + bH + '" rx="3" fill="' + fill + '" opacity="' + opacity + '"/>'
+      + '<text x="' + lx + '" y="' + (y - 5) + '" text-anchor="middle" font-size="9" font-weight="700" fill="#2D5016" font-family="Inter,sans-serif">' + p.toLocaleString() + '</text>'
+      + '<text x="' + lx + '" y="' + ly + '" text-anchor="end" font-size="9" fill="#8A9B7A" font-family="Inter,sans-serif" transform="rotate(-38 ' + lx + ' ' + ly + ')">' + weeks[i].replace('Wk', 'W') + '</text>';
   }).join('');
+  el.innerHTML =
+    '<div style="overflow-x:auto;">'
+    + '<svg viewBox="0 0 ' + svgW + ' ' + svgH + '" style="width:100%;min-width:400px;">'
+    + '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (padT + H) + '" stroke="#E2E8DC" stroke-width="1"/>'
+    + gridLines + bars
+    + '<text x="' + (padL + W / 2) + '" y="' + (svgH - 4) + '" text-anchor="middle" font-size="10" fill="#8A9B7A" font-family="Inter,sans-serif">Source: Official SRA Sugar Price Bulletins &amp; Facebook Broadcasts (Mar-May 2026)</text>'
+    + '</svg></div>'
+    + '<div style="margin-top:8px;display:flex;gap:14px;flex-wrap:wrap;">'
+    + '<div style="display:flex;align-items:center;gap:5px;"><div style="width:12px;height:12px;border-radius:2px;background:#2D5016;"></div><span style="font-size:11px;color:#5A6B4A;">Latest week</span></div>'
+    + '<div style="display:flex;align-items:center;gap:5px;"><div style="width:12px;height:12px;border-radius:2px;background:#4A7C2F;opacity:0.7;"></div><span style="font-size:11px;color:#5A6B4A;">Prior weeks</span></div>'
+    + '<span style="font-size:11px;color:#8A9B7A;">Values in Php/Lkg (per lkg of sugar)</span>'
+    + '</div>';
 }
 
-// Render dynamic crop stages using SVG horizontal bars
 function renderCropStageDistribution() {
   const el = document.getElementById('crop-stage-visual');
   if (!el) return;
-
-  const db = getDB();
-  // Calculate total Ha in each stage
-  const stages = {
-    'Land Preparation': 3.0,
-    'Planting': 5.5,
-    'Fertilization Stage 2': 8.0,
-    'Weeding': 4.5,
-    'Harvesting': 1.5
-  };
-  const colors = {
-    'Land Preparation': '#8F3A8F', // purple
-    'Planting': '#1A6B9A', // blue
-    'Fertilization Stage 2': '#4A7C2F', // primary
-    'Weeding': '#F5A623', // orange
-    'Harvesting': '#D9534F' // red
-  };
-  const totalHa = 22.5;
-
-  el.innerHTML = Object.keys(stages).map(stage => {
-    const ha = stages[stage];
-    const pct = Math.round((ha / totalHa) * 100);
-    return `
-      <div style="display:flex; flex-direction:column; gap:4px;">
-        <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600;">
-          <span style="color:var(--text);">${stage}</span>
-          <span style="color:var(--text-2);">${ha} Ha (${pct}%)</span>
-        </div>
-        <div style="width:100%; height:8px; background:var(--border); border-radius:10px; overflow:hidden;">
-          <div style="width:${pct}%; height:100%; background:${colors[stage]}; border-radius:10px; transition:width 0.6s ease;"></div>
-        </div>
-      </div>
-    `;
+  const stages = [
+    { name: 'Fertilization Stage 2', ha: 8.0, color: '#4A7C2F', field: 'FLD-KTR-001' },
+    { name: 'Planting',              ha: 5.5, color: '#1A6B9A', field: 'FLD-KTR-003' },
+    { name: 'Weeding',               ha: 4.5, color: '#F5A623', field: 'FLD-KTR-009' },
+    { name: 'Land Preparation',      ha: 3.0, color: '#8F3A8F', field: 'FLD-KTR-003' },
+    { name: 'Harvesting',            ha: 1.5, color: '#D9534F', field: 'FLD-KTR-007' },
+  ];
+  const total = 22.5;
+  el.innerHTML = stages.map(s => {
+    const pct = Math.round((s.ha / total) * 100);
+    return '<div style="display:flex;flex-direction:column;gap:5px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:baseline;">'
+      + '<span style="font-size:12px;font-weight:600;color:#1A2212;">' + s.name + '</span>'
+      + '<span style="font-size:11px;color:#8A9B7A;font-weight:500;">' + s.ha + ' Ha &middot; ' + pct + '%</span>'
+      + '</div>'
+      + '<div style="width:100%;height:10px;background:#E2E8DC;border-radius:999px;overflow:hidden;">'
+      + '<div style="width:' + pct + '%;height:100%;background:' + s.color + ';border-radius:999px;"></div>'
+      + '</div>'
+      + '<span style="font-size:10px;color:#8A9B7A;">Field: ' + s.field + '</span>'
+      + '</div>';
   }).join('');
 }
 
@@ -310,45 +285,22 @@ function renderCropStageDistribution() {
 function resetAuditCenter() {
   const emptyView = document.getElementById('audit-empty-view');
   const sheetView = document.getElementById('audit-certificate-sheet');
-  const scannerStatus = document.getElementById('scanner-feed-status');
-
+  const reportCard = document.getElementById('audit-report-card');
   if (emptyView) emptyView.style.display = 'block';
-  if (sheetView) sheetView.style.display = 'none';
-  if (scannerStatus) {
-    scannerStatus.innerHTML = `<span class="price-dot" style="background:#8a9b7a;"></span> Camera Standby`;
+  if (sheetView) sheetView.classList.add('hidden');
+  if (reportCard) {
+    reportCard.style.cssText = 'display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:2.5rem;';
   }
-}
-
-function simulateQRScanning() {
-  const statusEl = document.getElementById('scanner-feed-status');
-  if (!statusEl) return;
-
-  statusEl.innerHTML = `<span class="price-dot" style="background:var(--accent);"></span> Initializing mobile camera feed...`;
-  
-  setTimeout(() => {
-    statusEl.innerHTML = `<span class="price-dot" style="background:var(--blue); animation:pulse 1s infinite;"></span> Scanning viewfinder...`;
-  }, 1000);
-
-  setTimeout(() => {
-    statusEl.innerHTML = `<span class="price-dot" style="background:var(--success);"></span> Decrypting HUG-202605-A3F9`;
-    document.getElementById('manual-qr-input').value = 'HUG-202605-A3F9';
-    
-    // Loaded!
-    setTimeout(() => {
-      loadAuditCertificate('HUG-202605-A3F9');
-      toast('QR Audit verified successfully.');
-    }, 800);
-  }, 2300);
+  const input = document.getElementById('manual-qr-input');
+  if (input) input.value = '';
 }
 
 function submitManualQR() {
   const val = document.getElementById('manual-qr-input').value.trim().toUpperCase();
+  if (!val) { toast('Please enter an audit hash code.'); return; }
   if (val === 'HUG-202605-A3F9') {
     toast('Verifying code details...');
-    setTimeout(() => {
-      loadAuditCertificate(val);
-      toast('Verification complete.');
-    }, 500);
+    setTimeout(() => { loadAuditCertificate(val); toast('Verification complete. Audit certificate loaded.'); }, 500);
   } else {
     toast('Error: Invalid QR Audit compiler hash code.');
   }
@@ -358,28 +310,33 @@ function loadAuditCertificate(hash) {
   const emptyView = document.getElementById('audit-empty-view');
   const sheetView = document.getElementById('audit-certificate-sheet');
   const tableBody = document.getElementById('audit-certificate-table-body');
-  
+  const reportCard = document.getElementById('audit-report-card');
   if (emptyView) emptyView.style.display = 'none';
-  if (sheetView) sheetView.style.display = 'flex';
-
+  if (sheetView) sheetView.classList.remove('hidden');
+  if (reportCard) {
+    reportCard.style.cssText = 'display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;text-align:left;padding:1.5rem;';
+  }
   const db = getDB();
   const audLogs = db.logs.filter(l => l.id.startsWith('AUD-'));
-
   if (tableBody) {
-    tableBody.innerHTML = audLogs.map(l => `
-      <tr>
-        <td><strong>${l.fieldId}</strong></td>
-        <td>${l.schedule}</td>
-        <td>${l.task}</td>
-        <td><strong>Php ${l.cost.toLocaleString()}</strong></td>
-        <td><span class="status-badge ${l.status === 'Approved' ? 'status-completed' : (l.status === 'Pending' ? 'status-pending' : 'status-completed')}" style="${l.status === 'Flagged' ? 'background:#feebeb; color:#d9534f;' : ''}">${l.status}</span></td>
-      </tr>
-    `).join('');
+    tableBody.innerHTML = audLogs.map(l => {
+      const badge = l.status === 'Approved'
+        ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#E8F5E8;color:#3A8F3A;">Approved</span>'
+        : l.status === 'Pending'
+        ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#FFF3DC;color:#F5A623;">Pending</span>'
+        : '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#FEEBEB;color:#D9534F;">Flagged</span>';
+      return '<tr style="border-bottom:1px solid #E2E8DC;">'
+        + '<td style="padding:8px 12px;font-weight:600;font-size:12px;color:#1A2212;">' + l.fieldId + '</td>'
+        + '<td style="padding:8px 12px;font-size:12px;color:#5A6B4A;">' + l.schedule + '</td>'
+        + '<td style="padding:8px 12px;font-size:12px;color:#1A2212;">' + l.task + '</td>'
+        + '<td style="padding:8px 12px;font-weight:700;font-size:12px;">Php ' + l.cost.toLocaleString() + '</td>'
+        + '<td style="padding:8px 12px;">' + badge + '</td>'
+        + '</tr>';
+    }).join('');
   }
 }
 
 function printCertifiedAuditReport() {
-  // Save current theme layout elements and trigger print
   window.print();
 }
 
@@ -389,79 +346,99 @@ function renderPrices() {
   const body = document.getElementById('price-table-body');
   if (!body) return;
 
+  const canDelete = localStorage.getItem('hugpong_role') === 'superadmin';
   body.innerHTML = db.priceHistory.map((p, idx) => {
-    let diff = 'Steady';
-    let style = 'color:var(--text-muted); font-weight:600;';
-    if (p.change > 0) {
-      diff = `▲ Php ${p.change}`;
-      style = 'color:var(--success); font-weight:700;';
-    } else if (p.change < 0) {
-      diff = `▼ Php ${Math.abs(p.change)}`;
-      style = 'color:var(--danger); font-weight:700;';
-    }
-    return `
-      <tr>
-        <td>${p.date}</td>
-        <td><strong>${p.week}</strong></td>
-        <td><strong>Php ${p.price.toLocaleString()}</strong></td>
-        <td><span style="${style}">${diff}</span></td>
-        <td><span style="font-size:11px; color:var(--text-2); font-style:italic;">${p.source}</span></td>
-        <td>
-          <button class="btn-icon" onclick="removePrice(${idx})" title="Remove record">✗</button>
-        </td>
-      </tr>
-    `;
+    let diff = '<span style="color:#8A9B7A;font-weight:600;font-size:12px;">Steady</span>';
+    if (p.change > 0) diff = '<span style="color:#3A8F3A;font-weight:700;font-size:12px;">&#9650; Php ' + p.change + '</span>';
+    else if (p.change < 0) diff = '<span style="color:#D9534F;font-weight:700;font-size:12px;">&#9660; Php ' + Math.abs(p.change) + '</span>';
+    const deleteBtn = canDelete ? '<button onclick="removePrice(' + idx + ')" style="color:#8A9B7A;cursor:pointer;background:none;border:none;font-size:16px;padding:0 4px;" title="Remove" onmouseover="this.style.color=\'#D9534F\'" onmouseout="this.style.color=\'#8A9B7A\'">&times;</button>' : '';
+    return '<tr onmouseover="this.style.background=\'#F2F4EF\'" onmouseout="this.style.background=\'\'">'
+      + '<td style="padding:12px 16px;font-size:12px;color:#5A6B4A;">' + p.date + '</td>'
+      + '<td style="padding:12px 16px;font-weight:700;color:#1A2212;">' + p.week + '</td>'
+      + '<td style="padding:12px 16px;font-weight:800;color:#1A2212;">Php ' + p.price.toLocaleString() + '</td>'
+      + '<td style="padding:12px 16px;">' + diff + '</td>'
+      + '<td style="padding:12px 16px;font-size:11px;color:#5A6B4A;font-style:italic;">' + p.source + '</td>'
+      + '<td style="padding:12px 16px;text-align:right;">' + deleteBtn + '</td>'
+      + '</tr>';
   }).join('');
 }
 
-// Hook Price Posting forms
-document.getElementById('add-price-btn').addEventListener('click', () => {
-  const card = document.getElementById('price-form-card');
-  if (!card) return;
-  card.style.display = card.style.display === 'none' ? 'block' : 'none';
-  
-  // Set date default to today
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('p-date').value = today;
-});
+// Hook Price Posting forms (attach safely if elements exist)
+const addPriceBtn = document.getElementById('add-price-btn');
+if (addPriceBtn) {
+  addPriceBtn.addEventListener('click', () => {
+    const card = document.getElementById('price-form-card');
+    if (!card) return;
+    card.style.display = card.style.display === 'none' ? 'block' : 'none';
+    const today = new Date().toISOString().split('T')[0];
+    const pDateEl = document.getElementById('p-date');
+    if (pDateEl) pDateEl.value = today;
+  });
+}
 
-document.getElementById('price-form-cancel').addEventListener('click', () => {
-  document.getElementById('price-form-card').style.display = 'none';
-});
+const priceFormCancel = document.getElementById('price-form-cancel');
+if (priceFormCancel) {
+  priceFormCancel.addEventListener('click', () => {
+    const card = document.getElementById('price-form-card');
+    if (card) card.style.display = 'none';
+  });
+}
 
-document.getElementById('price-form-save').addEventListener('click', () => {
-  const week = document.getElementById('p-week').value.trim();
-  const price = parseInt(document.getElementById('p-price').value);
-  const dateStr = document.getElementById('p-date').value;
-  const source = document.getElementById('p-source').value.trim() || 'Official SRA release';
+const priceFormSave = document.getElementById('price-form-save');
+if (priceFormSave) {
+  priceFormSave.addEventListener('click', () => {
+    const weekEl = document.getElementById('p-week');
+    const priceEl = document.getElementById('p-price');
+    const dateEl = document.getElementById('p-date');
+    const sourceEl = document.getElementById('p-source');
+    const week = weekEl ? weekEl.value.trim() : '';
+    const price = priceEl ? parseInt(priceEl.value) : NaN;
+    const dateStr = dateEl ? dateEl.value : '';
+    const source = sourceEl ? sourceEl.value.trim() : 'Official SRA release';
 
-  if (!week || !price || !dateStr) {
-    toast('Error: Missing required price posting values.');
-    return;
-  }
+    if (!week || !price || !dateStr) {
+      toast('Error: Missing required price posting values.');
+      return;
+    }
 
-  const db = getDB();
-  const prevPrice = db.priceHistory[0]?.price || price;
-  const change = price - prevPrice;
+    const db = getDB();
+    const prevPrice = db.priceHistory[0]?.price || price;
+    const change = price - prevPrice;
 
-  // Format date to: Month Day, Year
-  const dateObj = new Date(dateStr);
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const formattedDate = `${months[dateObj.getMonth()]} ${String(dateObj.getDate()).padStart(2, '0')}, ${dateObj.getFullYear()}`;
+    const dateObj = new Date(dateStr);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const formattedDate = `${months[dateObj.getMonth()]} ${String(dateObj.getDate()).padStart(2, '0')}, ${dateObj.getFullYear()}`;
 
-  const newPost = { week, price, date: formattedDate, change, source };
-  db.priceHistory.unshift(newPost);
-  saveDB(db);
+    const newPost = { week, price, date: formattedDate, change, source };
+    db.priceHistory.unshift(newPost);
+    saveDB(db);
 
-  document.getElementById('price-form-card').style.display = 'none';
-  
-  // Refresh views
-  renderPrices();
-  renderDashboard();
-  toast('Success: SRA Price monitor updated.');
-});
+    const card = document.getElementById('price-form-card');
+    if (card) card.style.display = 'none';
+    renderPrices();
+    renderDashboard();
+    toast('Success: SRA Price monitor updated.');
+  });
+}
+
+// Topbar logout handler (confirmation + redirect to login)
+const topbarLogout = document.getElementById('topbar-logout');
+if (topbarLogout) {
+  topbarLogout.addEventListener('click', () => {
+    const ok = confirm('Are you sure you want to sign out of HUGPONG Admin?');
+    if (!ok) return;
+    localStorage.removeItem('hugpong_role');
+    toast('Signed out. Redirecting to login...');
+    setTimeout(() => { window.location.href = 'login.html'; }, 450);
+  });
+}
 
 function removePrice(idx) {
+  const currentRole = localStorage.getItem('hugpong_role') || 'admin';
+  if (currentRole !== 'superadmin') {
+    toast('Access Denied: Only Super Admin can delete price records.');
+    return;
+  }
   const db = getDB();
   db.priceHistory.splice(idx, 1);
   saveDB(db);
@@ -474,7 +451,12 @@ function removePrice(idx) {
 function setLogFilter(filter) {
   logStatusFilter = filter;
   document.querySelectorAll('#page-logs .filter-chip').forEach(c => {
-    c.classList.toggle('active', c.getAttribute('data-filter') === filter);
+    const isActive = c.getAttribute('data-filter') === filter;
+    if (isActive) {
+      c.className = 'filter-chip text-sm font-medium px-4 py-1.5 rounded-full border border-primary bg-primary text-white transition-all cursor-pointer';
+    } else {
+      c.className = 'filter-chip text-sm font-medium px-4 py-1.5 rounded-full border border-border bg-white text-hug-text2 hover:border-primary hover:text-primary transition-all cursor-pointer';
+    }
   });
   renderLogs();
 }
@@ -486,52 +468,35 @@ function renderLogs() {
   if (!body) return;
 
   let filtered = db.logs;
+  if (selectField !== 'all') filtered = filtered.filter(l => l.fieldId === selectField);
+  if (logStatusFilter !== 'all') filtered = filtered.filter(l => l.status === logStatusFilter);
 
-  // Field Filter
-  if (selectField !== 'all') {
-    filtered = filtered.filter(l => l.fieldId === selectField);
-  }
-
-  // Status Filter
-  if (logStatusFilter !== 'all') {
-    filtered = filtered.filter(l => l.status === logStatusFilter);
-  }
-
-  if (filtered.length === 0) {
-    body.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--text-muted);">No operational records matched logs filters.</td></tr>`;
-    return;
-  }
-
-  body.innerHTML = filtered.map((l, index) => {
+  body.innerHTML = filtered.map(l => {
     let actionBtn = '';
     if (l.status === 'Pending') {
-      actionBtn = `
-        <button class="btn-primary" onclick="updateLogStatus('${l.id}', 'Approved')" style="padding:4px 8px; font-size:11px; background:var(--success);">Approve</button>
-        <button class="btn-outline" onclick="updateLogStatus('${l.id}', 'Flagged')" style="padding:4px 8px; font-size:11px; border-color:var(--danger); color:var(--danger);">Flag</button>
-      `;
+      actionBtn = '<button onclick="updateLogStatus(\'' + l.id + '\', \'Approved\')" style="padding:3px 10px;font-size:10px;font-weight:700;background:#3A8F3A;color:#fff;border:none;border-radius:6px;cursor:pointer;">Approve</button> '
+        + '<button onclick="updateLogStatus(\'' + l.id + '\', \'Flagged\')" style="padding:3px 10px;font-size:10px;font-weight:700;border:1px solid #D9534F;color:#D9534F;background:none;border-radius:6px;cursor:pointer;">Flag</button>';
     } else if (l.status === 'Flagged') {
-      actionBtn = `
-        <button class="btn-outline" onclick="updateLogStatus('${l.id}', 'Approved')" style="padding:4px 8px; font-size:11px;">Re-Approve</button>
-      `;
+      actionBtn = '<button onclick="updateLogStatus(\'' + l.id + '\', \'Approved\')" style="padding:3px 10px;font-size:10px;font-weight:600;border:1px solid #E2E8DC;color:#5A6B4A;background:none;border-radius:6px;cursor:pointer;">Re-Approve</button>';
     } else {
-      actionBtn = `
-        <span style="font-size:11px; color:var(--text-muted); font-weight:600;">Approved</span>
-      `;
+      actionBtn = '<span style="font-size:10px;font-weight:700;color:#3A8F3A;">&#10003; Approved</span>';
     }
-
-    return `
-      <tr>
-        <td><strong>${l.id}</strong></td>
-        <td>${l.fieldId}</td>
-        <td><span class="cabo-meta" style="padding:3px 8px; font-size:10px;">${l.schedule}</span></td>
-        <td>${l.task}</td>
-        <td><strong>Php ${l.cost.toLocaleString()}</strong></td>
-        <td>${l.date}</td>
-        <td><span class="status-badge ${l.status === 'Approved' ? 'status-completed' : (l.status === 'Pending' ? 'status-pending' : 'status-completed')}" style="${l.status === 'Flagged' ? 'background:#feebeb; color:#d9534f;' : ''}">${l.status}</span></td>
-        <td><div style="display:flex; gap:6px;">${actionBtn}</div></td>
-      </tr>
-    `;
-  }).join('');
+    const statusBadge = l.status === 'Approved'
+      ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#E8F5E8;color:#3A8F3A;">Approved</span>'
+      : l.status === 'Pending'
+      ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#FFF3DC;color:#F5A623;">Pending</span>'
+      : '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#FEEBEB;color:#D9534F;">Flagged</span>';
+    return '<tr onmouseover="this.style.background=\'#F2F4EF\'" onmouseout="this.style.background=\'\'">'
+      + '<td style="padding:12px 16px;font-weight:700;color:#1A2212;font-size:11px;">' + l.id + '</td>'
+      + '<td style="padding:12px 16px;font-size:12px;color:#5A6B4A;">' + l.fieldId + '</td>'
+      + '<td style="padding:12px 16px;"><span style="font-size:10px;font-weight:600;color:#5A6B4A;background:#F2F4EF;border:1px solid #E2E8DC;padding:2px 8px;border-radius:999px;">' + l.schedule + '</span></td>'
+      + '<td style="padding:12px 16px;font-size:13px;color:#1A2212;">' + l.task + '</td>'
+      + '<td style="padding:12px 16px;font-weight:700;color:#1A2212;">Php ' + l.cost.toLocaleString() + '</td>'
+      + '<td style="padding:12px 16px;font-size:12px;color:#5A6B4A;">' + l.date + '</td>'
+      + '<td style="padding:12px 16px;">' + statusBadge + '</td>'
+      + '<td style="padding:12px 16px;"><div style="display:flex;gap:6px;align-items:center;">' + actionBtn + '</div></td>'
+      + '</tr>';
+  }).join('') || '<tr><td colspan="8" style="text-align:center;padding:30px;color:#8A9B7A;font-size:13px;">No operational records matched the selected filters.</td></tr>';
 }
 
 function updateLogStatus(logId, newStatus) {
@@ -549,51 +514,47 @@ function updateLogStatus(logId, newStatus) {
 function renderAnalytics() {
   const expenseBars = document.getElementById('expense-distribution-bars');
   const hectareBars = document.getElementById('cost-per-hectare-bars');
-  
+  const totalCostEl = document.getElementById('diagnostics-total-cost');
+  if (totalCostEl) totalCostEl.textContent = 'Php 136,830';
   if (expenseBars) {
     const allocations = [
-      { name: 'Land Prep & Planting', pct: 38, cost: 52000, color: '#8F3A8F' },
+      { name: 'Land Prep & Planting',    pct: 38, cost: 52000, color: '#8F3A8F' },
       { name: 'Fertilizer (All Stages)', pct: 32, cost: 43800, color: '#4A7C2F' },
-      { name: 'Labor Crew Wages', pct: 18, cost: 24600, color: '#1A6B9A' },
-      { name: 'Chemical Spraying', pct: 8, cost: 10950, color: '#F5A623' },
-      { name: 'Other Sundry Fees', pct: 4, cost: 5480, color: '#8A9B7A' }
+      { name: 'Labor Crew Wages',        pct: 18, cost: 24600, color: '#1A6B9A' },
+      { name: 'Chemical Spraying',       pct: 8,  cost: 10950, color: '#F5A623' },
+      { name: 'Other Sundry Fees',       pct: 4,  cost: 5480,  color: '#8A9B7A' },
     ];
-
-    expenseBars.innerHTML = allocations.map(a => `
-      <div style="display:flex; flex-direction:column; gap:4px;">
-        <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600;">
-          <span>${a.name}</span>
-          <strong>Php ${a.cost.toLocaleString()} (${a.pct}%)</strong>
-        </div>
-        <div style="width:100%; height:12px; background:var(--border); border-radius:6px; overflow:hidden;">
-          <div style="width:${a.pct}%; height:100%; background:${a.color}; border-radius:6px; transition:width 0.6s ease;"></div>
-        </div>
-      </div>
-    `).join('');
+    expenseBars.innerHTML = allocations.map(a =>
+      '<div style="display:flex;flex-direction:column;gap:5px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:baseline;">'
+      + '<span style="font-size:12px;font-weight:600;color:#1A2212;">' + a.name + '</span>'
+      + '<span style="font-size:12px;font-weight:700;color:' + a.color + ';">Php ' + a.cost.toLocaleString() + ' &middot; ' + a.pct + '%</span>'
+      + '</div>'
+      + '<div style="width:100%;height:12px;background:#E2E8DC;border-radius:999px;overflow:hidden;">'
+      + '<div style="width:' + a.pct + '%;height:100%;background:' + a.color + ';border-radius:999px;"></div>'
+      + '</div>'
+      + '</div>'
+    ).join('');
   }
-
   if (hectareBars) {
     const efficiencies = [
-      { id: 'FLD-KTR-001 (Juan dela Cruz)', haCost: 12400, haPct: 81, status: 'Average', color: 'var(--primary-light)' },
-      { id: 'FLD-KTR-003 (Maria Santos)', haCost: 8900, haPct: 58, status: 'Highly Efficient', color: 'var(--success)' },
-      { id: 'FLD-KTR-007 (Pedro Reyes)', haCost: 15200, haPct: 100, status: 'Alert: Heavy Cost', color: 'var(--danger)' },
-      { id: 'FLD-KTR-009 (Ana Gomez)', haCost: 10100, haPct: 66, status: 'Satisfactory', color: 'var(--blue)' }
+      { id: 'FLD-KTR-001', owner: 'Juan dela Cruz', haCost: 12400, haPct: 82,  status: 'Average',              color: '#4A7C2F' },
+      { id: 'FLD-KTR-003', owner: 'Maria Santos',   haCost: 8900,  haPct: 58,  status: 'Most Efficient &#10003;', color: '#3A8F3A' },
+      { id: 'FLD-KTR-007', owner: 'Pedro Reyes',    haCost: 15200, haPct: 100, status: 'Alert: Heavy Cost &#9888;', color: '#D9534F' },
+      { id: 'FLD-KTR-009', owner: 'Ana Gomez',      haCost: 10100, haPct: 66,  status: 'Satisfactory',         color: '#1A6B9A' },
     ];
-
-    hectareBars.innerHTML = efficiencies.map(e => `
-      <div style="display:flex; flex-direction:column; gap:4px;">
-        <div style="display:flex; justify-content:space-between; font-size:12px;">
-          <span style="font-weight:600;">${e.id}</span>
-          <span style="font-size:11px; font-weight:700; color:${e.color};">${e.status}</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <div style="flex:1; height:12px; background:var(--border); border-radius:6px; overflow:hidden;">
-            <div style="width:${e.haPct}%; height:100%; background:${e.color}; border-radius:6px; transition:width 0.6s ease;"></div>
-          </div>
-          <strong style="font-size:12px; min-width:85px; text-align:right;">Php ${e.haCost.toLocaleString()}/Ha</strong>
-        </div>
-      </div>
-    `).join('');
+    hectareBars.innerHTML = efficiencies.map(e =>
+      '<div style="display:flex;flex-direction:column;gap:5px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:baseline;">'
+      + '<span style="font-size:12px;font-weight:600;color:#1A2212;">' + e.id + ' <span style="font-size:10px;font-weight:400;color:#8A9B7A;">(' + e.owner + ')</span></span>'
+      + '<span style="font-size:12px;font-weight:700;color:' + e.color + ';">Php ' + e.haCost.toLocaleString() + '/Ha</span>'
+      + '</div>'
+      + '<div style="width:100%;height:12px;background:#E2E8DC;border-radius:999px;overflow:hidden;">'
+      + '<div style="width:' + e.haPct + '%;height:100%;background:' + e.color + ';border-radius:999px;"></div>'
+      + '</div>'
+      + '<span style="font-size:10px;font-weight:600;color:' + e.color + ';">' + e.status + '</span>'
+      + '</div>'
+    ).join('');
   }
 }
 
@@ -604,48 +565,52 @@ function renderUsers() {
   const pendingList = document.getElementById('pending-users-list');
 
   if (usersBody) {
-    usersBody.innerHTML = db.users.map(u => `
-      <tr>
-        <td><strong>${u.contact}</strong></td>
-        <td>${u.name}</td>
-        <td><span class="badge-role ${u.role === 'Super Admin' ? 'superadmin' : (u.role === 'SRA Checker' ? 'checker' : (u.role === 'Farm Manager' ? 'manager' : 'member'))}">${u.role}</span></td>
-        <td>${u.logsHandled} logs submitted</td>
-        <td>${u.regDate}</td>
-        <td><button class="btn-icon" onclick="removeDirectoryUser('${u.contact}')" title="Revoke directory status">✗</button></td>
-      </tr>
-    `).join('');
+    usersBody.innerHTML = db.users.map(u => {
+      const roleColors = { 'Super Admin': 'background:#F0E8FA;color:#6B3FA0;', 'SRA Checker': 'background:#E8F0E0;color:#2D5016;', 'Farm Manager': 'background:#E0F0FA;color:#1A6B9A;', 'Member': 'background:#F2F4EF;color:#5A6B4A;border:1px solid #E2E8DC;' };
+      const rStyle = roleColors[u.role] || roleColors['Member'];
+      return '<tr onmouseover="this.style.background=\'#F2F4EF\'" onmouseout="this.style.background=\'\'">'
+        + '<td style="padding:12px 16px;font-weight:700;color:#1A2212;font-size:13px;">' + u.contact + '</td>'
+        + '<td style="padding:12px 16px;color:#1A2212;font-size:13px;">' + u.name + '</td>'
+        + '<td style="padding:12px 16px;"><span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;' + rStyle + '">' + u.role + '</span></td>'
+        + '<td style="padding:12px 16px;font-size:13px;color:#5A6B4A;">' + u.logsHandled + ' logs</td>'
+        + '<td style="padding:12px 16px;font-size:12px;color:#8A9B7A;">' + u.regDate + '</td>'
+        + '<td style="padding:12px 16px;text-align:right;"><button onclick="removeDirectoryUser(\'' + u.contact + '\')" style="color:#8A9B7A;cursor:pointer;background:none;border:none;font-size:18px;" title="Revoke access" onmouseover="this.style.color=\'#D9534F\'" onmouseout="this.style.color=\'#8A9B7A\'">&times;</button></td>'
+        + '</tr>';
+    }).join('');
   }
 
   if (pendingList) {
     if (db.pendingUsers.length === 0) {
-      pendingList.innerHTML = `<div style="text-align:center; padding:20px; font-size:12px; color:var(--text-muted); border:1px dashed var(--border); border-radius:8px;">No pending mobile registrations awaiting review.</div>`;
+      pendingList.innerHTML = '<div style="text-align:center;padding:24px;font-size:12px;color:#8A9B7A;border:1px dashed #E2E8DC;border-radius:12px;">No pending mobile registrations awaiting review.</div>';
     } else {
-      pendingList.innerHTML = db.pendingUsers.map(p => `
-        <div class="capi-card" style="border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; background:var(--surface);">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-            <div>
-              <strong style="font-size:13px; color:var(--text);">${p.name}</strong>
-              <p style="font-size:11px; color:var(--text-muted); font-weight:500;">Role Applied: <span style="color:var(--primary); font-weight:700;">${p.role}</span></p>
-            </div>
-            <span style="font-size:10px; color:var(--text-muted);">${p.regDate}</span>
-          </div>
-          <div style="font-size:12px; font-weight:600; color:var(--text-2);">PH Number: ${p.contact}</div>
-          <div style="display:flex; gap:8px;">
-            <button class="btn-primary" onclick="approveRegistration('${p.contact}')" style="flex:1; padding:6px; font-size:11px; background:var(--success);">Confirm Approval</button>
-            <button class="btn-outline" onclick="rejectRegistration('${p.contact}')" style="flex:1; padding:6px; font-size:11px; border-color:var(--danger); color:var(--danger);">Reject</button>
-          </div>
-        </div>
-      `).join('');
+      pendingList.innerHTML = db.pendingUsers.map(p =>
+        '<div style="border:1px solid #E2E8DC;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;background:#fff;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
+        + '<div><strong style="font-size:13px;color:#1A2212;display:block;">' + p.name + '</strong><p style="font-size:11px;color:#8A9B7A;margin-top:2px;">Applied Role: <span style="color:#2D5016;font-weight:700;">' + p.role + '</span></p></div>'
+        + '<span style="font-size:10px;color:#8A9B7A;">' + p.regDate + '</span>'
+        + '</div>'
+        + '<p style="font-size:12px;font-weight:600;color:#5A6B4A;">PH: ' + p.contact + '</p>'
+        + '<div style="display:flex;gap:8px;">'
+        + '<button onclick="approveRegistration(\'' + p.contact + '\')" style="flex:1;background:#3A8F3A;color:#fff;border:none;border-radius:8px;padding:7px;font-size:11px;font-weight:700;cursor:pointer;">Confirm Approval</button>'
+        + '<button onclick="rejectRegistration(\'' + p.contact + '\')" style="flex:1;border:1px solid #D9534F;color:#D9534F;background:none;border-radius:8px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;">Reject</button>'
+        + '</div></div>'
+      ).join('');
     }
   }
 }
 
 function approveRegistration(contact) {
+  const currentRole = localStorage.getItem('hugpong_role') || 'admin';
   const db = getDB();
   const idx = db.pendingUsers.findIndex(u => u.contact === contact);
   if (idx === -1) return;
 
   const user = db.pendingUsers[idx];
+  if (currentRole === 'admin' && (user.role === 'SRA Checker' || user.role === 'Super Admin')) {
+    toast('Access Denied: Only Super Admin can approve elevated roles.');
+    return;
+  }
+
   db.pendingUsers.splice(idx, 1);
   db.users.push({
     contact: user.contact,
@@ -674,7 +639,16 @@ function rejectRegistration(contact) {
 }
 
 function removeDirectoryUser(contact) {
+  const currentRole = localStorage.getItem('hugpong_role') || 'admin';
   const db = getDB();
+  const target = db.users.find(u => u.contact === contact);
+  if (!target) return;
+
+  if (currentRole === 'admin' && (target.role === 'SRA Checker' || target.role === 'Super Admin')) {
+    toast('Access Denied: SRA Checker cannot revoke admin-tier accounts.');
+    return;
+  }
+
   db.users = db.users.filter(u => u.contact !== contact);
   saveDB(db);
   renderUsers();
@@ -689,45 +663,40 @@ function renderFields() {
   if (!gridContainer) return;
 
   gridContainer.innerHTML = db.fields.map(f => {
-    let warningIcon = '';
-    let warningStyle = '';
-    if (!f.synced) {
-      warningIcon = `
-        <div style="background:#feebeb; color:var(--danger); border:1px solid #fcd2d2; border-radius:6px; padding:6px 10px; font-size:11px; font-weight:700; margin-top:8px; display:flex; align-items:center; gap:6px;">
-          ⚠️ ALERT: Device Terminal out of sync (${f.lag})
-        </div>
-      `;
-      warningStyle = 'border-color:var(--danger);';
-    }
-
-    return `
-      <div class="card" style="padding:16px; display:flex; flex-direction:column; justify-content:space-between; ${warningStyle}">
-        <div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <strong style="font-size:16px; color:var(--primary); font-weight:800;">${f.id}</strong>
-            <span class="status-badge" style="font-size:11px; background:var(--bg); color:var(--text-2); font-weight:700;">${f.area} Ha</span>
-          </div>
-          <div style="display:flex; flex-direction:column; gap:4px; font-size:13px;">
-            <p style="color:var(--text-2);"><strong>Owner Manager:</strong> ${f.owner}</p>
-            <p style="color:var(--text-muted); font-size:11px;"><strong>Soil Stage:</strong> <span style="color:var(--text-2); font-weight:600;">${f.stage}</span></p>
-            <p style="color:var(--text-muted); font-size:11px;"><strong>Crop Age:</strong> <span style="color:var(--text-2); font-weight:600;">${f.age}</span></p>
-          </div>
-        </div>
-        <div>
-          ${warningIcon}
-          <div style="display:flex; gap:6px; margin-top:12px; border-top:1px solid var(--border); padding-top:10px;">
-            <button class="btn-outline" onclick="loadFieldForEdit('${f.id}')" style="flex:1; padding:6px; font-size:11px;">Edit Field</button>
-            <button class="btn-outline" onclick="archiveField('${f.id}')" style="flex:1; padding:6px; font-size:11px; border-color:rgba(217, 83, 79, 0.4); color:var(--danger);">Archive</button>
-          </div>
-        </div>
-      </div>
-    `;
+    const syncBadge = f.synced
+      ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#E8F5E8;color:#3A8F3A;margin-top:8px;">&#10003; Synced</span>'
+      : '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#FEEBEB;color:#D9534F;margin-top:8px;">&#9888; ' + f.lag + '</span>';
+    const warningBanner = !f.synced
+      ? '<div style="margin-top:10px;background:#FEEBEB;border:1px solid rgba(217,83,79,0.3);border-radius:8px;padding:8px 10px;font-size:11px;font-weight:700;color:#D9534F;">&#9888;&#65039; ALERT: Device out of sync (' + f.lag + ')</div>' : '';
+    const borderColor = f.synced ? '#E2E8DC' : '#D9534F';
+    return '<div style="background:#fff;border-radius:12px;border:1px solid ' + borderColor + ';box-shadow:0 2px 12px rgba(45,80,22,0.06);padding:16px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;">'
+      + '<div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+      + '<strong style="font-size:15px;color:#2D5016;font-weight:800;">' + f.id + '</strong>'
+      + '<span style="font-size:11px;font-weight:700;color:#5A6B4A;background:#F2F4EF;border:1px solid #E2E8DC;padding:3px 10px;border-radius:999px;">' + f.area + ' Ha</span>'
+      + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:4px;font-size:13px;">'
+      + '<p style="color:#5A6B4A;"><strong style="color:#1A2212;">Owner:</strong> ' + f.owner + '</p>'
+      + '<p style="color:#8A9B7A;font-size:11px;"><strong style="color:#5A6B4A;">Stage:</strong> ' + f.stage + '</p>'
+      + '<p style="color:#8A9B7A;font-size:11px;"><strong style="color:#5A6B4A;">Crop Age:</strong> ' + f.age + '</p>'
+      + '</div>'
+      + syncBadge + warningBanner
+      + '</div>'
+      + '<div style="display:flex;gap:6px;border-top:1px solid #E2E8DC;padding-top:10px;">'
+      + '<button onclick="loadFieldForEdit(\'' + f.id + '\')" style="flex:1;border:1px solid #E2E8DC;color:#5A6B4A;background:none;border-radius:8px;padding:7px;font-size:11px;font-weight:500;cursor:pointer;">Edit Field</button>'
+      + '<button onclick="archiveField(\'' + f.id + '\')" style="flex:1;border:1px solid rgba(217,83,79,0.4);color:#D9534F;background:none;border-radius:8px;padding:7px;font-size:11px;font-weight:500;cursor:pointer;">Archive</button>'
+      + '</div></div>';
   }).join('');
 }
 
 let editFieldId = null;
 
 function loadFieldForEdit(fieldId) {
+  const currentRole = localStorage.getItem('hugpong_role') || 'admin';
+  if (currentRole !== 'superadmin') {
+    toast('Access Denied: Requires Super Admin clearance.');
+    return;
+  }
   const db = getDB();
   const f = db.fields.find(field => field.id === fieldId);
   if (!f) return;
@@ -735,11 +704,19 @@ function loadFieldForEdit(fieldId) {
   editFieldId = fieldId;
   document.getElementById('field-form-title').textContent = 'Transfer & Edit Field Registry';
   document.getElementById('f-id').value = f.id;
-  document.getElementById('f-id').disabled = true; // cannot change code directly
+  document.getElementById('f-id').disabled = true;
   document.getElementById('f-owner').value = f.owner;
   document.getElementById('f-area').value = f.area;
   document.getElementById('f-stage').value = f.stage;
-  document.getElementById('save-field-action-btn').textContent = 'Transfer Ownership';
+  const btn = document.getElementById('save-field-action-btn');
+  if (btn) btn.textContent = 'Transfer Ownership';
+}
+
+function showNewFieldForm() {
+  resetFieldForm();
+  document.getElementById('field-form-title').textContent = 'Assign New Field ID';
+  const btn = document.getElementById('save-field-action-btn');
+  if (btn) btn.textContent = 'Register';
 }
 
 function resetFieldForm() {
@@ -750,10 +727,17 @@ function resetFieldForm() {
   document.getElementById('f-owner').value = '';
   document.getElementById('f-area').value = '';
   document.getElementById('f-stage').value = 'Land Preparation';
-  document.getElementById('save-field-action-btn').textContent = 'Register';
+  const btn = document.getElementById('save-field-action-btn');
+  if (btn) btn.textContent = 'Register';
 }
 
 function saveFieldChanges() {
+  const currentRole = localStorage.getItem('hugpong_role') || 'admin';
+  if (currentRole !== 'superadmin') {
+    toast('Access Denied: Requires Super Admin clearance.');
+    return;
+  }
+
   const id = document.getElementById('f-id').value.trim().toUpperCase();
   const owner = document.getElementById('f-owner').value.trim();
   const area = parseFloat(document.getElementById('f-area').value);
@@ -766,7 +750,6 @@ function saveFieldChanges() {
 
   const db = getDB();
   if (editFieldId) {
-    // Modify existing
     const f = db.fields.find(field => field.id === editFieldId);
     if (f) {
       f.owner = owner;
@@ -775,7 +758,6 @@ function saveFieldChanges() {
       toast(`Block Owner of Field ${f.id} transferred to ${owner}`);
     }
   } else {
-    // Add new
     if (db.fields.some(f => f.id === id)) {
       toast('Error: Field ID code already registered.');
       return;
@@ -791,6 +773,11 @@ function saveFieldChanges() {
 }
 
 function archiveField(fieldId) {
+  const currentRole = localStorage.getItem('hugpong_role') || 'admin';
+  if (currentRole !== 'superadmin') {
+    toast('Access Denied: Requires Super Admin clearance.');
+    return;
+  }
   if (!confirm(`Are you sure you want to archive Field ${fieldId}?`)) return;
   const db = getDB();
   db.fields = db.fields.filter(f => f.id !== fieldId);
@@ -806,19 +793,27 @@ function renderSync() {
   const body = document.getElementById('sync-log-body');
   if (!body) return;
 
-  body.innerHTML = db.syncLogs.map(l => `
-    <tr>
-      <td>${l.time}</td>
-      <td><strong>${l.device}</strong></td>
-      <td>${l.user}</td>
-      <td>${l.action}</td>
-      <td><span class="status-badge ${l.status === 'synced' ? 'status-completed' : 'status-pending'}">${l.status === 'synced' ? 'Successful' : 'Device Lag'}</span></td>
-    </tr>
-  `).join('');
+  body.innerHTML = db.syncLogs.map(l => {
+    const badge = l.status === 'synced'
+      ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#E8F5E8;color:#3A8F3A;">Successful</span>'
+      : '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#FFF3DC;color:#F5A623;">Device Lag</span>';
+    return '<tr onmouseover="this.style.background=\'#F2F4EF\'" onmouseout="this.style.background=\'\'">'
+      + '<td style="padding:12px 16px;font-size:12px;color:#5A6B4A;">' + l.time + '</td>'
+      + '<td style="padding:12px 16px;font-weight:600;color:#1A2212;font-size:13px;">' + l.device + '</td>'
+      + '<td style="padding:12px 16px;font-size:13px;color:#5A6B4A;">' + l.user + '</td>'
+      + '<td style="padding:12px 16px;font-size:13px;color:#1A2212;">' + l.action + '</td>'
+      + '<td style="padding:12px 16px;">' + badge + '</td>'
+      + '</tr>';
+  }).join('');
 }
 
 // ── ROLLBACK SYSTEM STATE (DEMO TOOL) ────────────────────
 function resetDemoDatabase() {
+  const currentRole = localStorage.getItem('hugpong_role') || 'admin';
+  if (currentRole !== 'superadmin') {
+    toast('Access Denied: Only Super Admin can reset the demo database.');
+    return;
+  }
   if (!confirm('Are you sure you want to completely rollback the HUGPONG demo state?')) return;
   localStorage.setItem('hugpong_db', JSON.stringify(INITIAL_DATABASE));
   toast('Rolling back database tokens...');
@@ -859,6 +854,6 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 });
 
 // ── INITIALIZING PORTAL INTERFACES ───────────────────────
-const currentRole = localStorage.getItem('hugpong_role') || 'admin';
-applyRoleLayout(currentRole);
+const currentRoleInit = localStorage.getItem('hugpong_role') || 'admin';
+applyRoleLayout(currentRoleInit);
 navigate('dashboard');

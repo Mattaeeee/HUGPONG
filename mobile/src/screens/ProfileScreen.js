@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Modal, Animated, Dimensions, Alert, Switch,
+  Modal, Animated, Dimensions, Alert, Switch, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
-import { subscribe, getIsSynced, getCurrentSession, setSynced } from '../data/mockData';
+import { subscribe, getIsSynced, getCurrentSession, setSynced, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS } from '../data/mockData';
 
 const { height } = Dimensions.get('window');
 
@@ -26,11 +26,36 @@ export default function ProfileScreen({ navigation }) {
   const [language, setLanguage] = useState('en');
   const [langExpanded, setLangExpanded] = useState(false);
   const [autoSync, setAutoSync] = useState(true);
+  const getCounts = (sess) => {
+    const myFields = MOCK_FIELDS.filter(f => f.member === sess.name).map(f => f.id);
+    const drafts = DRAFT_LOGS.filter(l => myFields.includes(l.fieldId));
+    const unapproved = MOCK_LOGS.filter(l => myFields.includes(l.fieldId) && !l.approved);
+    
+    const pCount = drafts.length + unapproved.length;
+    const sCount = MOCK_LOGS.filter(l => myFields.includes(l.fieldId) && l.approved).length;
+    
+    const pendingItems = [
+      ...drafts.map(d => ({ id: d.id, type: 'Draft Log', desc: d.activity, time: 'Unsubmitted' })),
+      ...unapproved.map(m => ({ id: m.id, type: 'Awaiting Approval', desc: m.activity, time: m.date }))
+    ];
+
+    return { pCount, sCount, pendingItems };
+  };
+
+  const initialCounts = getCounts(getCurrentSession());
+  const [pendingCount, setPendingCount] = useState(initialCounts.pCount);
+  const [syncedCount, setSyncedCount] = useState(initialCounts.sCount);
+  const [pendingItems, setPendingItems] = useState(initialCounts.pendingItems);
 
   useEffect(() => {
     const unsubscribe = subscribe(() => {
-      setSessionState({ ...getCurrentSession() });
+      const sess = getCurrentSession();
+      setSessionState({ ...sess });
       setSyncedState(getIsSynced());
+      const { pCount, sCount, pendingItems: pItems } = getCounts(sess);
+      setPendingCount(pCount);
+      setSyncedCount(sCount);
+      setPendingItems(pItems);
     });
     return unsubscribe;
   }, []);
@@ -38,7 +63,7 @@ export default function ProfileScreen({ navigation }) {
 
   const doSync = () => {
     if (syncing) return;
-    if (synced && session.pendingLogs === 0) {
+    if (synced && pendingCount === 0) {
       Alert.alert(
         'Synced ✓',
         'Your sugarcane records are fully synchronized with the HUGPONG cloud.'
@@ -118,7 +143,13 @@ export default function ProfileScreen({ navigation }) {
           <Text style={s.cardTitle}>Operational Assignment</Text>
           {[
             { icon: 'business', label: 'Farm', value: session.farm },
-            { icon: 'map', label: 'Field ID', value: session.fieldId },
+            { 
+              icon: 'map', 
+              label: 'Assigned Fields', 
+              value: MOCK_FIELDS.filter(f => f.member === session.name).length > 0 
+                ? MOCK_FIELDS.filter(f => f.member === session.name).map(f => f.id).join(', ') 
+                : (session.fieldId || 'None assigned')
+            },
             { icon: 'call', label: 'Mobile', value: session.mobile },
           ].map(r => (
             <View key={r.label} style={s.infoRow}>
@@ -139,12 +170,12 @@ export default function ProfileScreen({ navigation }) {
           {/* Stats Row */}
           <View style={s.syncStats}>
             <View style={s.syncStat}>
-              <Text style={s.syncStatNum}>{session.pendingLogs}</Text>
+              <Text style={s.syncStatNum}>{pendingCount}</Text>
               <Text style={s.syncStatLabel}>Pending</Text>
             </View>
             <View style={s.syncStatDivider} />
             <View style={s.syncStat}>
-              <Text style={s.syncStatNum}>{session.syncedLogs}</Text>
+              <Text style={s.syncStatNum}>{syncedCount}</Text>
               <Text style={s.syncStatLabel}>Synced</Text>
             </View>
             <View style={s.syncStatDivider} />
@@ -160,25 +191,17 @@ export default function ProfileScreen({ navigation }) {
 
           {/* Pending Logs */}
           <Text style={s.pendingTitle}>Pending Local Logs</Text>
-          {session.pendingLogs > 0 ? (
-            Array.from({ length: session.pendingLogs }).map((_, i) => {
-              const logs = [
-                { type: 'Task Completion', desc: 'Fertilization – Plot 4', time: 'Just now' },
-                { type: 'Resource Log', desc: '12 bags Urea applied', time: '5m ago' },
-                { type: 'Schedule Update', desc: 'Weeding – Sector A rescheduled', time: '10m ago' },
-              ];
-              const p = logs[i % logs.length];
-              return (
-                <View key={i} style={s.pendingRow}>
-                  <View style={[s.pendingDot, { backgroundColor: '#C97A00' }]} />
-                  <View style={s.pendingBody}>
-                    <Text style={s.pendingType}>{p.type}</Text>
-                    <Text style={s.pendingDesc}>{p.desc}</Text>
-                  </View>
-                  <Text style={s.pendingTime}>{p.time}</Text>
+          {pendingItems.length > 0 ? (
+            pendingItems.map((p, i) => (
+              <View key={p.id || i} style={s.pendingRow}>
+                <View style={[s.pendingDot, { backgroundColor: '#C97A00' }]} />
+                <View style={s.pendingBody}>
+                  <Text style={s.pendingType}>{p.type}</Text>
+                  <Text style={s.pendingDesc}>{p.desc}</Text>
                 </View>
-              );
-            })
+                <Text style={s.pendingTime}>{p.time}</Text>
+              </View>
+            ))
           ) : (
             <View style={s.emptySyncState}>
               <Ionicons name="cloud-done-outline" size={16} color="#267326" />
@@ -201,6 +224,23 @@ export default function ProfileScreen({ navigation }) {
               onValueChange={setAutoSync}
               trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
               thumbColor={autoSync ? COLORS.primary : '#f4f3f4'}
+            />
+          </View>
+
+          {/* Offline Demo Toggle */}
+          <View style={[s.toggleRow, { marginTop: 0, paddingTop: 12, borderTopWidth: 0 }]}>
+            <Ionicons name="airplane-outline" size={16} color={COLORS.textSecondary} />
+            <Text style={s.toggleLabel}>Demo: Offline POV</Text>
+            <Switch
+              value={!synced}
+              onValueChange={(val) => {
+                setSynced(!val);
+                if (val) {
+                  Alert.alert('Offline Mode Sim', 'Connection dropped. New operations will be cached locally until connection restores.');
+                }
+              }}
+              trackColor={{ false: COLORS.border, true: COLORS.accent }}
+              thumbColor={!synced ? '#fff' : '#f4f3f4'}
             />
           </View>
         </View>
@@ -231,8 +271,8 @@ export default function ProfileScreen({ navigation }) {
         <View style={s.card}>
           <Text style={s.cardTitle}>Settings</Text>
           {[
-            { icon: 'shield-outline', label: 'Security & Password', color: COLORS.primary, onPress: () => navigation.navigate('Security') },
-            { icon: 'cloud-upload-outline', label: 'Sync Monitor', color: COLORS.blue, onPress: () => navigation.navigate('SyncMonitor') },
+            { icon: 'shield-outline', label: 'Security & Password', color: COLORS.primary, onPress: () => Alert.alert('Security', 'Security settings are locked in demo mode.') },
+            { icon: 'cloud-upload-outline', label: 'Detailed Sync Monitor', color: COLORS.blue, onPress: () => navigation.navigate('SyncMonitor') },
             { icon: 'trash-outline', label: 'Clear Cache', color: COLORS.accent, onPress: clearCache },
           ].map(item => (
             <TouchableOpacity key={item.label} style={s.settingRow} onPress={item.onPress}>
@@ -281,6 +321,7 @@ const s = StyleSheet.create({
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: 9, borderTopWidth: 1, borderTopColor: COLORS.border },
   infoLabel: { fontSize: 12, color: COLORS.textMuted, width: 56 },
   infoValue: { flex: 1, fontSize: 13, fontWeight: '600', color: COLORS.text, textAlign: 'right' },
+  formInput: { borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, paddingHorizontal: 12, fontSize: 14, color: COLORS.text, backgroundColor: '#FAFAFA' },
 
   // Sync
   syncHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.md },

@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOW } from '../theme';
-import { MOCK_PRICE, MOCK_WEEKLY_CHART } from '../data/mockData';
+import { MOCK_PRICE, MOCK_WEEKLY_CHART, subscribe, getIsSynced, getCurrentSession, MOCK_FIELDS } from '../data/mockData';
 import AppHeader from '../components/AppHeader';
 
 const { width } = Dimensions.get('window');
@@ -22,31 +22,6 @@ const NOTIFICATIONS = [
 
 const MOCK_MOL = { value: 4200, change: +80, unit: '/ MT', lastUpdated: 'May 17, 2026' };
 
-// Mock weather data - replace with real API when online
-const WEATHER_ADVISORIES = [
-  {
-    type: 'rain',
-    icon: 'rainy',
-    iconColor: '#1A6B9A',
-    title: 'Heavy Rain Expected',
-    message: 'Delay fertilizer application and chemical spraying to avoid run-off and input loss.',
-  },
-  {
-    type: 'heat',
-    icon: 'sunny',
-    iconColor: '#F5A623',
-    title: 'Extreme Heat Warning',
-    message: 'Delay planting of cane points (patdan) unless irrigation is ready to prevent drying out.',
-  },
-  {
-    type: 'clear',
-    icon: 'partly-sunny',
-    iconColor: '#4A7C2F',
-    title: 'Good Field Window',
-    message: 'Clear weather. Excellent conditions for plowing, planting, weeding, or fertilizing.',
-  },
-];
-const weatherData = WEATHER_ADVISORIES[2]; // default: clear — change index to simulate
 
 export default function HomeScreen({ navigation }) {
   const price = MOCK_PRICE;
@@ -55,8 +30,18 @@ export default function HomeScreen({ navigation }) {
   const [chartMode, setChartMode] = useState('weekly');
   const [showNotifs, setShowNotifs] = useState(false);
   const [notifs, setNotifs] = useState(NOTIFICATIONS);
+  const [synced, setSyncedState] = useState(getIsSynced());
+  const [session, setSessionState] = useState(getCurrentSession());
   const unreadCount = notifs.filter(n => n.unread).length;
   const slideAnim = useRef(new Animated.Value(-400)).current;
+
+  React.useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      setSyncedState(getIsSynced());
+      setSessionState({ ...getCurrentSession() });
+    });
+    return unsubscribe;
+  }, []);
 
   const openNotifs = () => {
     setShowNotifs(true);
@@ -75,22 +60,33 @@ export default function HomeScreen({ navigation }) {
             <Ionicons name="notifications-outline" size={22} color={COLORS.text} />
             {unreadCount > 0 && <View style={s.badge}><Text style={s.badgeText}>{unreadCount}</Text></View>}
           </TouchableOpacity>
-          <TouchableOpacity style={s.iconBtn}>
-            <Ionicons name="refresh" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
+          {/* Refresh icon removed to avoid redundancy with the main Sync button */}
         </>
       } />
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
+        {/* ── Offline Mode Banner ── */}
+        {!synced && (
+          <View style={[s.card, { backgroundColor: '#FFFBF0', borderColor: '#FEF0D0', borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 }]}>
+            <Ionicons name="airplane" size={24} color="#C97A00" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: '#C97A00' }}>Offline Mode Sim</Text>
+              <Text style={{ fontSize: 11, color: '#A06000', marginTop: 2 }}>You are operating offline. All activities are cached locally and will sync when connection returns.</Text>
+            </View>
+          </View>
+        )}
+
         {/* ── HPCo Silay Price Card ── */}
         <View style={[s.card, s.priceCard]}>
           <View style={s.priceCardHeader}>
             <View style={s.priceSourceRow}>
-              <View style={s.sourceDot} />
+              <View style={[s.sourceDot, !synced && { backgroundColor: COLORS.accent }]} />
               <Text style={s.priceSource}>HPCo · Silay</Text>
             </View>
-            <Text style={s.priceUpdated}>{price.lastUpdated}</Text>
+            <Text style={[s.priceUpdated, !synced && { color: COLORS.accent, fontWeight: '600' }]}>
+              {synced ? price.lastUpdated : 'Offline: Price may be outdated'}
+            </Text>
           </View>
 
           <View style={s.pricePairRow}>
@@ -122,17 +118,6 @@ export default function HomeScreen({ navigation }) {
         </View>
 
 
-        {/* ── Weather Advisory Banner ── */}
-        <View style={[s.card, s.weatherCard, weatherData.type === 'rain' && s.weatherRain, weatherData.type === 'heat' && s.weatherHeat, weatherData.type === 'clear' && s.weatherClear]}>
-          <View style={s.weatherRow}>
-            <Ionicons name={weatherData.icon} size={28} color={weatherData.iconColor} />
-            <View style={s.weatherBody}>
-              <Text style={s.weatherTitle}>{weatherData.title}</Text>
-              <Text style={s.weatherMsg}>{weatherData.message}</Text>
-            </View>
-          </View>
-          <Text style={s.weatherSub}>📍 Silay / Kapitan Ramon · Cached forecast</Text>
-        </View>
 
         {/* ── Price Analytics ── */}
         <View style={s.card}>
@@ -157,10 +142,18 @@ export default function HomeScreen({ navigation }) {
               <View style={s.chartBarsRow}>
                 {chart.months.map((month, mi) => (
                   <View key={mi} style={s.barGroup}>
-                    {chart.weeks.map((wk, wi) => {
-                      const h = Math.max(4, ((wk[mi] - MIN_PRICE) / (MAX_PRICE - MIN_PRICE)) * 110);
-                      return <View key={wi} style={[s.bar, { height: h, backgroundColor: BAR_COLORS[wi] }]} />;
-                    })}
+                    {chartMode === 'weekly' ? (
+                      chart.weeks.map((wk, wi) => {
+                        const h = Math.max(4, ((wk[mi] - MIN_PRICE) / (MAX_PRICE - MIN_PRICE)) * 110);
+                        return <View key={wi} style={[s.bar, { height: h, backgroundColor: BAR_COLORS[wi] }]} />;
+                      })
+                    ) : (
+                      (() => {
+                        const avg = chart.weeks.reduce((sum, wk) => sum + wk[mi], 0) / chart.weeks.length;
+                        const h = Math.max(4, ((avg - MIN_PRICE) / (MAX_PRICE - MIN_PRICE)) * 110);
+                        return <View style={[s.bar, { width: 16, height: h, backgroundColor: COLORS.primary }]} />;
+                      })()
+                    )}
                   </View>
                 ))}
               </View>
@@ -175,14 +168,23 @@ export default function HomeScreen({ navigation }) {
           </View>
 
           {/* Legend */}
-          <View style={s.legendRow}>
-            {['Wk1', 'Wk2', 'Wk3', 'Wk4', 'Wk5'].map((l, i) => (
-              <View key={i} style={s.legendItem}>
-                <View style={[s.legendDot, { backgroundColor: BAR_COLORS[i] }]} />
-                <Text style={s.legendText}>{l}</Text>
+          {chartMode === 'weekly' ? (
+            <View style={s.legendRow}>
+              {['Week 1', 'Week 2', 'Week 3', 'Week 4'].map((l, i) => (
+                <View key={i} style={s.legendItem}>
+                  <View style={[s.legendDot, { backgroundColor: BAR_COLORS[i] }]} />
+                  <Text style={s.legendText}>{l}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={s.legendRow}>
+              <View style={s.legendItem}>
+                <View style={[s.legendDot, { backgroundColor: COLORS.primary }]} />
+                <Text style={s.legendText}>Monthly Average</Text>
               </View>
-            ))}
-          </View>
+            </View>
+          )}
 
           {/* Stats Row */}
           <View style={s.statsRow}>
@@ -212,21 +214,21 @@ export default function HomeScreen({ navigation }) {
         {/* ── Active Fields Quick View ── */}
         <View style={s.card}>
           <Text style={s.sectionTitle}>My Active Fields</Text>
-          {[
-            { id: 'FLD-KTR-001', stage: 'Fertilization Stage 2', age: '3.2 months', status: 'on-track', ha: '1.5 Ha' },
-            { id: 'FLD-KTR-003', stage: 'Land Preparation', age: '0.3 months', status: 'on-track', ha: '2.0 Ha' },
-            { id: 'FLD-KTR-007', stage: 'Harvesting', age: '10.5 months', status: 'urgent', ha: '1.0 Ha' },
-          ].map(field => (
-            <View key={field.id} style={s.fieldRow}>
-              <View style={[s.fieldStatusDot, { backgroundColor: field.status === 'urgent' ? COLORS.accent : COLORS.success }]} />
-              <View style={s.fieldBody}>
-                <Text style={s.fieldId}>{field.id} · {field.ha}</Text>
-                <Text style={s.fieldStage}>{field.stage}</Text>
+          {MOCK_FIELDS.filter(f => f.member === session.name).length > 0 ? (
+            MOCK_FIELDS.filter(f => f.member === session.name).map(field => (
+              <View key={field.id} style={s.fieldRow}>
+                <View style={[s.fieldStatusDot, { backgroundColor: field.month > 8 ? COLORS.accent : COLORS.success }]} />
+                <View style={s.fieldBody}>
+                  <Text style={s.fieldId}>{field.id} · {field.ha} Ha</Text>
+                  <Text style={s.fieldStage}>{field.stage}</Text>
+                </View>
+                <Text style={s.fieldAge}>{field.month} months</Text>
               </View>
-              <Text style={s.fieldAge}>{field.age}</Text>
-            </View>
-          ))}
-          <TouchableOpacity style={s.analyticsBtn} onPress={() => navigation.navigate('Schedules')}>
+            ))
+          ) : (
+            <Text style={{ fontSize: 13, color: COLORS.textMuted, marginVertical: 10 }}>No active fields assigned yet.</Text>
+          )}
+          <TouchableOpacity style={s.analyticsBtn} onPress={() => navigation.navigate('Field Ops')}>
             <Text style={s.analyticsBtnText}>Manage Field Operations</Text>
             <Ionicons name="chevron-forward" size={15} color={COLORS.primaryLight} />
           </TouchableOpacity>
@@ -303,16 +305,6 @@ const s = StyleSheet.create({
   profitSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
   profitArrow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
 
-  // Weather Advisory Banner
-  weatherCard: { borderWidth: 1, borderColor: COLORS.border, gap: 10 },
-  weatherRain: { backgroundColor: '#EBF5FB' },
-  weatherHeat: { backgroundColor: '#FFFBF0' },
-  weatherClear: { backgroundColor: '#F4FBF0' },
-  weatherRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  weatherBody: { flex: 1, gap: 3 },
-  weatherTitle: { fontSize: 14, fontWeight: '800', color: COLORS.text },
-  weatherMsg: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 18 },
-  weatherSub: { fontSize: 10, color: COLORS.textMuted },
 
   // Chart
   chartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },

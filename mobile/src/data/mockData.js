@@ -16,7 +16,6 @@ export const MOCK_WEEKLY_CHART = {
     [2200, 2250, 2300, 2500, 2700, 2750],
     [2300, 2100, 2350, 2600, 2600, 2780],
     [2400, 2300, 2500, 2550, 2750, 2800],
-    [2350, 2400, 2450, 2620, 2800, 2810],
   ],
   monthlyAvg: 2750,
   cropYearPeak: 2900,
@@ -131,6 +130,8 @@ const notify = () => {
   });
 };
 
+export const notifyDataUpdate = notify;
+
 export const setSession = (role) => {
   const account = DEMO_ACCOUNTS[role];
   if (account) {
@@ -166,3 +167,43 @@ export const MOCK_PROFILE = {
   get syncedLogs() { return CURRENT_SESSION.syncedLogs; },
 }; // backward compatibility
 
+export const MOCK_FIELDS = [
+  { id: 'FLD-KTR-001', member: 'Juan dela Cruz', ha: '1.5', stage: 'Fertilization Stage 2', month: 3.2, synced: true, lastSync: '10 mins ago' },
+  { id: 'FLD-KTR-003', member: 'Maria Santos', ha: '2.0', stage: 'Land Preparation', month: 0.3, synced: true, lastSync: '2 hrs ago' },
+  { id: 'FLD-KTR-007', member: 'Pedro Reyes', ha: '1.0', stage: 'Harvesting', month: 10.5, synced: false, lastSync: '4 days ago' },
+  { id: 'FLD-KTR-009', member: 'Ana Gomez', ha: '0.8', stage: 'Weeding', month: 5.1, synced: true, lastSync: '1 hr ago' },
+];
+
+export let MOCK_LOGS = [
+  { id: 'L1', fieldId: 'FLD-KTR-001', type: 'weekly', week: 'Week 1 – May', activity: 'Weeding labor', cost: 1200, date: 'May 7, 2026', approved: true },
+  { id: 'L2', fieldId: 'FLD-KTR-001', type: 'monthly', month: 'May 2026', activity: 'Urea fertilizer (4 bags)', cost: 6400, date: 'May 1, 2026', approved: false },
+  { id: 'L3', fieldId: 'FLD-KTR-003', type: 'weekly', week: 'Week 2 – May', activity: 'Land plowing (tractor)', cost: 5000, date: 'May 14, 2026', approved: true },
+  { id: 'L4', fieldId: 'FLD-KTR-007', type: 'weekly', week: 'Week 3 – May', activity: 'Cane harvesting', cost: 8500, date: 'May 18, 2026', approved: true },
+  { id: 'L5', fieldId: 'FLD-KTR-007', type: 'monthly', month: 'May 2026', activity: 'Trucking & hauling', cost: 4200, date: 'May 19, 2026', approved: false },
+];
+
+export let DRAFT_LOGS = [
+  { id: 'D1', fieldId: 'FLD-KTR-007', type: 'weekly', activity: 'Post-harvest clearing', cost: 1500, hours: '6', hectares: '1.0', people: '3', date: 'May 21, 2026' }
+];
+
+export let MOCK_ASSIGNMENT_REQUESTS = [];
+
+export const requestFieldAssignment = (fieldId, memberName, ha = '0.0') => {
+  MOCK_ASSIGNMENT_REQUESTS.push({
+    id: `REQ-${Date.now()}`,
+    fieldId,
+    memberName,
+    ha,
+    date: new Date().toLocaleDateString('en-US'),
+    status: 'pending'
+  });
+  notify();
+};
+
+export const resolveAssignmentRequest = (reqId, approved) => {
+  const req = MOCK_ASSIGNMENT_REQUESTS.find(r => r.id === reqId);
+  if (req) {
+    req.status = approved ? 'approved' : 'rejected';
+    notify();
+  }
+};

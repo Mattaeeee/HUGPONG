@@ -31,18 +31,18 @@ const CROP_STAGES = [
 ];
 
 const SRA_PRICE_HISTORY = [
-  { week: 'Wk1 Mar', price: 2450 },
-  { week: 'Wk2 Mar', price: 2500 },
-  { week: 'Wk3 Mar', price: 2480 },
-  { week: 'Wk4 Mar', price: 2550 },
-  { week: 'Wk1 Apr', price: 2600 },
-  { week: 'Wk2 Apr', price: 2580 },
-  { week: 'Wk3 Apr', price: 2650 },
-  { week: 'Wk4 Apr', price: 2700 },
-  { week: 'Wk1 May', price: 2720 },
-  { week: 'Wk2 May', price: 2750 },
-  { week: 'Wk3 May', price: 2800 },
-  { week: 'Wk4 May', price: 2800 },
+  { week: 'Week 1', month: 'Mar', price: 2450 },
+  { week: 'Week 2', month: 'Mar', price: 2500 },
+  { week: 'Week 3', month: 'Mar', price: 2480 },
+  { week: 'Week 4', month: 'Mar', price: 2550 },
+  { week: 'Week 1', month: 'Apr', price: 2600 },
+  { week: 'Week 2', month: 'Apr', price: 2580 },
+  { week: 'Week 3', month: 'Apr', price: 2650 },
+  { week: 'Week 4', month: 'Apr', price: 2700 },
+  { week: 'Week 1', month: 'May', price: 2720 },
+  { week: 'Week 2', month: 'May', price: 2750 },
+  { week: 'Week 3', month: 'May', price: 2800 },
+  { week: 'Week 4', month: 'May', price: 2800 },
 ];
 
 const maxPrice = Math.max(...SRA_PRICE_HISTORY.map(p => p.price));
@@ -255,7 +255,7 @@ export default function AnalyticsScreen({ navigation }) {
                     {SRA_PRICE_HISTORY.map((item, i) => (
                       <View key={i} style={s.priceXAxisCol}>
                         {i % 3 === 0 ? (
-                          <Text style={s.priceXLabel}>{item.week.replace(' ', '\n')}</Text>
+                          <Text style={s.priceXLabel}>{item.week}{'\n'}{item.month}</Text>
                         ) : null}
                       </View>
                     ))}

@@ -6,6 +6,8 @@ import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import EmptyState from '../components/EmptyState';
 import { confirmRetryUpload, confirmClearQueue, confirmConflictOverwriteLocal, confirmConflictKeepLocal } from '../utils/dialogs';
 
+import { subscribe, getCurrentSession, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS } from '../data/mockData';
+
 const STATUS_CFG = {
   pending: { label: 'Pending', icon: 'time-outline', color: '#F5A623', bg: '#FFF3DC' },
   uploading: { label: 'Uploading', icon: 'cloud-upload-outline', color: COLORS.blue, bg: '#E0F0FA' },
@@ -14,22 +16,44 @@ const STATUS_CFG = {
   conflict: { label: 'Conflict', icon: 'warning-outline', color: '#9B59B6', bg: '#F3E8FC' },
 };
 
-const MOCK_QUEUE = [
-  { id: '1', type: 'Task Completion', desc: 'Fertilization – Plot 4', status: 'failed', time: '10:32 AM', size: '2.1 KB' },
-  { id: '2', type: 'Resource Log', desc: '12 bags Urea applied – Sector B', status: 'pending', time: '10:45 AM', size: '1.4 KB' },
-  { id: '3', type: 'Schedule Update', desc: 'Weeding – Plot 7 rescheduled', status: 'pending', time: '11:02 AM', size: '0.8 KB' },
-  { id: '4', type: 'Price View Log', desc: 'HPCo Silay price viewed', status: 'synced', time: '8:15 AM', size: '0.3 KB' },
-];
+const getDynamicQueue = () => {
+  const sess = getCurrentSession();
+  const myFields = MOCK_FIELDS.filter(f => f.member === sess.name).map(f => f.id);
+  const drafts = DRAFT_LOGS.filter(l => myFields.includes(l.fieldId));
+  const unapproved = MOCK_LOGS.filter(l => myFields.includes(l.fieldId) && !l.approved);
+  const approved = MOCK_LOGS.filter(l => myFields.includes(l.fieldId) && l.approved);
+
+  return [
+    { id: 'dummy-fail', type: 'Task Completion', desc: 'Fertilization – FLD-KTR-007 (Demo)', status: 'failed', time: '10:32 AM', size: '2.1 KB' },
+    ...drafts.map(d => ({ id: d.id, type: 'Draft Log', desc: d.activity, status: 'pending', time: 'Unsubmitted', size: '1.2 KB' })),
+    ...unapproved.map(m => ({ id: m.id, type: 'Awaiting Approval', desc: m.activity, status: 'pending', time: m.date, size: '0.8 KB' })),
+    ...approved.map(m => ({ id: m.id, type: 'Log Approved', desc: m.activity, status: 'synced', time: m.date, size: '0.8 KB' }))
+  ];
+};
 
 const MOCK_CONFLICTS = [
-  { id: 'c1', record: 'Task: Harvesting – Plot 2', localTime: 'Today 9:44 AM', cloudTime: 'Today 10:01 AM', localUser: 'You', cloudUser: 'System Auto-Sync' },
-  { id: 'c2', record: 'Resource Log: Pesticide – Sector A', localTime: 'Yesterday 4:10 PM', cloudTime: 'Yesterday 4:22 PM', localUser: 'You', cloudUser: 'Gabe (Sync)' },
+  { id: 'c1', record: 'Task: Harvesting – FLD-KTR-007', localTime: 'Today 9:44 AM', cloudTime: 'Today 10:01 AM', localUser: 'You', cloudUser: 'System Auto-Sync' },
+  { id: 'c2', record: 'Resource Log: Pesticide – FLD-KTR-001', localTime: 'Yesterday 4:10 PM', cloudTime: 'Yesterday 4:22 PM', localUser: 'You', cloudUser: 'Farm Manager' },
 ];
 
 export default function SyncMonitorScreen({ navigation }) {
-  const [queue, setQueue] = useState(MOCK_QUEUE);
+  const [queue, setQueue] = React.useState(getDynamicQueue());
   const [conflicts, setConflicts] = useState(MOCK_CONFLICTS);
   const [activeTab, setActiveTab] = useState('queue');
+
+  React.useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      setQueue(prev => {
+        const newDynamic = getDynamicQueue();
+        const merged = newDynamic.map(dyn => {
+          const existing = prev.find(p => p.id === dyn.id);
+          return existing ? { ...dyn, status: existing.status } : dyn;
+        });
+        return merged;
+      });
+    });
+    return unsubscribe;
+  }, []);
 
   const pending = queue.filter(q => q.status === 'pending').length;
   const failed = queue.filter(q => q.status === 'failed').length;
