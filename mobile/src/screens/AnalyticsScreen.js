@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
+import { SRA_PRICE_HISTORY, subscribe, getCurrentSession, MOCK_FIELDS } from '../data/mockData';
 
 const { width } = Dimensions.get('window');
 
@@ -22,6 +23,13 @@ const FIELD_COSTS = [
   { id: 'FLD-KTR-009', costPerHa: 10100, ha: 0.8 },
 ];
 
+const BLOCK_FARM_COSTS = [
+  { id: 'Block Farm A', costPerHa: 12400, ha: 34.5 },
+  { id: 'Block Farm B', costPerHa: 14200, ha: 28.0 },
+  { id: 'Block Farm C', costPerHa: 9800, ha: 45.2 },
+  { id: 'Block Farm D', costPerHa: 11500, ha: 22.0 },
+];
+
 const CROP_STAGES = [
   { label: 'Land Prep', ha: 3.0, color: '#8F3A8F', icon: 'construct' },
   { label: 'Planting', ha: 5.5, color: '#4A7C2F', icon: 'leaf' },
@@ -30,29 +38,45 @@ const CROP_STAGES = [
   { label: 'Harvesting', ha: 1.5, color: '#D9534F', icon: 'basket' },
 ];
 
-const SRA_PRICE_HISTORY = [
-  { week: 'Week 1', month: 'Mar', price: 2450 },
-  { week: 'Week 2', month: 'Mar', price: 2500 },
-  { week: 'Week 3', month: 'Mar', price: 2480 },
-  { week: 'Week 4', month: 'Mar', price: 2550 },
-  { week: 'Week 1', month: 'Apr', price: 2600 },
-  { week: 'Week 2', month: 'Apr', price: 2580 },
-  { week: 'Week 3', month: 'Apr', price: 2650 },
-  { week: 'Week 4', month: 'Apr', price: 2700 },
-  { week: 'Week 1', month: 'May', price: 2720 },
-  { week: 'Week 2', month: 'May', price: 2750 },
-  { week: 'Week 3', month: 'May', price: 2800 },
-  { week: 'Week 4', month: 'May', price: 2800 },
-];
-
-const maxPrice = Math.max(...SRA_PRICE_HISTORY.map(p => p.price));
-const minPrice = Math.min(...SRA_PRICE_HISTORY.map(p => p.price));
-const maxFieldCost = Math.max(...FIELD_COSTS.map(f => f.costPerHa));
-const totalHa = CROP_STAGES.reduce((sum, s) => sum + s.ha, 0);
-const totalCost = COST_BREAKDOWN.reduce((sum, c) => sum + c.amount, 0);
-
 export default function AnalyticsScreen({ navigation }) {
   const [tab, setTab] = useState('financial');
+  const [priceHistory, setPriceHistory] = useState([...SRA_PRICE_HISTORY]);
+  const session = getCurrentSession();
+  
+  const isMember = session.role === 'Member';
+  const isSRA = session.role === 'SRA (Admin)';
+  
+  const memberFieldIds = isMember ? MOCK_FIELDS.filter(f => f.member === session.name).map(f => f.id) : [];
+  const displayFieldCosts = isMember ? FIELD_COSTS.filter(fc => memberFieldIds.includes(fc.id)) : (isSRA ? BLOCK_FARM_COSTS : FIELD_COSTS);
+  const dataMaxCost = Math.max(...displayFieldCosts.map(d => d.costPerHa));
+  
+  const rawTotalHa = isSRA ? BLOCK_FARM_COSTS.reduce((sum, s) => sum + s.ha, 0) : CROP_STAGES.reduce((sum, s) => sum + s.ha, 0);
+  const rawTotalCost = isSRA ? 1580000 : COST_BREAKDOWN.reduce((sum, c) => sum + c.amount, 0);
+  
+  const displayTotalHa = isMember ? displayFieldCosts.reduce((s, f) => s + f.ha, 0) : rawTotalHa;
+  const scale = isMember && rawTotalHa > 0 ? (displayTotalHa / rawTotalHa) : (isSRA ? 12 : 1);
+  const displayTotalCost = rawTotalCost * (isSRA ? 1 : scale);
+  
+  const displayCostBreakdown = COST_BREAKDOWN.map(c => ({
+    ...c, amount: c.amount * (isSRA ? 12 : scale)
+  }));
+  
+  const displayCropStages = isMember ? MOCK_FIELDS.filter(f => f.member === session.name).map(f => ({
+    label: f.stage,
+    ha: parseFloat(f.ha || 0),
+    color: COLORS.primary,
+    icon: 'leaf'
+  })) : CROP_STAGES.map(s => ({...s, ha: s.ha * (isSRA ? 5.5 : 1)}));
+
+  useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      setPriceHistory([...SRA_PRICE_HISTORY]);
+    });
+    return unsubscribe;
+  }, []);
+
+  const maxPrice = Math.max(...priceHistory.map(p => p.price));
+  const minPrice = Math.min(...priceHistory.map(p => p.price));
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -72,19 +96,22 @@ export default function AnalyticsScreen({ navigation }) {
       </View>
 
       {/* Tab Bar */}
-      <View style={s.tabBar}>
-        {[
-          { key: 'financial', label: 'Financial Diagnostics', icon: 'cash-outline' },
-          { key: 'crop', label: 'Crop Diagnostics', icon: 'leaf-outline' },
-        ].map(t => (
-          <TouchableOpacity
-            key={t.key}
-            style={[s.tab, tab === t.key && s.tabActive]}
-            onPress={() => setTab(t.key)}
-          >
-            <Text style={[s.tabText, tab === t.key && s.tabTextActive]}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
+      <View style={{ borderBottomWidth: 1, borderBottomColor: COLORS.border, backgroundColor: '#fff' }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: SPACING.md }}>
+          {[
+            { key: 'financial', label: 'Financial Diagnostics' },
+            { key: 'crop', label: 'Crop Diagnostics' },
+            { key: 'sync', label: 'Offline Sync Lag' },
+          ].map(t => (
+            <TouchableOpacity
+              key={t.key}
+              style={[s.tab, { paddingHorizontal: 16 }, tab === t.key && s.tabActive]}
+              onPress={() => setTab(t.key)}
+            >
+              <Text style={[s.tabText, tab === t.key && s.tabTextActive]}>{t.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
@@ -98,32 +125,32 @@ export default function AnalyticsScreen({ navigation }) {
             <View style={s.kpiRow}>
               <View style={s.kpiCard}>
                 <Text style={s.kpiLabel}>Total Op. Cost</Text>
-                <Text style={s.kpiValue}>Php {(totalCost / 1000).toFixed(1)}k</Text>
+                <Text style={s.kpiValue}>Php {(displayTotalCost / 1000).toFixed(1)}k</Text>
               </View>
               <View style={s.kpiCard}>
                 <Text style={s.kpiLabel}>Avg Cost / Ha</Text>
-                <Text style={s.kpiValue}>Php {Math.round(totalCost / totalHa).toLocaleString()}</Text>
+                <Text style={s.kpiValue}>Php {displayTotalHa > 0 ? Math.round(displayTotalCost / displayTotalHa).toLocaleString() : 0}</Text>
               </View>
               <View style={s.kpiCard}>
-                <Text style={s.kpiLabel}>Active Fields</Text>
-                <Text style={s.kpiValue}>{FIELD_COSTS.length}</Text>
+                <Text style={s.kpiLabel}>{isSRA ? 'Active Block Farms' : 'Active Fields'}</Text>
+                <Text style={s.kpiValue}>{displayFieldCosts.length}</Text>
               </View>
             </View>
 
             {/* Cost Breakdown Donut-style list */}
             <View style={s.card}>
               <Text style={s.cardTitle}>Operational Cost Breakdown</Text>
-              <Text style={s.cardSub}>Block farm total: Php {totalCost.toLocaleString()}</Text>
+              <Text style={s.cardSub}>{isMember ? 'Your fields total' : 'Block farm total'}: Php {displayTotalCost.toLocaleString('en-US', {maximumFractionDigits: 0})}</Text>
 
               {/* Donut Bar */}
               <View style={s.donutBar}>
-                {COST_BREAKDOWN.map(c => (
+                {displayCostBreakdown.map(c => (
                   <View key={c.label} style={[s.donutSegment, { flex: c.value, backgroundColor: c.color }]} />
                 ))}
               </View>
 
               {/* Legend + Bars */}
-              {COST_BREAKDOWN.map(c => (
+              {displayCostBreakdown.map(c => (
                 <View key={c.label} style={s.breakRow}>
                   <View style={[s.breakDot, { backgroundColor: c.color }]} />
                   <View style={s.breakBody}>
@@ -134,37 +161,39 @@ export default function AnalyticsScreen({ navigation }) {
                     <View style={s.breakTrack}>
                       <View style={[s.breakFill, { width: `${c.value}%`, backgroundColor: c.color }]} />
                     </View>
-                    <Text style={s.breakAmt}>Php {c.amount.toLocaleString()}</Text>
+                    <Text style={s.breakAmt}>Php {c.amount.toLocaleString('en-US', {maximumFractionDigits: 0})}</Text>
                   </View>
                 </View>
               ))}
             </View>
 
             {/* Cost per Hectare Comparison */}
-            <View style={s.card}>
-              <Text style={s.cardTitle}>Cost-per-Hectare Efficiency</Text>
-              <Text style={s.cardSub}>Compare operational cost efficiency across active fields</Text>
-              {FIELD_COSTS.map(f => {
-                const pct = (f.costPerHa / maxFieldCost) * 100;
-                const isHigh = f.costPerHa === maxFieldCost;
-                return (
-                  <View key={f.id} style={s.effRow}>
-                    <View style={s.effLeft}>
-                      <Text style={s.effId}>{f.id}</Text>
-                      <Text style={s.effHa}>{f.ha} Ha</Text>
+            {!isMember && (
+              <View style={s.card}>
+                <Text style={s.cardTitle}>Cost-per-Hectare Efficiency</Text>
+                <Text style={s.cardSub}>{isSRA ? 'Compare operational cost efficiency across Block Farms' : 'Compare operational cost efficiency across active fields'}</Text>
+                {displayFieldCosts.map(item => {
+                  const pct = (item.costPerHa / dataMaxCost) * 100;
+                  const isHigh = item.costPerHa === dataMaxCost;
+                  return (
+                    <View key={item.id} style={s.effRow}>
+                      <View style={s.effLeft}>
+                        <Text style={s.effId}>{item.id}</Text>
+                        <Text style={s.effHa}>{item.ha} Ha</Text>
+                      </View>
+                      <View style={s.effBarWrap}>
+                        <View style={[s.effBar, { width: `${pct}%`, backgroundColor: isHigh ? '#D9534F' : COLORS.primary }]} />
+                      </View>
+                      <Text style={[s.effCost, isHigh && { color: '#D9534F' }]}>₱{(item.costPerHa / 1000).toFixed(1)}k</Text>
                     </View>
-                    <View style={s.effBarWrap}>
-                      <View style={[s.effBar, { width: `${pct}%`, backgroundColor: isHigh ? '#D9534F' : COLORS.primary }]} />
-                    </View>
-                    <Text style={[s.effCost, isHigh && { color: '#D9534F' }]}>₱{(f.costPerHa / 1000).toFixed(1)}k</Text>
-                  </View>
-                );
-              })}
-              <View style={s.effNote}>
-                <Ionicons name="information-circle-outline" size={13} color={COLORS.blue} />
-                <Text style={s.effNoteText}>FLD-KTR-007 is the highest cost field. Manager may want to review its operations.</Text>
+                  );
+                })}
+                <View style={s.effNote}>
+                  <Ionicons name="information-circle-outline" size={13} color={COLORS.blue} />
+                  <Text style={s.effNoteText}>{isSRA ? 'Block Farm B has the highest average cost. Consider reviewing their aggregated reports.' : 'FLD-KTR-007 is the highest cost field. Manager may want to review its operations.'}</Text>
+                </View>
               </View>
-            </View>
+            )}
           </>
         )}
 
@@ -176,25 +205,25 @@ export default function AnalyticsScreen({ navigation }) {
             {/* Crop Stage Distribution */}
             <View style={s.card}>
               <Text style={s.cardTitle}>Hectares by Crop Stage</Text>
-              <Text style={s.cardSub}>Total: {totalHa} Ha across {FIELD_COSTS.length} active fields</Text>
+              <Text style={s.cardSub}>Total: {displayTotalHa.toFixed(1)} Ha across {displayFieldCosts.length} active {isSRA ? 'block farm(s)' : 'field(s)'}</Text>
 
               {/* Stage Bar */}
               <View style={s.stageBar}>
-                {CROP_STAGES.map(st => (
-                  <View key={st.label} style={[s.stageSegment, { flex: st.ha, backgroundColor: st.color }]} />
+                {displayCropStages.map((st, i) => (
+                  <View key={st.label + i} style={[s.stageSegment, { flex: st.ha || 1, backgroundColor: st.color }]} />
                 ))}
               </View>
 
-              {CROP_STAGES.map(st => (
-                <View key={st.label} style={s.stageRow}>
+              {displayCropStages.map((st, i) => (
+                <View key={st.label + i} style={s.stageRow}>
                   <View style={[s.stageDot, { backgroundColor: st.color }]} />
                   <Ionicons name={st.icon} size={14} color={st.color} />
                   <Text style={s.stageLabel}>{st.label}</Text>
                   <View style={s.stageBarMini}>
-                    <View style={[s.stageBarFill, { width: `${(st.ha / totalHa) * 100}%`, backgroundColor: st.color + '50' }]} />
+                    <View style={[s.stageBarFill, { width: `${displayTotalHa > 0 ? (st.ha / displayTotalHa) * 100 : 0}%`, backgroundColor: st.color + '50' }]} />
                   </View>
                   <Text style={s.stageHa}>{st.ha} Ha</Text>
-                  <Text style={s.stagePct}>{((st.ha / totalHa) * 100).toFixed(0)}%</Text>
+                  <Text style={s.stagePct}>{displayTotalHa > 0 ? ((st.ha / displayTotalHa) * 100).toFixed(0) : 0}%</Text>
                 </View>
               ))}
             </View>
@@ -216,7 +245,7 @@ export default function AnalyticsScreen({ navigation }) {
               <View style={s.priceKpiRow}>
                 <View style={s.priceKpi}>
                   <Text style={s.priceKpiLabel}>Current</Text>
-                  <Text style={[s.priceKpiVal, { color: COLORS.primary }]}>₱{SRA_PRICE_HISTORY[SRA_PRICE_HISTORY.length - 1].price.toLocaleString()}</Text>
+                  <Text style={[s.priceKpiVal, { color: COLORS.primary }]}>₱{priceHistory[priceHistory.length - 1].price.toLocaleString()}</Text>
                 </View>
                 <View style={s.priceKpiDiv} />
                 <View style={s.priceKpi}>
@@ -239,9 +268,9 @@ export default function AnalyticsScreen({ navigation }) {
                 </View>
                 <View style={s.pricePlotArea}>
                   <View style={s.priceBarsRow}>
-                    {SRA_PRICE_HISTORY.map((item, i) => {
+                    {priceHistory.map((item, i) => {
                       const pct = ((item.price - 2300) / (2900 - 2300)) * 100;
-                      const isLatest = i === SRA_PRICE_HISTORY.length - 1;
+                      const isLatest = i === priceHistory.length - 1;
                       return (
                         <View key={i} style={s.priceBarCol}>
                           <View style={s.priceBarTrack}>
@@ -252,7 +281,7 @@ export default function AnalyticsScreen({ navigation }) {
                     })}
                   </View>
                   <View style={s.priceXAxisRow}>
-                    {SRA_PRICE_HISTORY.map((item, i) => (
+                    {priceHistory.map((item, i) => (
                       <View key={i} style={s.priceXAxisCol}>
                         {i % 3 === 0 ? (
                           <Text style={s.priceXLabel}>{item.week}{'\n'}{item.month}</Text>
@@ -267,6 +296,82 @@ export default function AnalyticsScreen({ navigation }) {
             </View>
           </>
         )}
+
+        {/* ════════════════════════════════════ */}
+        {/* ════════════════════════════════════ */}
+        {/* OFFLINE SYNC & LAG DIAGNOSTICS TAB */}
+        {/* ════════════════════════════════════ */}
+        {tab === 'sync' && (() => {
+          const syncedItems = isMember ? session.syncedLogs : (isSRA ? 3412 : 412);
+          const pendingItems = isMember ? session.pendingLogs : (isSRA ? 158 : 38);
+          const totalItems = syncedItems + pendingItems;
+          const syncPct = totalItems === 0 ? 100 : (syncedItems / totalItems) * 100;
+
+          return (
+            <>
+              <View style={s.kpiRow}>
+                <View style={s.kpiCard}>
+                  <Text style={s.kpiLabel}>Sync Success Rate</Text>
+                  <Text style={[s.kpiValue, { color: COLORS.success }]}>{syncPct.toFixed(1)}%</Text>
+                </View>
+                <View style={s.kpiCard}>
+                  <Text style={s.kpiLabel}>Pending Sync</Text>
+                  <Text style={[s.kpiValue, { color: pendingItems > 0 ? '#D9534F' : COLORS.success }]}>{pendingItems} Logs</Text>
+                </View>
+              </View>
+
+              <View style={s.card}>
+                <Text style={s.cardTitle}>Offline Architecture Diagnostics</Text>
+                <Text style={s.cardSub}>Local storage vs Cloud database status</Text>
+
+                <View style={{ alignItems: 'center', marginVertical: 24 }}>
+                  <View style={{ height: 120, width: 120, borderRadius: 60, borderWidth: 16, borderColor: COLORS.background, justifyContent: 'center', alignItems: 'center' }}>
+                    {/* Simulated Donut segments */}
+                    <View style={{ position: 'absolute', top: -16, left: -16, right: -16, bottom: -16, borderRadius: 76, borderWidth: 16, borderColor: COLORS.success, borderRightColor: 'transparent', borderTopColor: 'transparent', transform: [{ rotate: '-45deg' }] }} />
+                    <View style={{ position: 'absolute', top: -16, left: -16, right: -16, bottom: -16, borderRadius: 76, borderWidth: 16, borderColor: COLORS.success, borderLeftColor: 'transparent', borderBottomColor: 'transparent', transform: [{ rotate: '-45deg' }] }} />
+                    {pendingItems > 0 && (
+                      <View style={{ position: 'absolute', top: -16, left: -16, right: -16, bottom: -16, borderRadius: 76, borderWidth: 16, borderColor: '#D9534F', borderBottomColor: 'transparent', borderLeftColor: 'transparent', borderRightColor: 'transparent', transform: [{ rotate: '15deg' }] }} />
+                    )}
+                    
+                    <Text style={{ fontSize: 24, fontWeight: '800', color: COLORS.text }}>{totalItems}</Text>
+                    <Text style={{ fontSize: 10, color: COLORS.textMuted }}>Total Logs</Text>
+                  </View>
+                </View>
+
+                <View style={{ gap: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.success }} />
+                      <Text style={{ fontSize: 14, color: COLORS.text }}>Fully Synced to Cloud</Text>
+                    </View>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: COLORS.text }}>{syncedItems}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: pendingItems > 0 ? '#D9534F' : COLORS.success }} />
+                      <Text style={{ fontSize: 14, color: COLORS.text }}>Pending Offline Lag</Text>
+                    </View>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: COLORS.text }}>{pendingItems}</Text>
+                  </View>
+                </View>
+
+                {pendingItems > 0 ? (
+                  <View style={{ marginTop: 20, padding: 12, backgroundColor: '#FFFBF0', borderRadius: 8, borderWidth: 1, borderColor: '#FEF0D0' }}>
+                    <Text style={{ fontSize: 12, color: '#A06000', fontStyle: 'italic' }}>
+                      <Ionicons name="warning-outline" size={12} /> Warning: High offline lag detected. {isMember ? "Please connect to Wi-Fi to sync your logs." : "Farmers in specific zones may not have had internet access recently. Remind them to connect to Wi-Fi."}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={{ marginTop: 20, padding: 12, backgroundColor: '#F2FBF2', borderRadius: 8, borderWidth: 1, borderColor: '#E8F5E8' }}>
+                    <Text style={{ fontSize: 12, color: '#267326', fontStyle: 'italic' }}>
+                      <Ionicons name="checkmark-circle-outline" size={12} /> Excellent: All logs are fully synchronized with the cloud.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </>
+          );
+        })()}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -352,8 +457,8 @@ const s = StyleSheet.create({
   priceBarCol: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
   priceBarTrack: { flex: 1, width: '80%', justifyContent: 'flex-end' },
   priceBarFill: { width: '100%', borderRadius: 2, minHeight: 4 },
-  priceXAxisRow: { flexDirection: 'row', gap: 2, marginTop: 6, height: 24 },
-  priceXAxisCol: { flex: 1, alignItems: 'center' },
-  priceXLabel: { fontSize: 8, color: COLORS.textSecondary, fontWeight: '600', textAlign: 'center', lineHeight: 10 },
+  priceXAxisRow: { flexDirection: 'row', gap: 2, marginTop: 6, height: 24, zIndex: 10 },
+  priceXAxisCol: { flex: 1, alignItems: 'center', overflow: 'visible' },
+  priceXLabel: { fontSize: 8, color: COLORS.textSecondary, fontWeight: '600', textAlign: 'center', lineHeight: 10, width: 40 },
   priceNote: { fontSize: 10, color: COLORS.textMuted, textAlign: 'center', paddingTop: 4 },
 });

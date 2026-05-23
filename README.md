@@ -7,16 +7,14 @@ An offline-first agricultural management system designed specifically for sugarc
 *   **/mobile**
     React Native (Expo) application utilizing AsyncStorage for offline-first data caching. Designed for Field Members and Farm Managers to log the 8-stage crop cycle without requiring an active internet connection.
 *   **/admin**
-    Web-based administration console built with HTML, CSS (Tailwind CSS v4), and JavaScript. Designed for Farm Managers and SRA Checkers to review descriptive analytics, track weekly SRA sugar prices, and generate certified audit reports.
-*   **server.js**
-    Custom Node.js (Express) backend server designed to handle database management and offline-to-cloud synchronization from the mobile application.
+    Web-based administration console built with HTML, CSS (Tailwind CSS v4), and JavaScript. Designed for Farm Managers and SRA (Admin) to review descriptive analytics, track weekly SRA sugar prices, and generate certified audit reports.
 
-## Core Technical Features
-
-*   **Offline-First Architecture**: Field logs are cached locally on the device using AsyncStorage when internet connectivity is unavailable, and automatically synchronized to the server once connection is restored.
-*   **Standardized 8-Stage Crop Cycle**: Enforces strict chronological agricultural tracking (from Land Preparation to Ratooning) to ensure accurate operational data.
-*   **Role-Based Access Control (RBAC)**: Strict permission tiers separating Field Members, Farm Managers, SRA Checkers, and Super Admins.
-*   **SRA QR Audit Verification**: End-to-end audit capability allowing SRA Checkers to verify and certify field operation logs via encrypted hash codes.
+### Key Features
+*   **Offline-First Field Logging**: Members log operations offline; Managers approve them when online.
+*   **Dynamic Role Switcher**: UI dynamically adapts to 4 roles (Member, Farm Manager, SRA (Admin), Super Admin) instantly.
+*   **Visual Diagnostic Dashboard**: Real-time breakdown of operational expenses, crop stages, and SRA prices using custom UI components.
+*   **Role-Based Access Control (RBAC)**: Strict permission tiers separating Field Members, Farm Managers, SRA (Admin), and Super Admins.
+*   **SRA QR Audit Verification**: End-to-end audit capability allowing SRA (Admin) to verify and certify field operation logs via encrypted hash codes.
 
 ## Getting Started
 

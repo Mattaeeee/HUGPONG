@@ -1,5 +1,7 @@
 @echo off
-cd /d "c:\Users\Matt\Documents\HUGPONG\mobile"
+setlocal
+set "ROOT=%~dp0"
+cd /d "%ROOT%mobile"
 title HUGPONG Expo Mobile App
 echo Starting HUGPONG Expo Mobile App...
 npm start

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Animated, Modal, Dimensions,
+  Animated, Modal, Dimensions, TextInput, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +32,14 @@ export default function HomeScreen({ navigation }) {
   const [notifs, setNotifs] = useState(NOTIFICATIONS);
   const [synced, setSyncedState] = useState(getIsSynced());
   const [session, setSessionState] = useState(getCurrentSession());
+  
+  // Dynamic SRA Price States
+  const [livePrice, setLivePrice] = useState(MOCK_PRICE.value);
+  const [liveMol, setLiveMol] = useState(MOCK_MOL.value);
+  const [showPriceModal, setShowPriceModal] = useState(false);
+  const [inputBag, setInputBag] = useState('');
+  const [inputMol, setInputMol] = useState('');
+
   const unreadCount = notifs.filter(n => n.unread).length;
   const slideAnim = useRef(new Animated.Value(-400)).current;
 
@@ -78,7 +86,17 @@ export default function HomeScreen({ navigation }) {
         )}
 
         {/* ── HPCo Silay Price Card ── */}
-        <View style={[s.card, s.priceCard]}>
+        <TouchableOpacity 
+          style={[s.card, s.priceCard]} 
+          activeOpacity={session.role === 'SRA (Admin)' ? 0.7 : 1}
+          onPress={() => {
+            if (session.role === 'SRA (Admin)') {
+              setInputBag(livePrice.toString());
+              setInputMol(liveMol.toString());
+              setShowPriceModal(true);
+            }
+          }}
+        >
           <View style={s.priceCardHeader}>
             <View style={s.priceSourceRow}>
               <View style={[s.sourceDot, !synced && { backgroundColor: COLORS.accent }]} />
@@ -94,7 +112,7 @@ export default function HomeScreen({ navigation }) {
             <View style={s.pricePairItem}>
               <Text style={s.pricePairTag}>B</Text>
               <Text style={s.pricePairValue}>
-                {price.value.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                {livePrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
               </Text>
               <View style={s.priceChangeRow}>
                 <Ionicons name="caret-up" size={11} color={COLORS.success} />
@@ -109,13 +127,13 @@ export default function HomeScreen({ navigation }) {
             <View style={s.pricePairItem}>
               <Text style={s.pricePairTag}>Mol</Text>
               <Text style={s.pricePairValue}>
-                {mol.value.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                {liveMol.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
               </Text>
               <View style={{ height: 16 }} />
               <Text style={s.pricePairUnit}>per MT</Text>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
 
 
@@ -212,27 +230,67 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         {/* ── Active Fields Quick View ── */}
-        <View style={s.card}>
-          <Text style={s.sectionTitle}>My Active Fields</Text>
-          {MOCK_FIELDS.filter(f => f.member === session.name).length > 0 ? (
-            MOCK_FIELDS.filter(f => f.member === session.name).map(field => (
-              <View key={field.id} style={s.fieldRow}>
-                <View style={[s.fieldStatusDot, { backgroundColor: field.month > 8 ? COLORS.accent : COLORS.success }]} />
-                <View style={s.fieldBody}>
-                  <Text style={s.fieldId}>{field.id} · {field.ha} Ha</Text>
-                  <Text style={s.fieldStage}>{field.stage}</Text>
+        {session.role !== 'SRA (Admin)' && (
+          <View style={s.card}>
+            <Text style={s.sectionTitle}>{session.role === 'Farm Manager' ? 'Active Managing Fields' : 'My Active Fields'}</Text>
+            {(() => {
+              const displayFields = session.role === 'Farm Manager' 
+                ? MOCK_FIELDS.filter(f => f.blockFarm && f.blockFarm.startsWith(session.farm))
+                : MOCK_FIELDS.filter(f => f.member === session.name);
+              
+              return displayFields.length > 0 ? (
+                displayFields.map(field => (
+                  <View key={field.id} style={s.fieldRow}>
+                    <View style={[s.fieldStatusDot, { backgroundColor: field.month > 8 ? COLORS.accent : COLORS.success }]} />
+                    <View style={s.fieldBody}>
+                      <Text style={s.fieldId}>{field.id} · {field.ha} Ha</Text>
+                      <Text style={s.fieldStage}>{field.stage}</Text>
+                    </View>
+                    <Text style={s.fieldAge}>{field.month} months</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={{ fontSize: 13, color: COLORS.textMuted, marginVertical: 10 }}>No active fields assigned yet.</Text>
+              );
+            })()}
+            <TouchableOpacity style={s.analyticsBtn} onPress={() => navigation.navigate('Field Ops')}>
+              <Text style={s.analyticsBtnText}>Manage Field Operations</Text>
+              <Ionicons name="chevron-forward" size={15} color={COLORS.primaryLight} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── Active Block Farms Quick View (SRA) ── */}
+        {session.role === 'SRA (Admin)' && (
+          <View style={s.card}>
+            <Text style={s.sectionTitle}>Active Block Farms</Text>
+            {(() => {
+              const blockFarms = {};
+              MOCK_FIELDS.forEach(f => {
+                const farm = f.blockFarm || 'Silay Block Farm';
+                if (!blockFarms[farm]) blockFarms[farm] = { name: farm, totalHa: 0, fieldsCount: 0 };
+                blockFarms[farm].totalHa += parseFloat(f.ha || 0);
+                blockFarms[farm].fieldsCount += 1;
+              });
+              const activeFarms = Object.values(blockFarms);
+
+              return activeFarms.map((farm, i) => (
+                <View key={i} style={s.fieldRow}>
+                  <View style={[s.fieldStatusDot, { backgroundColor: COLORS.primary }]} />
+                  <View style={s.fieldBody}>
+                    <Text style={s.fieldId}>{farm.name}</Text>
+                    <Text style={s.fieldStage}>{farm.fieldsCount} Active Fields</Text>
+                  </View>
+                  <Text style={[s.fieldAge, { color: COLORS.primary, fontWeight: '700' }]}>{farm.totalHa.toFixed(1)} Ha</Text>
                 </View>
-                <Text style={s.fieldAge}>{field.month} months</Text>
-              </View>
-            ))
-          ) : (
-            <Text style={{ fontSize: 13, color: COLORS.textMuted, marginVertical: 10 }}>No active fields assigned yet.</Text>
-          )}
-          <TouchableOpacity style={s.analyticsBtn} onPress={() => navigation.navigate('Field Ops')}>
-            <Text style={s.analyticsBtnText}>Manage Field Operations</Text>
-            <Ionicons name="chevron-forward" size={15} color={COLORS.primaryLight} />
-          </TouchableOpacity>
-        </View>
+              ));
+            })()}
+            <TouchableOpacity style={s.analyticsBtn} onPress={() => navigation.navigate('Field Ops')}>
+              <Text style={s.analyticsBtnText}>View District Operations</Text>
+              <Ionicons name="chevron-forward" size={15} color={COLORS.primaryLight} />
+            </TouchableOpacity>
+          </View>
+        )}
 
       </ScrollView>
 
@@ -264,6 +322,61 @@ export default function HomeScreen({ navigation }) {
           ))}
         </Animated.View>
       </Modal>
+
+      {/* ── Post Price Modal (SRA Admin) ── */}
+      <Modal visible={showPriceModal} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#fff', width: '100%', borderRadius: RADIUS.xl, padding: 20, ...SHADOW.card }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: COLORS.text }}>Post Official Price</Text>
+              <TouchableOpacity onPress={() => setShowPriceModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ gap: 16 }}>
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.textSecondary, marginBottom: 8 }}>Price per Bag (Lkg)</Text>
+                <TextInput
+                  style={{ backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 12, fontSize: 16, fontWeight: '600' }}
+                  keyboardType="decimal-pad"
+                  value={inputBag}
+                  onChangeText={setInputBag}
+                />
+              </View>
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.textSecondary, marginBottom: 8 }}>Price per Molasses (MT)</Text>
+                <TextInput
+                  style={{ backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 12, fontSize: 16, fontWeight: '600' }}
+                  keyboardType="decimal-pad"
+                  value={inputMol}
+                  onChangeText={setInputMol}
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={{ backgroundColor: COLORS.primary, padding: 16, borderRadius: 10, alignItems: 'center', marginTop: 24, flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+              onPress={() => {
+                const b = parseFloat(inputBag);
+                const m = parseFloat(inputMol);
+                if (isNaN(b) || isNaN(m)) {
+                  Alert.alert('Error', 'Please enter valid numbers');
+                  return;
+                }
+                setLivePrice(b);
+                setLiveMol(m);
+                setShowPriceModal(false);
+                Alert.alert('Price Posted ✓', 'The new SRA prices have been successfully updated on the dashboard.');
+              }}
+            >
+              <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
+              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Post New Price</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }

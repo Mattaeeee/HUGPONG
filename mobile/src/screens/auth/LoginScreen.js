@@ -34,7 +34,7 @@ export default function LoginScreen({ navigation }) {
     } else if (cleaned === '09189876543') {
       setSession('Farm Manager');
     } else if (cleaned === '09194448888') {
-      setSession('SRA Checker');
+      setSession('SRA (Admin)');
     } else {
       // default
       setSession('Member');
@@ -135,7 +135,7 @@ export default function LoginScreen({ navigation }) {
               {[
                 { role: 'Member', name: 'Juan dela Cruz (Member)', color: '#4A7C2F', sub: 'Log operations & offline tasks' },
                 { role: 'Farm Manager', name: 'Jose Reyes (Farm Manager)', color: '#1A6B9A', sub: 'Approve logs & generate QR' },
-                { role: 'SRA Checker', name: 'Maria Santos (SRA Checker)', color: '#8F3A8F', sub: 'Scan QR & compile sugar reports' },
+                { role: 'SRA (Admin)', name: 'Maria Santos (SRA Admin)', color: '#8F3A8F', sub: 'Scan QR & compile sugar reports' },
               ].map(d => (
                 <TouchableOpacity
                   key={d.role}

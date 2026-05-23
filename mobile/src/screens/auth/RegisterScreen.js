@@ -1,36 +1,34 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ScrollView, Animated,
+  KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../../theme';
 
-const ROLES = ['Member', 'Farm Manager', 'SRA Checker'];
-const TOTAL_STEPS = 4;
+const ROLES = ['Member', 'Farm Manager', 'SRA (Admin)'];
 
 const ROLE_DESCRIPTIONS = {
   'Member': 'Logs weekly/monthly field operations',
   'Farm Manager': 'Reviews logs & compiles SRA reports',
-  'SRA Checker': 'Scans QR & audits monthly reports',
+  'SRA (Admin)': 'Scans QR & audits monthly reports',
 };
 
-const STEP_TITLES = [
-  { title: 'Personal Info', sub: 'Tell us about yourself' },
-  { title: 'Your Role', sub: 'Select your role in the block farm' },
-  { title: 'Contact Number', sub: 'Used as your login credential' },
-  { title: 'Set Password', sub: 'Secure your HUGPONG account' },
+const BLOCK_FARMS = [
+  'Silay Block Farm A',
+  'Silay Block Farm B',
+  'Silay Block Farm C'
 ];
 
-function ProgressBar({ step }) {
-  const pct = ((step) / TOTAL_STEPS) * 100;
+function ProgressBar({ step, totalSteps }) {
+  const pct = ((step) / totalSteps) * 100;
   return (
     <View style={pb.wrap}>
       <View style={pb.track}>
         <View style={[pb.fill, { width: `${pct}%` }]} />
       </View>
-      <Text style={pb.label}>Step {step} of {TOTAL_STEPS}</Text>
+      <Text style={pb.label}>Step {step} of {totalSteps}</Text>
     </View>
   );
 }
@@ -97,10 +95,15 @@ const rc = StyleSheet.create({
 export default function RegisterScreen({ navigation }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
-    fullName: '',
+    firstName: '',
+    middleInitial: '',
+    lastName: '',
+    nickname: '',
     role: '',
+    blockFarm: '',
     contactNumber: '',
-    password: '', confirmPassword: '',
+    password: '', 
+    confirmPassword: '',
   });
   const [showPw, setShowPw] = useState(false);
   const [showCPw, setShowCPw] = useState(false);
@@ -109,21 +112,44 @@ export default function RegisterScreen({ navigation }) {
 
   const set = (key, val) => { setForm(p => ({ ...p, [key]: val })); setErrors(p => ({ ...p, [key]: null })); };
 
+  const requiresBlockFarm = ['Member', 'Farm Manager'].includes(form.role);
+  
+  const getStepTitles = () => {
+    const titles = [
+      { title: 'Personal Info', sub: 'Tell us about yourself' },
+      { title: 'Your Role', sub: 'Select your role in the block farm' },
+    ];
+    if (requiresBlockFarm) {
+      titles.push({ title: 'Block Farm', sub: 'Assign your registry location' });
+    }
+    titles.push({ title: 'Contact Number', sub: 'Used as your login credential' });
+    titles.push({ title: 'Set Password', sub: 'Secure your HUGPONG account' });
+    return titles;
+  };
+
+  const stepTitles = getStepTitles();
+  const totalSteps = stepTitles.length;
+  const activeStepTitle = stepTitles[step - 1].title;
+
   const validateStep = () => {
     const e = {};
-    if (step === 1) {
-      if (!form.fullName.trim()) e.fullName = 'Full name is required';
+    if (activeStepTitle === 'Personal Info') {
+      if (!form.firstName.trim()) e.firstName = 'First name is required';
+      if (!form.lastName.trim()) e.lastName = 'Last name is required';
     }
-    if (step === 2) {
+    if (activeStepTitle === 'Your Role') {
       if (!form.role) e.role = 'Please select a role';
     }
-    if (step === 3) {
+    if (activeStepTitle === 'Block Farm') {
+      if (!form.blockFarm) e.blockFarm = 'Please select a block farm';
+    }
+    if (activeStepTitle === 'Contact Number') {
       const cleaned = form.contactNumber.replace(/\s/g, '');
       if (!cleaned.startsWith('09') || cleaned.length !== 11) {
         e.contactNumber = 'Enter a valid PH mobile number (09XXXXXXXXX)';
       }
     }
-    if (step === 4) {
+    if (activeStepTitle === 'Set Password') {
       if (form.password.length < 8) e.password = 'Minimum 8 characters';
       if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match';
     }
@@ -133,7 +159,7 @@ export default function RegisterScreen({ navigation }) {
 
   const next = () => {
     if (!validateStep()) return;
-    if (step < TOTAL_STEPS) { setStep(s => s + 1); return; }
+    if (step < totalSteps) { setStep(s => s + 1); return; }
     setLoading(true);
     setTimeout(() => { setLoading(false); navigation.replace('MainTabs'); }, 1400);
   };
@@ -153,23 +179,32 @@ export default function RegisterScreen({ navigation }) {
         </View>
 
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-          <ProgressBar step={step} />
+          <ProgressBar step={step} totalSteps={totalSteps} />
 
           <View style={s.stepHeader}>
-            <Text style={s.stepTitle}>{STEP_TITLES[step - 1].title}</Text>
-            <Text style={s.stepSub}>{STEP_TITLES[step - 1].sub}</Text>
+            <Text style={s.stepTitle}>{stepTitles[step - 1].title}</Text>
+            <Text style={s.stepSub}>{stepTitles[step - 1].sub}</Text>
           </View>
 
           <View style={s.card}>
-            {/* STEP 1 */}
-            {step === 1 && <>
-              <Field label="Full Name *" error={errors.fullName}>
-                <InputBox icon="person-outline" value={form.fullName} onChangeText={v => set('fullName', v)} placeholder="e.g. Juan dela Cruz" error={errors.fullName} autoCapitalize="words" />
+            {/* STEP: PERSONAL INFO */}
+            {activeStepTitle === 'Personal Info' && <>
+              <Field label="First Name *" error={errors.firstName}>
+                <InputBox value={form.firstName} onChangeText={v => set('firstName', v)} placeholder="e.g. Juan" error={errors.firstName} autoCapitalize="words" />
+              </Field>
+              <Field label="Middle Initial (Optional)">
+                <InputBox value={form.middleInitial} onChangeText={v => set('middleInitial', v)} placeholder="e.g. D" autoCapitalize="characters" maxLength={3} />
+              </Field>
+              <Field label="Last Name *" error={errors.lastName}>
+                <InputBox value={form.lastName} onChangeText={v => set('lastName', v)} placeholder="e.g. Dela Cruz" error={errors.lastName} autoCapitalize="words" />
+              </Field>
+              <Field label="Nickname (Optional)">
+                <InputBox value={form.nickname} onChangeText={v => set('nickname', v)} placeholder="e.g. Junjun" autoCapitalize="words" />
               </Field>
             </>}
 
-            {/* STEP 2 */}
-            {step === 2 && <>
+            {/* STEP: YOUR ROLE */}
+            {activeStepTitle === 'Your Role' && <>
               <Field label="System Role *" error={errors.role}>
                 <View style={{ gap: 8 }}>
                   {ROLES.map(r => (
@@ -185,15 +220,39 @@ export default function RegisterScreen({ navigation }) {
               </Field>
             </>}
 
-            {/* STEP 3 */}
-            {step === 3 && <>
+            {/* STEP: BLOCK FARM */}
+            {activeStepTitle === 'Block Farm' && <>
+              <Field label="Select Block Farm *" error={errors.blockFarm}>
+                <View style={{ gap: 8 }}>
+                  {BLOCK_FARMS.map(farm => (
+                    <TouchableOpacity 
+                      key={farm}
+                      style={[rc.chip, form.blockFarm === farm && rc.selected, { paddingVertical: 14 }]}
+                      onPress={() => set('blockFarm', farm)}
+                    >
+                      <View style={rc.chipHeader}>
+                        {form.blockFarm === farm ? (
+                          <Ionicons name="radio-button-on" size={18} color={COLORS.primary} />
+                        ) : (
+                          <Ionicons name="radio-button-off" size={18} color={COLORS.border} />
+                        )}
+                        <Text style={[rc.text, form.blockFarm === farm && rc.textSelected]}>{farm}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Field>
+            </>}
+
+            {/* STEP: CONTACT NUMBER */}
+            {activeStepTitle === 'Contact Number' && <>
               <Field label="Contact Number *" error={errors.contactNumber}>
                 <InputBox icon="call-outline" value={form.contactNumber} onChangeText={v => set('contactNumber', v)} placeholder="09XX XXX XXXX" keyboardType="phone-pad" maxLength={13} error={errors.contactNumber} />
               </Field>
             </>}
 
-            {/* STEP 4 */}
-            {step === 4 && <>
+            {/* STEP: SET PASSWORD */}
+            {activeStepTitle === 'Set Password' && <>
               <Field label="Password *" error={errors.password}>
                 <View style={[inp.wrap, errors.password && inp.err]}>
                   <Ionicons name="lock-closed-outline" size={17} color={COLORS.textMuted} />
@@ -216,7 +275,7 @@ export default function RegisterScreen({ navigation }) {
           </View>
 
           <TouchableOpacity style={[s.btn, loading && s.btnDisabled]} onPress={next} disabled={loading}>
-            <Text style={s.btnText}>{loading ? 'Creating account...' : step === TOTAL_STEPS ? 'Create Account' : 'Continue'}</Text>
+            <Text style={s.btnText}>{loading ? 'Creating account...' : step === totalSteps ? 'Create Account' : 'Continue'}</Text>
             {!loading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
           </TouchableOpacity>
         </ScrollView>

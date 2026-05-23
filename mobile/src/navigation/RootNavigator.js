@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOW } from '../theme';
+import { getCurrentSession, subscribe } from '../data/mockData';
 
 import SplashScreen from '../screens/auth/SplashScreen';
 import OnboardingScreen from '../screens/auth/OnboardingScreen';
@@ -70,6 +71,14 @@ function ProfileNavigator() {
 }
 
 function MainTabs() {
+  const [role, setRole] = React.useState(getCurrentSession().role);
+
+  React.useEffect(() => {
+    return subscribe(() => {
+      setRole(getCurrentSession().role);
+    });
+  }, []);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -93,8 +102,14 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeNavigator} />
-      <Tab.Screen name="Planner" component={CalcNavigator} />
-      <Tab.Screen name="Field Ops" component={SchedNavigator} />
+      {role !== 'SRA (Admin)' && (
+        <Tab.Screen name="Planner" component={CalcNavigator} />
+      )}
+      <Tab.Screen 
+        name="Field Ops" 
+        component={SchedNavigator} 
+        options={{ tabBarLabel: role === 'SRA (Admin)' ? 'District Ops' : 'Field Ops' }}
+      />
       <Tab.Screen name="Profile" component={ProfileNavigator} />
     </Tab.Navigator>
   );

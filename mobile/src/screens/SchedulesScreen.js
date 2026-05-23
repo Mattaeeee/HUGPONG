@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
-import { subscribe, getCurrentSession, setSynced, setSession, updateSessionFieldId, getIsSynced, MOCK_ASSIGNMENT_REQUESTS, resolveAssignmentRequest, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS, notifyDataUpdate } from '../data/mockData';
+import { subscribe, getCurrentSession, setSynced, setSession, updateSessionFieldId, getIsSynced, MOCK_ASSIGNMENT_REQUESTS, resolveAssignmentRequest, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS, notifyDataUpdate, SRA_PRICE_HISTORY, addSRAPrice, MOCK_MANAGERS } from '../data/mockData';
 
 const { height, width } = Dimensions.get('window');
 
@@ -29,6 +29,7 @@ const STATUS_COLORS = { approved: COLORS.success, pending: '#F5A623', flagged: '
 
 export default function SchedulesScreen({ navigation }) {
   const [activeRole, setActiveRole] = useState(getCurrentSession().role);
+  const [selectedFarm, setSelectedFarm] = useState('All Block Farms');
   const [selectedField, setSelectedField] = useState(MOCK_FIELDS[0]);
   const [logs, setLogs] = useState(MOCK_LOGS);
   const [showLog, setShowLog] = useState(false);
@@ -36,19 +37,54 @@ export default function SchedulesScreen({ navigation }) {
   const [showScanner, setShowScanner] = useState(false);
   const [logForm, setLogForm] = useState({ type: 'weekly', fieldId: '', saveFieldId: true, activity: '', cost: '', period: '', hours: '', hectares: '', people: '', taskId: null });
   const [draftLogs, setDraftLogs] = useState([]);
+  const [logTab, setLogTab] = useState('submitted');
+  const [managerLogTab, setManagerLogTab] = useState('pending');
   const [synced, setSyncedState] = useState(getIsSynced());
   const [requests, setRequests] = useState(MOCK_ASSIGNMENT_REQUESTS);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [calDate, setCalDate] = useState(new Date(2026, 4, 21));
   const [showAddField, setShowAddField] = useState(false);
+  const [isTakeOver, setIsTakeOver] = useState(false);
+  const [showFieldsModal, setShowFieldsModal] = useState(false);
+  const [fieldSearch, setFieldSearch] = useState('');
+  const [showManagerAssignModal, setShowManagerAssignModal] = useState(false);
+  const [managerAssignForm, setManagerAssignForm] = useState({ memberName: '', fieldId: '', ha: '' });
+  const handleGenerateAudit = () => {
+    const missingFields = [];
+    MOCK_FIELDS.forEach(field => {
+      const fieldTasks = cycleTasksByField[field.id] || CYCLE_TASKS;
+      const activeTask = fieldTasks.find(t => t.active);
+      if (activeTask) {
+        const hasLog = logs.some(l => l.fieldId === field.id && l.taskId === activeTask.id);
+        if (!hasLog) {
+          missingFields.push(field.id);
+        }
+      }
+    });
+
+    if (missingFields.length > 0) {
+      Alert.alert(
+        'Incomplete Logs Warning',
+        `Operation logs are incomplete! The following fields are missing a log for their current active stage:\n\n${missingFields.join('\n')}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Generate Anyway', onPress: () => setShowQR(true), style: 'destructive' }
+        ]
+      );
+    } else {
+      setShowQR(true);
+    }
+  };
   const [reqFieldId, setReqFieldId] = useState('');
   const [reqFieldHa, setReqFieldHa] = useState('');
+  const [sraPriceInput, setSraPriceInput] = useState('');
   const [cycleTasksByField, setCycleTasksByField] = useState({
     [MOCK_FIELDS[0].id]: CYCLE_TASKS,
   });
   const slideAnim = useRef(new Animated.Value(height)).current;
 
-  const toggleTaskStatus = (taskId) => {
-    if (activeRole === 'SRA Checker') return;
+  const toggleTaskStatus = (taskId, forceComplete = false) => {
+    if (activeRole === 'SRA (Admin)') return;
     
     const fieldTasks = cycleTasksByField[selectedField.id] || CYCLE_TASKS.map(t => ({...t, done: false, active: false}));
     const taskIndex = fieldTasks.findIndex(t => t.id === taskId);
@@ -68,6 +104,21 @@ export default function SchedulesScreen({ navigation }) {
           }
           return t;
         });
+
+        if (targetTask.active) {
+          const nextIndex = updated.findIndex(t => !t.done);
+          if (nextIndex > -1) {
+            updated[nextIndex].active = true;
+          }
+        }
+
+        const activeTask = updated.find(t => t.active);
+        const newStageLabel = activeTask ? activeTask.label : 'Harvesting & Milling (Completed)';
+        
+        setSelectedField(prevF => ({ ...prevF, stage: newStageLabel }));
+        const mf = MOCK_FIELDS.find(f => f.id === selectedField.id);
+        if (mf) mf.stage = newStageLabel;
+
         return { ...prev, [selectedField.id]: updated };
       });
     };
@@ -89,7 +140,7 @@ export default function SchedulesScreen({ navigation }) {
       }
     } 
 
-    if (targetTask.active) {
+    if (targetTask.active && !forceComplete) {
       const hasOtherDrafts = draftLogs.some(d => d.fieldId === selectedField.id && d.taskId !== targetTask.id);
       Alert.alert(
         `Stage: ${targetTask.phase}`,
@@ -97,31 +148,24 @@ export default function SchedulesScreen({ navigation }) {
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Add Log (Draft)', onPress: () => {
-              setLogForm(p => ({...p, fieldId: selectedField.id, activity: targetTask.label, taskId: targetTask.id}));
+              const stageDrafts = draftLogs.filter(d => d.taskId === targetTask.id && d.fieldId === selectedField.id);
+              if (stageDrafts.length > 0) {
+                 Alert.alert('Draft Exists', 'A draft log already exists for this stage. Tap it in the Draft Logs tab to edit.');
+                 return;
+              }
+              setLogForm(p => ({...p, fieldId: selectedField.id, activity: targetTask.label, taskId: targetTask.id, isSubmit: false}));
               setShowLog(true);
               Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
           }},
-          { text: 'Mark Stage Complete & Submit Logs', onPress: () => {
-              if (hasOtherDrafts) {
-                 Alert.alert('Action Blocked', 'You have unsubmitted drafts for a different stage. Please submit or delete them before completing this stage.');
-                 return;
-              }
+          { text: 'Add Log & Submit', onPress: () => {
               const stageDrafts = draftLogs.filter(d => d.taskId === targetTask.id && d.fieldId === selectedField.id);
               if (stageDrafts.length > 0) {
-                setLogs(prev => [...stageDrafts, ...prev]);
-                setDraftLogs(prev => prev.filter(d => !(d.taskId === targetTask.id && d.fieldId === selectedField.id)));
-                setSynced(false);
+                 Alert.alert('Draft Exists', 'A draft log already exists for this stage. Tap it in the Draft Logs tab to edit or submit.');
+                 return;
               }
-              applyToggle();
-              
-              if (targetTask.id === 'T8') {
-                Alert.alert('Crop Cycle Complete', 'Harvest is done. Reset timeline for a new cycle?', [
-                  { text: 'No', style: 'cancel' },
-                  { text: 'Yes, Reset', onPress: () => {
-                     setCycleTasksByField(p => ({ ...p, [selectedField.id]: CYCLE_TASKS.map(t => ({...t, done: false, active: t.id === 'T1'})) }));
-                  }, style: 'destructive' }
-                ]);
-              }
+              setLogForm(p => ({...p, fieldId: selectedField.id, activity: targetTask.label, taskId: targetTask.id, isSubmit: true}));
+              setShowLog(true);
+              Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
           }}
         ]
       );
@@ -240,13 +284,33 @@ export default function SchedulesScreen({ navigation }) {
       MOCK_FIELDS.push({ id: submittedFieldId, member: getCurrentSession().name || 'Current User', ha: '0.0', stage: 'Newly Logged', month: 0, synced: false, lastSync: 'Just now' });
     }
 
-    if (logForm.id) {
-      const idx = DRAFT_LOGS.findIndex(d => d.id === logForm.id);
-      if (idx >= 0) DRAFT_LOGS[idx] = { ...newLog, id: logForm.id };
-      setDraftLogs([...DRAFT_LOGS]);
+    if (logForm.isSubmit) {
+      MOCK_LOGS.unshift(newLog);
+      setLogs([...MOCK_LOGS]);
+      setLogTab('submitted');
+      
+      if (logForm.taskId !== 'Emergency') {
+        Alert.alert(
+          'Log Submitted',
+          'Would you also like to mark this stage as Complete in the timeline?',
+          [
+            { text: 'No, Keep Pending', style: 'cancel' },
+            { text: 'Yes, Mark Complete', onPress: () => {
+              toggleTaskStatus(logForm.taskId, true);
+            }}
+          ]
+        );
+      }
     } else {
-      DRAFT_LOGS.unshift(newLog);
-      setDraftLogs([...DRAFT_LOGS]);
+      if (logForm.id) {
+        const idx = DRAFT_LOGS.findIndex(d => d.id === logForm.id);
+        if (idx >= 0) DRAFT_LOGS[idx] = { ...newLog, id: logForm.id };
+        setDraftLogs([...DRAFT_LOGS]);
+      } else {
+        DRAFT_LOGS.unshift(newLog);
+        setDraftLogs([...DRAFT_LOGS]);
+      }
+      setLogTab('drafts');
     }
     
     notifyDataUpdate();
@@ -265,26 +329,42 @@ export default function SchedulesScreen({ navigation }) {
     setDraftLogs([...DRAFT_LOGS]);
     MOCK_LOGS.unshift({ ...log, approved: false, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) });
     setLogs([...MOCK_LOGS]);
-    notifyDataUpdate();
-    Alert.alert('Log Submitted', `Log #${log.id} has been sent to Farm Manager for approval.`);
+    setLogTab('submitted');
   };
 
-  const editDraftLog = (log) => {
-    setLogForm({
-      id: log.id,
-      type: log.type,
-      fieldId: log.fieldId,
-      saveFieldId: false,
-      activity: log.activity,
-      cost: log.cost.toString(),
-      period: log.type === 'weekly' ? log.week : log.month,
-      hours: log.hours ? log.hours.toString() : '',
-      hectares: log.hectares ? log.hectares.toString() : '',
-      people: log.people ? log.people.toString() : '',
-      taskId: log.taskId
-    });
-    setShowLog(true);
-    Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
+  const handleDraftAction = (log) => {
+    Alert.alert(
+      'Draft Options',
+      'What would you like to do with this draft?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Submit Progress Log', onPress: () => {
+            submitDraft(log);
+            Alert.alert(
+              'Log Submitted',
+              'Would you also like to mark this stage as Complete in the timeline?',
+              [
+                { text: 'No, Keep Pending', style: 'cancel' },
+                { text: 'Yes, Mark Complete', onPress: () => {
+                  toggleTaskStatus(log.taskId, true);
+                }}
+              ]
+            );
+        }},
+        { text: 'Edit Log', onPress: () => {
+            setLogForm({
+              id: log.id,
+              type: log.type, fieldId: log.fieldId, saveFieldId: true,
+              activity: log.activity, cost: log.cost.toString(),
+              period: log.type === 'weekly' ? log.week : log.month,
+              hours: log.hours.toString(), hectares: log.hectares.toString(),
+              people: log.people.toString(), taskId: log.taskId, isSubmit: false
+            });
+            setShowLog(true);
+            Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
+        }}
+      ]
+    );
   };
 
   const approveLog = (logId) => {
@@ -320,7 +400,13 @@ export default function SchedulesScreen({ navigation }) {
         </View>
         <View style={s.timelineCard}>
           {tasks.map((task, i) => (
-            <TouchableOpacity key={task.id} style={s.timelineRow} onPress={() => toggleTaskStatus(task.id)} activeOpacity={0.7}>
+            <TouchableOpacity key={task.id} style={s.timelineRow} onPress={() => {
+              if (activeRole === 'Farm Manager' && !isTakeOver) {
+                Alert.alert('View Only', 'Please enable "Take Over Field" mode to update the timeline.');
+                return;
+              }
+              toggleTaskStatus(task.id);
+            }} activeOpacity={0.7}>
               <View style={s.timelineLeft}>
                 <View style={[s.timelineDot, { backgroundColor: task.done ? COLORS.success : task.active ? task.color : COLORS.border }]}>
                   {task.done && <Ionicons name="checkmark" size={10} color="#fff" />}
@@ -348,9 +434,10 @@ export default function SchedulesScreen({ navigation }) {
     <SafeAreaView style={s.safe} edges={['top']}>
       <AppHeader right={
         <View style={{ flexDirection: 'row', gap: 4 }}>
+
           {/* Role Switcher (for demo) */}
           <TouchableOpacity style={s.roleBtn} onPress={() => {
-            const roles = ['Member', 'Farm Manager', 'SRA Checker'];
+            const roles = ['Member', 'Farm Manager', 'SRA (Admin)'];
             const idx = roles.indexOf(activeRole);
             const nextRole = roles[(idx + 1) % roles.length];
             setActiveRole(nextRole);
@@ -363,7 +450,7 @@ export default function SchedulesScreen({ navigation }) {
       } />
 
       {/* Role Banner */}
-      <View style={[s.roleBanner, activeRole === 'Member' && s.bannerMember, activeRole === 'Farm Manager' && s.bannerManager, activeRole === 'SRA Checker' && s.bannerSRA]}>
+      <View style={[s.roleBanner, activeRole === 'Member' && s.bannerMember, activeRole === 'Farm Manager' && s.bannerManager, activeRole === 'SRA (Admin)' && s.bannerSRA]}>
         <Ionicons
           name={activeRole === 'Member' ? 'person' : activeRole === 'Farm Manager' ? 'people' : 'shield-checkmark'}
           size={14}
@@ -372,7 +459,7 @@ export default function SchedulesScreen({ navigation }) {
         <Text style={s.roleBannerText}>
           {activeRole === 'Member' && 'Member View — Log your field operations'}
           {activeRole === 'Farm Manager' && 'Farm Manager View — Review & compile SRA reports'}
-          {activeRole === 'SRA Checker' && 'SRA Checker View — Scan QR & audit reports'}
+          {activeRole === 'SRA (Admin)' && 'SRA Admin View — Scan QR & audit reports'}
         </Text>
       </View>
 
@@ -449,11 +536,11 @@ export default function SchedulesScreen({ navigation }) {
             {/* Crop Cycle Timeline */}
             {renderTimeline()}
 
-            {/* Log History */}
+            {/* Log History Header & Unplanned */}
             <View style={s.sectionRow}>
-              <Text style={s.sectionLabel}>My Operation Logs</Text>
+              <Text style={s.sectionLabel}>Operation Logs</Text>
               <TouchableOpacity style={[s.addLogBtn, { backgroundColor: '#F5A623', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, flexDirection: 'row', gap: 4 }]} onPress={() => {
-                setLogForm(p => ({...p, fieldId: selectedField.id, activity: '', taskId: 'Emergency'}));
+                setLogForm(p => ({...p, fieldId: selectedField.id, activity: '', taskId: 'Emergency', isSubmit: true}));
                 setShowLog(true);
                 Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
               }}>
@@ -461,92 +548,94 @@ export default function SchedulesScreen({ navigation }) {
                 <Text style={[s.addLogBtnText, { fontSize: 11 }]}>Unplanned Work</Text>
               </TouchableOpacity>
             </View>
-            {fieldLogs.length === 0 && draftLogs.filter(l => l.fieldId === selectedField.id).length === 0 && (
-              <View style={s.emptyCard}>
-                <Ionicons name="document-outline" size={32} color={COLORS.border} />
-                <Text style={s.emptyText}>No logs yet. Tap an active stage in the timeline above to start logging.</Text>
-              </View>
-            )}
-            
-            {/* Draft Logs */}
-            {draftLogs.filter(l => l.fieldId === selectedField.id).length > 0 && (
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#C97A00', marginTop: 8, marginBottom: -4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Draft Logs (Tap to Edit)</Text>
-            )}
-            {draftLogs.filter(l => l.fieldId === selectedField.id).map(log => (
-              <View key={log.id} style={[s.receiptCard, { borderColor: '#F5A623', backgroundColor: '#FFFBF0' }]}>
-                <TouchableOpacity onPress={() => editDraftLog(log)} activeOpacity={0.7}>
-                  <View style={s.receiptHeader}>
-                    <Text style={[s.receiptTitle, { color: '#C97A00' }]}>{log.type === 'weekly' ? 'Draft Weekly Log' : 'Draft Monthly Log'}</Text>
-                    <Text style={s.receiptId}>#{log.id}</Text>
+
+            {/* Log Tabs */}
+            <View style={s.logTabsRow}>
+              <TouchableOpacity style={[s.logTabBtn, logTab === 'submitted' && s.logTabBtnActive]} onPress={() => setLogTab('submitted')}>
+                <Text style={[s.logTabText, logTab === 'submitted' && s.logTabTextActive]}>Submitted Logs</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.logTabBtn, logTab === 'drafts' && s.logTabBtnActive]} onPress={() => setLogTab('drafts')}>
+                <Text style={[s.logTabText, logTab === 'drafts' && s.logTabTextActive]}>
+                  Draft Logs {draftLogs.filter(l => l.fieldId === selectedField.id).length > 0 && `(${draftLogs.filter(l => l.fieldId === selectedField.id).length})`}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {logTab === 'submitted' && (
+              <>
+                {fieldLogs.length === 0 && (
+                  <View style={s.emptyCard}>
+                    <Ionicons name="document-outline" size={32} color={COLORS.border} />
+                    <Text style={s.emptyText}>No submitted logs yet.</Text>
                   </View>
-                  <View style={s.receiptDivider} />
-                  <View style={s.receiptBody}>
-                    <View style={s.receiptRow}><Text style={s.receiptLabel}>Activity</Text><Text style={s.receiptValueBold}>{log.activity}</Text></View>
-                    <View style={s.receiptRow}><Text style={s.receiptLabel}>Work Done</Text><Text style={s.receiptValue}>{log.hours} hrs · {log.hectares} ha · {log.people} people</Text></View>
-                    <View style={s.receiptRow}><Text style={s.receiptLabel}>Total Cost</Text><Text style={[s.receiptCostText, { color: '#C97A00' }]}>Php {log.cost.toLocaleString()}</Text></View>
-                    <View style={s.receiptRow}>
-                      <Text style={s.receiptLabel}>Status</Text>
-                      <View style={[s.receiptStatusBadge, { backgroundColor: '#F5A62320', borderColor: '#F5A623' }]}>
-                        <Ionicons name="create-outline" size={14} color="#C97A00" />
-                        <Text style={[s.receiptStatusText, { color: '#C97A00' }]}>Draft (Stage In Progress)</Text>
+                )}
+                {fieldLogs.map(log => (
+                  <View key={log.id} style={s.receiptCard}>
+                    <View style={s.receiptHeader}>
+                      <Text style={[s.receiptTitle, log.taskId === 'Emergency' && { color: '#D9534F' }]}>
+                        {log.taskId === 'Emergency' ? 'UNPLANNED WORK' : (log.type === 'weekly' ? 'Weekly Log' : 'Monthly Log')}
+                      </Text>
+                      <Text style={s.receiptId}>#{log.id}</Text>
+                    </View>
+                    <View style={s.receiptDivider} />
+                    <View style={s.receiptBody}>
+                      <View style={s.receiptRow}><Text style={s.receiptLabel}>Activity</Text><Text style={s.receiptValueBold}>{log.activity}</Text></View>
+                      <View style={s.receiptRow}><Text style={s.receiptLabel}>Work Done</Text><Text style={s.receiptValue}>{log.hours} hrs · {log.hectares} ha · {log.people} people</Text></View>
+                      <View style={s.receiptRow}><Text style={s.receiptLabel}>Total Cost</Text><Text style={s.receiptCostText}>Php {log.cost.toLocaleString()}</Text></View>
+                      <View style={s.receiptRow}>
+                        <Text style={s.receiptLabel}>Date</Text>
+                        <Text style={s.receiptValue}>{log.type === 'weekly' ? log.week : log.month}</Text>
+                      </View>
+                      <View style={s.receiptRow}>
+                        <Text style={s.receiptLabel}>Status</Text>
+                        <View style={[s.receiptStatusBadge, { backgroundColor: log.approved ? '#F2FBF2' : '#FFFBF0', borderColor: log.approved ? '#E8F5E8' : '#FEF0D0' }]}>
+                          <Ionicons name={log.approved ? 'checkmark-circle-outline' : 'time-outline'} size={14} color={log.approved ? '#267326' : '#C97A00'} />
+                          <Text style={[s.receiptStatusText, { color: log.approved ? '#267326' : '#C97A00' }]}>
+                            {log.approved ? 'Approved by Manager' : (!synced ? 'Pending Sync (Offline)' : 'Pending Manager Review')}
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   </View>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[s.receiptApproveBtn, { backgroundColor: '#F5A623', marginTop: 12 }]} 
-                  onPress={() => {
-                    setLogs(prev => [log, ...prev]);
-                    setDraftLogs(prev => prev.filter(d => d.id !== log.id));
-                    setSynced(false);
-                    Alert.alert('Progress Submitted', 'Log sent to Farm Manager. The stage remains Active.');
-                  }}
-                >
-                  <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-                  <Text style={s.receiptApproveBtnText}>Submit as Progress Log</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
+                ))}
+              </>
+            )}
 
-            {/* Submitted Logs */}
-            {fieldLogs.map(log => (
-              <View key={log.id} style={s.receiptCard}>
-                <View style={s.receiptHeader}>
-                  <Text style={s.receiptTitle}>{log.type === 'weekly' ? 'Weekly Operation Log' : 'Monthly Operation Log'}</Text>
-                  <Text style={s.receiptId}>#{log.id}</Text>
-                </View>
-                <View style={s.receiptDivider} />
-                <View style={s.receiptBody}>
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>Activity</Text>
-                    <Text style={s.receiptValueBold}>{log.activity}</Text>
+            {logTab === 'drafts' && (
+              <>
+                {draftLogs.filter(l => l.fieldId === selectedField.id).length === 0 && (
+                  <View style={s.emptyCard}>
+                    <Ionicons name="document-outline" size={32} color={COLORS.border} />
+                    <Text style={s.emptyText}>No draft logs.</Text>
                   </View>
-                  {log.hours && (
-                    <View style={s.receiptRow}>
-                      <Text style={s.receiptLabel}>Work Done</Text>
-                      <Text style={s.receiptValue}>{log.hours} hrs · {log.hectares} ha · {log.people} people</Text>
-                    </View>
-                  )}
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>Date Logged</Text>
-                    <Text style={s.receiptValue}>{log.date}</Text>
+                )}
+                {draftLogs.filter(l => l.fieldId === selectedField.id).map(log => (
+                  <View key={log.id} style={[s.receiptCard, { borderColor: '#F5A623', backgroundColor: '#FFFBF0' }]}>
+                    <TouchableOpacity onPress={() => handleDraftAction(log)} activeOpacity={0.7}>
+                      <View style={s.receiptHeader}>
+                        <Text style={[s.receiptTitle, { color: log.taskId === 'Emergency' ? '#D9534F' : '#C97A00' }]}>
+                          {log.taskId === 'Emergency' ? 'DRAFT UNPLANNED WORK' : (log.type === 'weekly' ? 'Draft Weekly Log' : 'Draft Monthly Log')}
+                        </Text>
+                        <Text style={s.receiptId}>#{log.id}</Text>
+                      </View>
+                      <View style={s.receiptDivider} />
+                      <View style={s.receiptBody}>
+                        <View style={s.receiptRow}><Text style={s.receiptLabel}>Activity</Text><Text style={s.receiptValueBold}>{log.activity}</Text></View>
+                        <View style={s.receiptRow}><Text style={s.receiptLabel}>Work Done</Text><Text style={s.receiptValue}>{log.hours} hrs · {log.hectares} ha · {log.people} people</Text></View>
+                        <View style={s.receiptRow}><Text style={s.receiptLabel}>Total Cost</Text><Text style={[s.receiptCostText, { color: '#C97A00' }]}>Php {log.cost.toLocaleString()}</Text></View>
+                        <View style={s.receiptRow}>
+                          <Text style={s.receiptLabel}>Status</Text>
+                          <View style={[s.receiptStatusBadge, { backgroundColor: '#F5A62320', borderColor: '#F5A623' }]}>
+                            <Ionicons name="create-outline" size={14} color="#C97A00" />
+                            <Text style={[s.receiptStatusText, { color: '#C97A00' }]}>Draft</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
                   </View>
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>Total Cost</Text>
-                    <Text style={s.receiptCostText}>Php {log.cost.toLocaleString()}</Text>
-                  </View>
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>Status</Text>
-                    <View style={[s.receiptStatusBadge, { backgroundColor: log.approved ? '#F2FBF2' : '#FFFBF0', borderColor: log.approved ? '#E8F5E8' : '#FEF0D0' }]}>
-                      <Ionicons name={log.approved ? 'checkmark-circle-outline' : 'time-outline'} size={14} color={log.approved ? '#267326' : '#C97A00'} />
-                      <Text style={[s.receiptStatusText, { color: log.approved ? '#267326' : '#C97A00' }]}>
-                        {log.approved ? 'Approved by Manager' : (!synced ? 'Pending Sync (Offline)' : 'Pending Manager Review')}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            ))}
+                ))}
+              </>
+            )}
           </>
         )}
 
@@ -555,6 +644,25 @@ export default function SchedulesScreen({ navigation }) {
         {/* ═══════════════════════════════════════════════════════════════ */}
         {activeRole === 'Farm Manager' && (
           <>
+            <Text style={[s.sectionLabel, { marginBottom: 8 }]}>Manager Actions</Text>
+            <View style={{ gap: 10, marginBottom: SPACING.lg }}>
+              <TouchableOpacity 
+                style={{ backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: RADIUS.lg, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, ...SHADOW.card }} 
+                onPress={handleGenerateAudit}
+              >
+                <Ionicons name="qr-code-outline" size={20} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 0.5 }}>GENERATE AUDIT LOGS</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={{ backgroundColor: COLORS.background, borderWidth: 1.5, borderColor: COLORS.border, paddingVertical: 12, borderRadius: RADIUS.md, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }} 
+                onPress={() => setShowManagerAssignModal(true)}
+              >
+                <Ionicons name="person-add-outline" size={16} color={COLORS.text} />
+                <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '700' }}>Assign New Field</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Field Assignment Requests */}
             {requests.filter(r => r.status === 'pending').length > 0 && (
               <View style={{ marginBottom: SPACING.md }}>
@@ -603,9 +711,16 @@ export default function SchedulesScreen({ navigation }) {
             )}
 
             {/* Field Selector */}
-            <Text style={s.sectionLabel}>All Block Farm Fields</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8, paddingBottom: 4 }}>
-              {MOCK_FIELDS.map(field => (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={[s.sectionLabel, { marginBottom: 0 }]}>All Block Farm Fields</Text>
+              {MOCK_FIELDS.length > 3 && (
+                <TouchableOpacity onPress={() => setShowFieldsModal(true)}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }}>Show More</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: SPACING.md }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8, paddingBottom: 4 }}>
+              {MOCK_FIELDS.slice(0, 3).map(field => (
                 <TouchableOpacity
                   key={field.id}
                   style={[s.fieldChip, selectedField.id === field.id && s.fieldChipActive]}
@@ -618,13 +733,25 @@ export default function SchedulesScreen({ navigation }) {
                   <Text style={[s.fieldChipText, selectedField.id === field.id && s.fieldChipTextActive]}>{field.id}</Text>
                 </TouchableOpacity>
               ))}
+              {MOCK_FIELDS.length > 3 && (
+                <TouchableOpacity style={[s.fieldChip, { backgroundColor: COLORS.background }]} onPress={() => setShowFieldsModal(true)}>
+                  <Text style={[s.fieldChipText, { color: COLORS.primary }]}>+ {MOCK_FIELDS.length - 3} More</Text>
+                </TouchableOpacity>
+              )}
             </ScrollView>
 
             {/* Selected Field Detail */}
             <View style={s.fieldCard}>
               <View style={s.fieldCardTop}>
-                <View style={s.fieldIdBadge}><Text style={s.fieldIdText}>{selectedField.id}</Text></View>
-                <Text style={s.fieldHa}>{selectedField.ha} Ha</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={s.fieldIdBadge}><Text style={s.fieldIdText}>{selectedField.id}</Text></View>
+                  <Text style={s.fieldHa}>{selectedField.ha} Ha</Text>
+                </View>
+                {activeRole === 'Farm Manager' && (
+                  <TouchableOpacity onPress={() => setIsTakeOver(!isTakeOver)} style={{ backgroundColor: isTakeOver ? '#D9534F' : COLORS.primaryBg, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: isTakeOver ? '#fff' : COLORS.primary }}>{isTakeOver ? 'Cancel Take Over' : 'Take Over Field'}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
               <Text style={s.fieldMember}>Member: {selectedField.member}</Text>
               <Text style={s.fieldStage}>Stage: <Text style={s.fieldStageVal}>{selectedField.stage}</Text></Text>
@@ -639,81 +766,175 @@ export default function SchedulesScreen({ navigation }) {
 
             {/* Logs for selected field */}
             <Text style={s.sectionLabel}>Operation Logs — {selectedField.id}</Text>
-            {fieldLogs.length === 0 && (
-              <View style={s.emptyCard}>
-                <Ionicons name="document-outline" size={32} color={COLORS.border} />
-                <Text style={s.emptyText}>No logs from this field yet.</Text>
-              </View>
-            )}
-            {fieldLogs.map(log => (
-              <View key={log.id} style={s.receiptCard}>
-                <View style={s.receiptHeader}>
-                  <Text style={s.receiptTitle}>{log.type === 'weekly' ? 'Weekly Operation Log' : 'Monthly Operation Log'}</Text>
-                  <Text style={s.receiptId}>#{log.id}</Text>
-                </View>
-                <View style={s.receiptDivider} />
-                <View style={s.receiptBody}>
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>Activity</Text>
-                    <Text style={s.receiptValueBold}>{log.activity}</Text>
-                  </View>
-                  {log.hours && (
-                    <View style={s.receiptRow}>
-                      <Text style={s.receiptLabel}>Work Done</Text>
-                      <Text style={s.receiptValue}>{log.hours} hrs · {log.hectares} ha · {log.people} people</Text>
+            <View style={s.logTabsRow}>
+              <TouchableOpacity style={[s.logTabBtn, managerLogTab === 'pending' && s.logTabBtnActive]} onPress={() => setManagerLogTab('pending')}>
+                <Text style={[s.logTabText, managerLogTab === 'pending' && s.logTabTextActive]}>
+                  Waiting Approval {fieldLogs.filter(l => !l.approved).length > 0 && `(${fieldLogs.filter(l => !l.approved).length})`}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.logTabBtn, managerLogTab === 'approved' && s.logTabBtnActive]} onPress={() => setManagerLogTab('approved')}>
+                <Text style={[s.logTabText, managerLogTab === 'approved' && s.logTabTextActive]}>
+                  Approved Logs
+                </Text>
+              </TouchableOpacity>
+            </View>
+            
+            {(() => {
+              const displayLogs = managerLogTab === 'pending' ? fieldLogs.filter(l => !l.approved) : fieldLogs.filter(l => l.approved);
+              return (
+                <>
+                  {displayLogs.length === 0 && (
+                    <View style={s.emptyCard}>
+                      <Ionicons name={managerLogTab === 'pending' ? "checkmark-circle-outline" : "document-outline"} size={32} color={managerLogTab === 'pending' ? COLORS.success : COLORS.border} />
+                      <Text style={s.emptyText}>{managerLogTab === 'pending' ? 'All logs are approved.' : 'No approved logs yet.'}</Text>
                     </View>
                   )}
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>Date Logged</Text>
-                    <Text style={s.receiptValue}>{log.date}</Text>
-                  </View>
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>Total Cost</Text>
-                    <Text style={s.receiptCostText}>Php {log.cost.toLocaleString()}</Text>
-                  </View>
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>Status</Text>
-                    <View style={[s.receiptStatusBadge, { backgroundColor: log.approved ? '#F2FBF2' : '#FFFBF0', borderColor: log.approved ? '#E8F5E8' : '#FEF0D0' }]}>
-                      <Ionicons name={log.approved ? 'checkmark-circle-outline' : 'time-outline'} size={14} color={log.approved ? '#267326' : '#C97A00'} />
-                      <Text style={[s.receiptStatusText, { color: log.approved ? '#267326' : '#C97A00' }]}>
-                        {log.approved ? 'Approved' : (!synced ? 'Pending Sync (Offline)' : 'Awaiting Approval')}
-                      </Text>
+                  {displayLogs.map(log => (
+                    <View key={log.id} style={s.receiptCard}>
+                      <View style={s.receiptHeader}>
+                        <Text style={s.receiptTitle}>{log.type === 'weekly' ? 'Weekly Operation Log' : 'Monthly Operation Log'}</Text>
+                        <Text style={s.receiptId}>#{log.id}</Text>
+                      </View>
+                      <View style={s.receiptDivider} />
+                      <View style={s.receiptBody}>
+                        <View style={s.receiptRow}>
+                          <Text style={s.receiptLabel}>Activity</Text>
+                          <Text style={s.receiptValueBold}>{log.activity}</Text>
+                        </View>
+                        {log.hours && (
+                          <View style={s.receiptRow}>
+                            <Text style={s.receiptLabel}>Work Done</Text>
+                            <Text style={s.receiptValue}>{log.hours} hrs · {log.hectares} ha · {log.people} people</Text>
+                          </View>
+                        )}
+                        <View style={s.receiptRow}>
+                          <Text style={s.receiptLabel}>Date Logged</Text>
+                          <Text style={s.receiptValue}>{log.date}</Text>
+                        </View>
+                        <View style={s.receiptRow}>
+                          <Text style={s.receiptLabel}>Total Cost</Text>
+                          <Text style={s.receiptCostText}>Php {log.cost.toLocaleString()}</Text>
+                        </View>
+                        <View style={s.receiptRow}>
+                          <Text style={s.receiptLabel}>Status</Text>
+                          <View style={[s.receiptStatusBadge, { backgroundColor: log.approved ? '#F2FBF2' : '#FFFBF0', borderColor: log.approved ? '#E8F5E8' : '#FEF0D0' }]}>
+                            <Ionicons name={log.approved ? 'checkmark-circle-outline' : 'time-outline'} size={14} color={log.approved ? '#267326' : '#C97A00'} />
+                            <Text style={[s.receiptStatusText, { color: log.approved ? '#267326' : '#C97A00' }]}>
+                              {log.approved ? 'Approved' : (!synced ? 'Pending Sync (Offline)' : 'Awaiting Approval')}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {!log.approved && synced && (
+                        <TouchableOpacity style={s.receiptApproveBtn} onPress={() => approveLog(log.id)}>
+                          <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                          <Text style={s.receiptApproveBtnText}>Approve Log</Text>
+                        </TouchableOpacity>
+                      )}
+                      {!log.approved && !synced && (
+                        <View style={[s.receiptApproveBtn, { backgroundColor: '#E2E8F0' }]}>
+                          <Ionicons name="cloud-offline-outline" size={16} color="#64748B" />
+                          <Text style={[s.receiptApproveBtnText, { color: '#64748B' }]}>Pending Sync</Text>
+                        </View>
+                      )}
                     </View>
-                  </View>
-                </View>
+                  ))}
+                </>
+              );
+            })()}
 
-                {!log.approved && synced && (
-                  <TouchableOpacity style={s.receiptApproveBtn} onPress={() => approveLog(log.id)}>
-                    <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
-                    <Text style={s.receiptApproveBtnText}>Approve Log</Text>
-                  </TouchableOpacity>
-                )}
-                {!log.approved && !synced && (
-                  <View style={[s.receiptApproveBtn, { backgroundColor: '#E2E8F0' }]}>
-                    <Ionicons name="cloud-offline-outline" size={16} color="#64748B" />
-                    <Text style={[s.receiptApproveBtnText, { color: '#64748B' }]}>Pending Sync</Text>
-                  </View>
-                )}
-              </View>
-            ))}
-
-            {/* SRA QR Generator */}
-            <TouchableOpacity style={s.qrBtn} onPress={() => setShowQR(true)}>
-              <Ionicons name="qr-code-outline" size={22} color="#fff" />
-              <View style={{ flex: 1 }}>
-                <Text style={s.qrBtnTitle}>Generate SRA Audit QR Code</Text>
-                <Text style={s.qrBtnSub}>Compile all {uniqueFieldsCount} fields' monthly logs ({totalLogsCount} total) for SRA supervisor</Text>
-              </View>
-            </TouchableOpacity>
           </>
         )}
 
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* SRA CHECKER VIEW */}
+        {/* SRA (Admin) VIEW */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {activeRole === 'SRA Checker' && (
+        {activeRole === 'SRA (Admin)' && (
           <>
-            <Text style={s.sectionLabel}>SRA Audit Center</Text>
+            {/* ── Block Farm Summary ── */}
+            <Text style={s.sectionLabel}>Block Farm Overview</Text>
+
+            {/* Farm Selector */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, marginBottom: SPACING.md }}>
+              {['All Block Farms', 'Silay Block Farm A', 'Silay Block Farm B', 'Silay Block Farm C'].map(farm => (
+                <TouchableOpacity 
+                  key={farm}
+                  style={{
+                    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+                    backgroundColor: selectedFarm === farm ? COLORS.primary : COLORS.background,
+                    borderWidth: 1, borderColor: selectedFarm === farm ? COLORS.primary : COLORS.border
+                  }}
+                  onPress={() => setSelectedFarm(farm)}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: selectedFarm === farm ? '#fff' : COLORS.text }}>{farm}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={[s.receiptCard, { marginBottom: SPACING.md }]}>
+              <View style={s.receiptHeader}>
+                <Text style={s.receiptTitle}>Descriptive Summary</Text>
+                <Text style={s.receiptId}>Live Data</Text>
+              </View>
+              <View style={s.receiptDivider} />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, padding: SPACING.sm }}>
+                {(() => {
+                  const isAll = selectedFarm === 'All Block Farms';
+                  const fFields = isAll ? MOCK_FIELDS : MOCK_FIELDS.filter(f => f.blockFarm === selectedFarm);
+                  const fManagers = isAll ? MOCK_MANAGERS : MOCK_MANAGERS.filter(m => m.blockFarm === selectedFarm);
+                  const fFieldIds = fFields.map(f => f.id);
+                  const fLogs = MOCK_LOGS.filter(l => fFieldIds.includes(l.fieldId));
+
+                  return [
+                    {
+                      label: 'Total Hectares',
+                      value: `${fFields.reduce((sum, f) => sum + parseFloat(f.ha || 0), 0).toFixed(1)} Ha`,
+                      icon: 'map-outline',
+                      color: COLORS.primary,
+                    },
+                    {
+                      label: 'Active Members',
+                      value: `${[...new Set(fFields.map(f => f.member))].length} Members`,
+                      icon: 'people-outline',
+                      color: '#1A6B9A',
+                    },
+                    {
+                      label: 'Farm Managers',
+                      value: `${fManagers.length} Managers`,
+                      icon: 'briefcase-outline',
+                      color: '#8F3A8F',
+                    },
+                    {
+                      label: 'Approved Logs',
+                      value: `${fLogs.filter(l => l.approved).length} Logs`,
+                      icon: 'checkmark-circle-outline',
+                      color: COLORS.success,
+                    },
+                    {
+                      label: 'Total Op. Cost',
+                      value: `₱${fLogs.filter(l => l.approved).reduce((sum, l) => sum + (l.cost || 0), 0).toLocaleString()}`,
+                      icon: 'cash-outline',
+                      color: '#F5A623',
+                    },
+                    {
+                      label: 'Pending Logs',
+                      value: `${fLogs.filter(l => !l.approved).length} Pending`,
+                      icon: 'time-outline',
+                      color: '#D9534F',
+                    },
+                  ].map(stat => (
+                    <View key={stat.label} style={{ width: '47%', backgroundColor: COLORS.background, borderRadius: RADIUS.md, padding: SPACING.sm, gap: 4 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name={stat.icon} size={14} color={stat.color} />
+                        <Text style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 }}>{stat.label}</Text>
+                      </View>
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: stat.color }}>{stat.value}</Text>
+                    </View>
+                  ));
+                })()}
+              </View>
+            </View>
 
             {/* Scanner Card */}
             <TouchableOpacity style={s.scannerCard} onPress={() => setShowScanner(true)}>
@@ -804,9 +1025,12 @@ export default function SchedulesScreen({ navigation }) {
 
             <Text style={s.formLabel}>Activity / Operation *</Text>
             <TextInput
-              style={[s.formInput, { backgroundColor: '#f0f0f0', color: COLORS.textMuted }]}
+              style={[s.formInput, { backgroundColor: logForm.taskId === 'Emergency' ? '#fff' : '#f0f0f0', color: logForm.taskId === 'Emergency' ? COLORS.text : COLORS.textMuted }]}
               value={logForm.activity}
-              editable={false}
+              onChangeText={v => setLogForm(p => ({ ...p, activity: v }))}
+              editable={logForm.taskId === 'Emergency'}
+              placeholder={logForm.taskId === 'Emergency' ? "Describe the unplanned work..." : ""}
+              placeholderTextColor={COLORS.textMuted}
             />
 
             <Text style={s.formLabel}>Operational Cost (Php) *</Text>
@@ -855,8 +1079,8 @@ export default function SchedulesScreen({ navigation }) {
                 <Text style={s.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.submitBtn} onPress={submitLog}>
-                <Ionicons name="create-outline" size={16} color="#fff" />
-                <Text style={s.submitBtnText}>Save Draft</Text>
+                <Ionicons name={logForm.isSubmit ? "paper-plane-outline" : "create-outline"} size={16} color="#fff" />
+                <Text style={s.submitBtnText}>{logForm.isSubmit ? 'Submit Progress Log' : 'Save Draft'}</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -903,9 +1127,15 @@ export default function SchedulesScreen({ navigation }) {
             
             {/* Calendar Header */}
             <View style={{ backgroundColor: COLORS.primary, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Ionicons name="chevron-back" size={20} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>May 2026</Text>
-              <Ionicons name="chevron-forward" size={20} color="#fff" />
+              <TouchableOpacity onPress={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1))}>
+                <Ionicons name="chevron-back" size={24} color="#fff" />
+              </TouchableOpacity>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+                {new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(calDate)}
+              </Text>
+              <TouchableOpacity onPress={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() + 1, 1))}>
+                <Ionicons name="chevron-forward" size={24} color="#fff" />
+              </TouchableOpacity>
             </View>
 
             {/* Calendar Grid */}
@@ -916,18 +1146,19 @@ export default function SchedulesScreen({ navigation }) {
                 ))}
               </View>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8, justifyContent: 'space-between' }}>
-                {/* Blank days for padding (May 2026 starts on Friday) */}
-                {Array.from({ length: 5 }).map((_, i) => <View key={`blank-${i}`} style={{ width: 32, height: 32 }} />)}
+                {Array.from({ length: new Date(calDate.getFullYear(), calDate.getMonth(), 1).getDay() }).map((_, i) => <View key={`blank-${i}`} style={{ width: 32, height: 32 }} />)}
                 
-                {Array.from({ length: 31 }).map((_, i) => {
+                {Array.from({ length: new Date(calDate.getFullYear(), calDate.getMonth() + 1, 0).getDate() }).map((_, i) => {
                   const day = i + 1;
-                  const isToday = day === 21; // Simulate May 21, 2026 as today
+                  const isToday = calDate.getFullYear() === 2026 && calDate.getMonth() === 4 && day === 21;
                   return (
                     <TouchableOpacity
                       key={day}
                       style={{ width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', backgroundColor: isToday ? COLORS.primary : 'transparent' }}
                       onPress={() => {
-                        setLogForm(p => ({...p, period: `May ${day}, 2026`}));
+                        const formattedMonth = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(calDate);
+                        setLogForm(p => ({...p, period: `${formattedMonth} ${day}, ${calDate.getFullYear()}`}));
+                        setShowCalendar(false);
                       }}
                     >
                       <Text style={{ fontSize: 14, color: isToday ? '#fff' : COLORS.text, fontWeight: isToday ? '700' : '500' }}>{day}</Text>
@@ -1003,6 +1234,119 @@ export default function SchedulesScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+      {/* ── Fields Search Modal ── */}
+      <Modal visible={showFieldsModal} transparent animationType="slide">
+        <View style={s.overlay} />
+        <View style={[s.sheet, { height: '85%' }]}>
+          <View style={s.sheetHeader}>
+            <Text style={s.sheetTitle}>Block Farm Fields</Text>
+            <TouchableOpacity onPress={() => { setShowFieldsModal(false); setFieldSearch(''); }}>
+              <Ionicons name="close-circle" size={24} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+          <View style={{ padding: SPACING.lg, borderBottomWidth: 1, borderBottomColor: COLORS.border, backgroundColor: COLORS.background }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: RADIUS.md, paddingHorizontal: 12, borderWidth: 1, borderColor: COLORS.border }}>
+              <Ionicons name="search" size={16} color={COLORS.textMuted} />
+              <TextInput 
+                placeholder="Search by Field ID or Member name..."
+                style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, fontSize: 13 }}
+                value={fieldSearch}
+                onChangeText={setFieldSearch}
+              />
+              {fieldSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setFieldSearch('')}>
+                  <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: 10 }}>
+            {MOCK_FIELDS.filter(f => f.id.toLowerCase().includes(fieldSearch.toLowerCase()) || f.member.toLowerCase().includes(fieldSearch.toLowerCase())).length === 0 && (
+               <Text style={s.emptyText}>No fields match your search.</Text>
+            )}
+            {MOCK_FIELDS.filter(f => f.id.toLowerCase().includes(fieldSearch.toLowerCase()) || f.member.toLowerCase().includes(fieldSearch.toLowerCase())).map(field => (
+              <TouchableOpacity key={field.id} style={[s.receiptCard, selectedField.id === field.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg, marginBottom: 0 }, { marginBottom: 0 }]} onPress={() => {
+                setSelectedField(field);
+                updateSessionFieldId(field.id);
+                setShowFieldsModal(false);
+                setFieldSearch('');
+              }}>
+                <View style={s.receiptHeader}>
+                  <Text style={[s.receiptTitle, { color: COLORS.text }]}>{field.id}</Text>
+                  <Text style={s.receiptId}>{field.ha} Ha</Text>
+                </View>
+                <Text style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>Member: {field.member}</Text>
+                <Text style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>Stage: <Text style={{ color: COLORS.text }}>{field.stage}</Text></Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                  <View style={[s.syncDot, { backgroundColor: field.synced ? COLORS.success : '#C97A00' }]} />
+                  <Text style={{ fontSize: 10, color: field.synced ? COLORS.success : '#C97A00' }}>
+                    {field.synced ? `Synced ${field.lastSync}` : `Not synced`}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* ── Manager Assign Field Modal ── */}
+      <Modal visible={showManagerAssignModal} transparent animationType="slide">
+        <View style={s.overlay} />
+        <View style={s.sheet}>
+          <View style={s.sheetHandle} />
+          <View style={s.sheetHeader}>
+            <Text style={s.sheetTitle}>Assign Field to Member</Text>
+            <TouchableOpacity onPress={() => setShowManagerAssignModal(false)}>
+              <Ionicons name="close-circle" size={24} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+          <View style={s.sheetBody}>
+            <View style={{ gap: 4 }}>
+              <Text style={s.formLabel}>Member ID / Name</Text>
+              <TextInput style={s.formInput} placeholder="e.g. Juan dela Cruz or MBR-2026" value={managerAssignForm.memberName} onChangeText={t => setManagerAssignForm({...managerAssignForm, memberName: t})} />
+            </View>
+            <View style={{ gap: 4 }}>
+              <Text style={s.formLabel}>Field ID</Text>
+              <TextInput style={s.formInput} placeholder="e.g. FLD-KTR-008" value={managerAssignForm.fieldId} onChangeText={t => setManagerAssignForm({...managerAssignForm, fieldId: t})} />
+            </View>
+            <View style={{ gap: 4 }}>
+              <Text style={s.formLabel}>Hectares (Ha)</Text>
+              <TextInput style={s.formInput} placeholder="e.g. 1.5" keyboardType="numeric" value={managerAssignForm.ha} onChangeText={t => setManagerAssignForm({...managerAssignForm, ha: t})} />
+            </View>
+            <View style={s.sheetFooter}>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => setShowManagerAssignModal(false)}><Text style={s.cancelBtnText}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity style={s.submitBtn} onPress={() => {
+                if(!managerAssignForm.memberName || !managerAssignForm.fieldId || !managerAssignForm.ha) {
+                  Alert.alert('Error', 'Please fill in all fields.');
+                  return;
+                }
+                const existing = MOCK_FIELDS.find(f => f.id === managerAssignForm.fieldId);
+                if (existing) {
+                  existing.member = managerAssignForm.memberName;
+                  existing.ha = managerAssignForm.ha;
+                } else {
+                  MOCK_FIELDS.push({
+                    id: managerAssignForm.fieldId,
+                    member: managerAssignForm.memberName,
+                    ha: managerAssignForm.ha,
+                    stage: 'Land Preparation',
+                    month: 0,
+                    synced: false,
+                    lastSync: 'Just now',
+                    blockFarm: session.farm || 'Silay Block Farm'
+                  });
+                }
+                Alert.alert('Success', `${managerAssignForm.fieldId} assigned to ${managerAssignForm.memberName}.`);
+                setShowManagerAssignModal(false);
+                setManagerAssignForm({ memberName: '', fieldId: '', ha: '' });
+              }}>
+                <Text style={s.submitBtnText}>Assign Field</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -1047,7 +1391,7 @@ const s = StyleSheet.create({
   syncWarningText: { flex: 1, fontSize: 12, color: '#8B6A00', lineHeight: 18 },
 
   // Receipt Card Layout (Senior Accessible)
-  receiptCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: 16, borderWidth: 1.5, borderColor: '#DCE8CC', gap: 12, ...SHADOW.card, position: 'relative' },
+  receiptCard: { backgroundColor: '#fff', borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.md, marginBottom: SPACING.md, ...SHADOW.card },
   receiptHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   receiptTitle: { fontSize: 11, fontWeight: '800', color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.5 },
   receiptId: { fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', color: COLORS.textMuted, fontWeight: '600' },
@@ -1077,22 +1421,16 @@ const s = StyleSheet.create({
   activeBadge: { alignSelf: 'flex-start', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 2 },
   activeBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
 
+  // Log Tabs
+  logTabsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+  logTabBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  logTabBtnActive: { borderBottomColor: COLORS.primary },
+  logTabText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
+  logTabTextActive: { color: COLORS.primary, fontWeight: '700' },
+
   // Add Log Button
   addLogBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 7 },
   addLogBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
-
-  // Log Cards
-  logCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.md, gap: 8, ...SHADOW.card },
-  logTypeBadge: { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  logTypeText: { fontSize: 11, fontWeight: '700' },
-  logActivity: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  logMeta: { flexDirection: 'row', justifyContent: 'space-between' },
-  logDate: { fontSize: 11, color: COLORS.textMuted },
-  logCost: { fontSize: 13, fontWeight: '800', color: COLORS.primary },
-  approvalBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
-  approvalText: { fontSize: 11, fontWeight: '600' },
-  approveBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.success, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  approveBtnText: { fontSize: 11, fontWeight: '700', color: '#fff' },
 
   // QR & Scanner
   qrBtn: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, backgroundColor: COLORS.primary, borderRadius: RADIUS.lg, padding: SPACING.lg, ...SHADOW.card },

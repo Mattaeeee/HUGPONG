@@ -93,9 +93,9 @@ export const DEMO_ACCOUNTS = {
     pendingLogs: 0,
     syncedLogs: 142,
   },
-  'SRA Checker': {
+  'SRA (Admin)': {
     name: 'Maria Santos',
-    role: 'SRA Checker',
+    role: 'SRA (Admin)',
     employeeId: 'SRA-2026-088',
     fieldId: 'FLD-KTR-003',
     farm: 'SRA Sugar District VII',
@@ -168,10 +168,16 @@ export const MOCK_PROFILE = {
 }; // backward compatibility
 
 export const MOCK_FIELDS = [
-  { id: 'FLD-KTR-001', member: 'Juan dela Cruz', ha: '1.5', stage: 'Fertilization Stage 2', month: 3.2, synced: true, lastSync: '10 mins ago' },
-  { id: 'FLD-KTR-003', member: 'Maria Santos', ha: '2.0', stage: 'Land Preparation', month: 0.3, synced: true, lastSync: '2 hrs ago' },
-  { id: 'FLD-KTR-007', member: 'Pedro Reyes', ha: '1.0', stage: 'Harvesting', month: 10.5, synced: false, lastSync: '4 days ago' },
-  { id: 'FLD-KTR-009', member: 'Ana Gomez', ha: '0.8', stage: 'Weeding', month: 5.1, synced: true, lastSync: '1 hr ago' },
+  { id: 'FLD-KTR-001', member: 'Juan dela Cruz', ha: '1.5', stage: 'Fertilization Stage 2', month: 3.2, synced: true, lastSync: '10 mins ago', blockFarm: 'Silay Block Farm A' },
+  { id: 'FLD-KTR-003', member: 'Maria Santos', ha: '2.0', stage: 'Land Preparation', month: 0.3, synced: true, lastSync: '2 hrs ago', blockFarm: 'Silay Block Farm A' },
+  { id: 'FLD-KTR-007', member: 'Pedro Reyes', ha: '1.0', stage: 'Harvesting', month: 10.5, synced: false, lastSync: '4 days ago', blockFarm: 'Silay Block Farm B' },
+  { id: 'FLD-KTR-009', member: 'Ana Gomez', ha: '0.8', stage: 'Weeding', month: 5.1, synced: true, lastSync: '1 hr ago', blockFarm: 'Silay Block Farm C' },
+];
+
+export const MOCK_MANAGERS = [
+  { id: 'M1', name: 'Carlos Dimayuga', blockFarm: 'Silay Block Farm A' },
+  { id: 'M2', name: 'Elena Batongbakal', blockFarm: 'Silay Block Farm B' },
+  { id: 'M3', name: 'Ricardo Dalisay', blockFarm: 'Silay Block Farm C' },
 ];
 
 export let MOCK_LOGS = [
@@ -206,4 +212,41 @@ export const resolveAssignmentRequest = (reqId, approved) => {
     req.status = approved ? 'approved' : 'rejected';
     notify();
   }
+};
+
+export const SRA_PRICE_HISTORY = [
+  { week: 'Week 1', month: 'Mar', price: 2450 },
+  { week: 'Week 2', month: 'Mar', price: 2500 },
+  { week: 'Week 3', month: 'Mar', price: 2480 },
+  { week: 'Week 4', month: 'Mar', price: 2550 },
+  { week: 'Week 1', month: 'Apr', price: 2600 },
+  { week: 'Week 2', month: 'Apr', price: 2580 },
+  { week: 'Week 3', month: 'Apr', price: 2650 },
+  { week: 'Week 4', month: 'Apr', price: 2700 },
+  { week: 'Week 1', month: 'May', price: 2720 },
+  { week: 'Week 2', month: 'May', price: 2750 },
+  { week: 'Week 3', month: 'May', price: 2800 },
+  { week: 'Week 4', month: 'May', price: 2800 },
+];
+
+const WEEK_LABELS = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+export const addSRAPrice = (price) => {
+  const last = SRA_PRICE_HISTORY[SRA_PRICE_HISTORY.length - 1];
+  const lastWeekIdx = WEEK_LABELS.indexOf(last.week);
+  const lastMonthIdx = MONTH_LABELS.indexOf(last.month);
+  let nextWeek, nextMonth;
+  if (lastWeekIdx < 3) {
+    nextWeek = WEEK_LABELS[lastWeekIdx + 1];
+    nextMonth = last.month;
+  } else {
+    nextWeek = 'Week 1';
+    nextMonth = MONTH_LABELS[(lastMonthIdx + 1) % 12];
+  }
+  SRA_PRICE_HISTORY.push({ week: nextWeek, month: nextMonth, price });
+  // Also update the MOCK_PRICE current value
+  MOCK_PRICE.value = price;
+  MOCK_PRICE.lastUpdated = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  notify();
 };

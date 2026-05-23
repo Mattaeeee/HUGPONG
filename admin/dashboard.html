@@ -24,6 +24,8 @@
       --color-success-bg: #E8F5E8;
       --color-danger: #D9534F;
       --color-danger-bg: #FEEBEB;
+      --color-warning: #F5A623;
+      --color-warning-bg: #FFF3DC;
       --color-border: #E2E8DC;
       --color-hug-text: #1A2212;
       --color-hug-text2: #5A6B4A;
@@ -80,11 +82,15 @@
       <span class="text-hug-muted text-[10px] font-bold uppercase tracking-wider px-3 pt-3 pb-1">System Control</span>
       <button class="nav-item flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm text-hug-text2 hover:bg-bg hover:text-primary transition-all text-left" data-page="fields">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-        Field Registry
+        Block Farm Registry
       </button>
       <button class="superadmin-only hidden nav-item flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm text-hug-text2 hover:bg-bg hover:text-primary transition-all text-left" data-page="sync" id="nav-sync">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         Sync Monitor
+      </button>
+      <button class="superadmin-only hidden nav-item flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm text-hug-text2 hover:bg-bg hover:text-primary transition-all text-left" data-page="maintenance" id="nav-maintenance">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Maintenance &amp; Security
       </button>
     </nav>
     <div class="p-4 border-t border-border bg-white">
@@ -92,7 +98,7 @@
         <div id="sidebar-admin-avatar" class="w-9 h-9 rounded-full bg-primary-bg flex items-center justify-center font-bold text-primary text-sm flex-shrink-0">A</div>
         <div>
           <p id="sidebar-admin-name" class="text-hug-text text-sm font-semibold">Juan dela Cruz</p>
-          <p id="sidebar-admin-role" class="text-hug-muted text-xs">SRA Checker</p>
+          <p id="sidebar-admin-role" class="text-hug-muted text-xs">SRA (Admin)</p>
         </div>
       </div>
       <button id="reset-demo-btn" onclick="resetDemoDatabase()" class="superadmin-only hidden w-full text-danger border border-danger/30 rounded-lg py-1.5 text-[11px] font-medium hover:bg-danger-bg transition-all cursor-pointer">&#x21ba; Reset Demo Data</button>
@@ -112,8 +118,8 @@
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-2 bg-bg border border-border rounded-full px-4 py-1.5">
           <span class="text-[10px] font-bold text-hug-text2 uppercase tracking-wider">Role:</span>
-          <select id="role-toggle-select" aria-label="Role toggle" onchange="switchRole(this.value)" class="border-0 bg-transparent text-xs font-bold text-primary outline-none cursor-pointer">
-            <option value="admin">SRA Checker</option>
+          <select id="role-toggle-select" aria-label="Role toggle" title="Role toggle" onchange="switchRole(this.value)" class="border-0 bg-transparent text-xs font-bold text-primary outline-none cursor-pointer">
+            <option value="admin">SRA (Admin)</option>
             <option value="superadmin">Super Admin</option>
           </select>
         </div>
@@ -144,7 +150,7 @@
           </div>
           <div class="bg-white rounded-xl p-5 border border-border shadow-sm flex gap-3.5 items-start">
             <div class="w-11 h-11 rounded-xl bg-farm-blue-bg text-farm-blue flex items-center justify-center flex-shrink-0"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></div>
-            <div><p class="text-xs text-hug-muted mb-1">Total Managed Area</p><p class="text-2xl font-black text-hug-text leading-none mb-1">22.5 Ha</p><p class="text-xs font-medium text-hug-muted">Across 4 active fields</p></div>
+            <div><p class="text-xs text-hug-muted mb-1">Total Managed Area</p><p class="text-2xl font-black text-hug-text leading-none mb-1">129.7 Ha</p><p class="text-xs font-medium text-hug-muted">Across 4 active block farms</p></div>
           </div>
           <div class="bg-white rounded-xl p-5 border border-border shadow-sm flex gap-3.5 items-start">
             <div class="w-11 h-11 rounded-xl bg-accent-bg text-accent flex items-center justify-center flex-shrink-0"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
@@ -152,10 +158,10 @@
           </div>
           <div class="bg-white rounded-xl p-5 border border-border shadow-sm flex gap-3.5 items-start">
             <div class="w-11 h-11 rounded-xl bg-farm-purple-bg text-farm-purple flex items-center justify-center flex-shrink-0"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div>
-            <div><p class="text-xs text-hug-muted mb-1">Lag Warnings</p><p class="text-2xl font-black text-danger leading-none mb-1">1 Flag</p><p class="text-xs font-medium text-danger">FLD-KTR-007 offline 4d</p></div>
+            <div><p class="text-xs text-hug-muted mb-1">Sync Lag</p><p class="text-2xl font-black text-danger leading-none mb-1">158 Logs</p><p class="text-xs font-medium text-danger">Pending from 2 Block Farms</p></div>
           </div>
         </div>
-        <div class="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-4">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div class="bg-white rounded-xl p-5 border border-border shadow-sm">
             <div class="flex items-center justify-between mb-3">
               <div><h3 class="text-sm font-bold text-hug-text">SRA Raw Sugar Price Trend</h3><p class="text-xs text-hug-muted">12-week history (March - May 2026)</p></div>
@@ -163,10 +169,18 @@
             </div>
             <div id="price-trend-chart" class="w-full"></div>
           </div>
-          <div class="bg-white rounded-xl p-5 border border-border shadow-sm">
-            <div class="mb-4"><h3 class="text-sm font-bold text-hug-text">Crop Stage Distribution</h3><p class="text-xs text-hug-muted">22.5 Ha across 4 active fields</p></div>
-            <div id="crop-stage-visual" class="flex flex-col gap-4"></div>
+          <div class="bg-white rounded-xl p-5 border border-border shadow-sm flex flex-col">
+            <div class="mb-4"><h3 class="text-sm font-bold text-hug-text">Cost-per-Hectare Efficiency</h3><p class="text-xs text-hug-muted">Compare operational cost efficiency across Block Farms</p></div>
+            <div id="cost-efficiency-visual" class="flex flex-col gap-3 flex-1"></div>
+            <div class="mt-4 pt-3 border-t border-border flex items-start gap-2">
+              <svg width="14" height="14" fill="none" stroke="#1A6B9A" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+              <p class="text-[11px] text-hug-muted leading-relaxed" id="cost-efficiency-note">Block Farm B has the highest average cost. Consider reviewing their aggregated reports.</p>
+            </div>
           </div>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-border shadow-sm">
+          <div class="mb-4"><h3 class="text-sm font-bold text-hug-text">Crop Stage Distribution</h3><p class="text-xs text-hug-muted" id="crop-stage-subtitle">129.7 Ha across 4 active block farms</p></div>
+          <div id="crop-stage-visual" class="flex flex-col sm:flex-row gap-4"></div>
         </div>
         <div class="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
           <div class="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -177,6 +191,7 @@
             <table class="w-full text-sm">
               <thead class="bg-bg"><tr>
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs uppercase tracking-wide border-b border-border">Log ID</th>
+                <th id="dashboard-th-blockfarm" class="hidden text-left px-4 py-2.5 text-hug-muted font-semibold text-xs uppercase tracking-wide border-b border-border">Block Farm</th>
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs uppercase tracking-wide border-b border-border">Field ID</th>
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs uppercase tracking-wide border-b border-border">Type</th>
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs uppercase tracking-wide border-b border-border">Operation</th>
@@ -195,7 +210,7 @@
           <div id="audit-code-panel" class="bg-white rounded-xl p-6 border border-border shadow-sm flex flex-col gap-5">
             <div>
               <h3 class="text-base font-bold text-hug-text mb-1">SRA QR Audit Verifier</h3>
-              <p class="text-xs text-hug-text2 leading-relaxed">Farmers compile approved field logs into an encrypted QR on the mobile app. The SRA Checker scans it on the mobile app and copies the hash code here to generate the certified audit report.</p>
+              <p class="text-xs text-hug-text2 leading-relaxed">Farmers compile approved field logs into an encrypted QR on the mobile app. The SRA (Admin) scans it on the mobile app and copies the hash code here to generate the certified audit report.</p>
             </div>
             <div class="bg-farm-blue-bg border border-farm-blue/20 rounded-lg p-3 flex gap-2">
               <svg width="14" height="14" fill="none" stroke="#1A6B9A" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
@@ -203,8 +218,8 @@
             </div>
             <div class="flex flex-col gap-3">
               <div>
-                <label class="block text-xs font-semibold text-hug-text2 mb-2">Audit Hash Code</label>
-                <input type="text" id="manual-qr-input" placeholder="e.g. HUG-202605-XXXX" class="w-full border border-border rounded-lg px-3 py-2.5 text-sm font-mono uppercase tracking-widest text-hug-text bg-bg focus:outline-none focus:border-primary focus:bg-white transition-all"/>
+                <label for="manual-qr-input" class="block text-xs font-semibold text-hug-text2 mb-2">Audit Hash Code</label>
+                <input type="text" id="manual-qr-input" title="Audit hash code" placeholder="e.g. HUG-202605-XXXX" class="w-full border border-border rounded-lg px-3 py-2.5 text-sm font-mono uppercase tracking-widest text-hug-text bg-bg focus:outline-none focus:border-primary focus:bg-white transition-all"/>
               </div>
               <button onclick="submitManualQR()" class="w-full bg-primary text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-primary-light transition-all flex items-center justify-center gap-2 cursor-pointer">
                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"/></svg>
@@ -227,8 +242,9 @@
                 <div><h3 class="text-lg font-black text-primary uppercase tracking-wide">SRA Audit Certificate</h3><p class="text-xs text-hug-muted">SUGAR REGULATORY ADMINISTRATION - SILAY BLOCK FARM AUDITOR</p></div>
                 <span class="text-[11px] font-bold px-3 py-1 rounded-full bg-success-bg text-success uppercase tracking-wider">&#10003; Fully Certified</span>
               </div>
-              <div class="grid grid-cols-3 gap-3 bg-bg border border-border rounded-lg p-4 mb-5">
+              <div class="grid grid-cols-4 gap-3 bg-bg border border-border rounded-lg p-4 mb-5">
                 <div><p class="text-[10px] text-hug-muted uppercase font-semibold tracking-wider mb-1">Verification ID</p><p class="text-sm font-black text-hug-text font-mono" id="cert-hash">HUG-202605-A3F9</p></div>
+                <div><p class="text-[10px] text-hug-muted uppercase font-semibold tracking-wider mb-1">Block Farm</p><p class="text-sm font-bold text-hug-text" id="cert-farm">Block Farm A</p></div>
                 <div><p class="text-[10px] text-hug-muted uppercase font-semibold tracking-wider mb-1">Compiled By</p><p class="text-sm font-bold text-hug-text">Maria Santos (Farm Mgr)</p></div>
                 <div><p class="text-[10px] text-hug-muted uppercase font-semibold tracking-wider mb-1">Verified On</p><p class="text-sm font-bold text-hug-text">May 05, 2026</p></div>
               </div>
@@ -267,9 +283,13 @@
 
       <!-- SRA PRICE MONITOR -->
       <section class="page hidden flex flex-col gap-5" id="page-prices">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between flex-wrap gap-3">
           <h2 class="text-xl font-bold text-hug-text">Weekly Price Posting Desk</h2>
-          <button id="add-price-btn" class="bg-primary text-white font-semibold text-sm px-4 py-2 rounded-lg hover:bg-primary-light transition-all cursor-pointer">+ Post New Weekly Price</button>
+          <div class="flex items-center flex-wrap gap-3">
+            <input type="text" id="price-search" placeholder="Search week, source..." oninput="setPricePage(1)" class="border border-border rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-primary w-40">
+            <button id="price-sort" onclick="togglePriceSort()" class="border border-border rounded-lg px-3 py-1.5 text-xs font-semibold bg-white text-hug-text2 hover:bg-bg transition-all cursor-pointer">Sort Price: Default</button>
+            <button id="add-price-btn" class="bg-primary text-white font-semibold text-sm px-4 py-2 rounded-lg hover:bg-primary-light transition-all cursor-pointer">+ Post New Weekly Price</button>
+          </div>
         </div>
         <div class="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5 items-start">
           <div class="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
@@ -283,13 +303,14 @@
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Source</th>
                 <th class="px-4 py-2.5 border-b border-border"></th>
               </tr></thead>
-              <tbody id="price-table-body"></tbody>
+            <tbody id="price-table-body"></tbody>
             </table></div>
+            <div id="price-pagination" class="flex items-center justify-center gap-3 p-3 border-t border-border bg-white"></div>
           </div>
           <div id="price-form-card" class="hidden bg-white rounded-xl border border-border shadow-sm p-5">
             <h3 class="text-sm font-bold text-hug-text mb-4">Post Official Sugar Price</h3>
             <div class="flex flex-col gap-3">
-              <div class="flex flex-col gap-1.5"><label for="p-week" class="text-xs font-semibold text-hug-text2">Official Week</label><input id="p-week" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white transition-all" placeholder="e.g. Wk1 Jun"/></div>
+              <div class="flex flex-col gap-1.5"><label for="p-week" class="text-xs font-semibold text-hug-text2">Official Week</label><input id="p-week" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white transition-all" placeholder="e.g. Week 1 Jun"/></div>
               <div class="flex flex-col gap-1.5"><label for="p-price" class="text-xs font-semibold text-hug-text2">Sugar Price (Php / Lkg)</label><input id="p-price" type="number" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white transition-all" placeholder="2800"/></div>
               <div class="flex flex-col gap-1.5"><label for="p-date" class="text-xs font-semibold text-hug-text2">Effective Date</label><input id="p-date" title="Effective date" type="date" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white transition-all"/></div>
               <div class="flex flex-col gap-1.5"><label for="p-source" class="text-xs font-semibold text-hug-text2">Citation / Circular</label><input id="p-source" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white transition-all" placeholder="e.g. SRA Facebook Broadcast"/></div>
@@ -306,15 +327,19 @@
       <section class="page hidden flex flex-col gap-5" id="page-logs">
         <div class="flex items-center justify-between flex-wrap gap-3">
           <h2 class="text-xl font-bold text-hug-text">Field Operation Logs Directory</h2>
-          <div class="flex items-center gap-2">
-            <label for="log-field-filter" class="text-xs font-semibold text-hug-text2">Filter Field:</label>
-            <select id="log-field-filter" aria-label="Filter field" onchange="renderLogs()" class="border border-border rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-primary">
+          <div class="flex items-center flex-wrap gap-3">
+            <input type="text" id="log-search" placeholder="Search task, ID..." oninput="setLogPage(1)" class="border border-border rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-primary w-40">
+            <button id="log-sort-cost" onclick="toggleLogSort()" class="border border-border rounded-lg px-3 py-1.5 text-xs font-semibold bg-white text-hug-text2 hover:bg-bg transition-all cursor-pointer">Sort Cost: Default</button>
+            <div class="flex items-center gap-2 border-l border-border pl-3">
+              <label for="log-field-filter" class="text-xs font-semibold text-hug-text2">Filter Field:</label>
+            <select id="log-field-filter" aria-label="Filter field" title="Filter field" onchange="renderLogs()" class="border border-border rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-primary">
               <option value="all">All Active Fields</option>
               <option value="FLD-KTR-001">FLD-KTR-001 (Juan dela Cruz)</option>
               <option value="FLD-KTR-003">FLD-KTR-003 (Maria Santos)</option>
               <option value="FLD-KTR-007">FLD-KTR-007 (Pedro Reyes)</option>
               <option value="FLD-KTR-009">FLD-KTR-009 (Ana Gomez)</option>
             </select>
+            </div>
           </div>
         </div>
         <div class="flex gap-2 flex-wrap">
@@ -327,6 +352,7 @@
           <div class="overflow-x-auto"><table class="w-full text-sm">
             <thead class="bg-bg"><tr>
               <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Log ID</th>
+              <th id="logs-th-blockfarm" class="hidden text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Block Farm</th>
               <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Field ID</th>
               <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Type</th>
               <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Operation</th>
@@ -337,6 +363,7 @@
             </tr></thead>
             <tbody id="logs-table-body"></tbody>
           </table></div>
+          <div id="log-pagination" class="flex items-center justify-center gap-3 p-3 border-t border-border bg-white"></div>
         </div>
       </section>
 
@@ -350,16 +377,16 @@
           </div>
           <div class="bg-white rounded-xl p-5 border border-border shadow-sm flex gap-3.5 items-start">
             <div class="w-11 h-11 rounded-xl bg-accent-bg text-accent flex items-center justify-center flex-shrink-0"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v8m-4-4h8"/></svg></div>
-            <div><p class="text-xs text-hug-muted mb-1">Most Efficient Hectare</p><p class="text-2xl font-black text-success leading-none mb-1">Php 8,900</p><p class="text-xs text-hug-muted">Field: <strong class="text-hug-text">FLD-KTR-003</strong></p></div>
+            <div><p class="text-xs text-hug-muted mb-1">Most Efficient Hectare</p><p class="text-2xl font-black text-success leading-none mb-1">Php 8,900</p><p class="text-xs text-hug-muted">Farm: <strong class="text-hug-text">Block Farm B</strong></p></div>
           </div>
           <div class="bg-white rounded-xl p-5 border border-border shadow-sm flex gap-3.5 items-start">
             <div class="w-11 h-11 rounded-xl bg-danger-bg text-danger flex items-center justify-center flex-shrink-0"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
-            <div><p class="text-xs text-hug-muted mb-1">Flagged Heavy Cost</p><p class="text-2xl font-black text-danger leading-none mb-1">Php 15,200</p><p class="text-xs text-hug-muted">Field: <strong class="text-hug-text">FLD-KTR-007</strong></p></div>
+            <div><p class="text-xs text-hug-muted mb-1">Flagged Heavy Cost</p><p class="text-2xl font-black text-danger leading-none mb-1">Php 15,200</p><p class="text-xs text-hug-muted">Farm: <strong class="text-hug-text">Block Farm C</strong></p></div>
           </div>
         </div>
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
-          <div class="bg-white rounded-xl p-5 border border-border shadow-sm"><div class="mb-4"><h3 class="text-sm font-bold text-hug-text">Expense Category Allocation</h3><p class="text-xs text-hug-muted">Source: 13 approved operation logs across FLD-KTR-001, 003, 007, 009</p></div><div id="expense-distribution-bars" class="flex flex-col gap-5"></div></div>
-          <div class="bg-white rounded-xl p-5 border border-border shadow-sm"><div class="mb-4"><h3 class="text-sm font-bold text-hug-text">Cost per Hectare by Field ID</h3><p class="text-xs text-hug-muted">Source: Total logged expenses divided by declared hectare area (Field Registry)</p></div><div id="cost-per-hectare-bars" class="flex flex-col gap-5"></div></div>
+          <div class="bg-white rounded-xl p-5 border border-border shadow-sm"><div class="mb-4"><h3 class="text-sm font-bold text-hug-text">Expense Category Allocation</h3><p class="text-xs text-hug-muted">Source: 13 approved operation logs across all active Block Farms</p></div><div id="expense-distribution-bars" class="flex flex-col gap-5"></div></div>
+          <div class="bg-white rounded-xl p-5 border border-border shadow-sm"><div class="mb-4"><h3 class="text-sm font-bold text-hug-text">Cost per Hectare by Block Farm</h3><p class="text-xs text-hug-muted">Source: Total logged expenses divided by declared hectare area (Block Farm Registry)</p></div><div id="cost-per-hectare-bars" class="flex flex-col gap-5"></div></div>
         </div>
       </section>
 
@@ -367,11 +394,18 @@
       <section class="page hidden flex flex-col gap-5" id="page-users">
         <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5 items-start">
           <div class="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-            <div class="px-5 py-4 border-b border-border"><h3 class="text-sm font-bold text-hug-text">System Credentials &amp; Member Roles Directory</h3></div>
+            <div class="px-5 py-4 border-b border-border flex items-center justify-between flex-wrap gap-3">
+              <h3 class="text-sm font-bold text-hug-text">System Credentials &amp; Member Roles Directory</h3>
+              <div class="flex items-center flex-wrap gap-3">
+                <input type="text" id="user-search" placeholder="Search name, phone, role..." oninput="setUserPage(1)" class="border border-border rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-primary w-48">
+                <button id="user-sort" onclick="toggleUserSort()" class="border border-border rounded-lg px-3 py-1.5 text-xs font-semibold bg-white text-hug-text2 hover:bg-bg transition-all cursor-pointer">Sort Logs: Default</button>
+              </div>
+            </div>
             <div class="overflow-x-auto"><table class="w-full text-sm">
               <thead class="bg-bg"><tr>
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Contact Number</th>
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Full Name</th>
+                <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Block Farm</th>
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Core Role</th>
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Logs Handled</th>
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Reg. Date</th>
@@ -379,6 +413,7 @@
               </tr></thead>
               <tbody id="users-table-body"></tbody>
             </table></div>
+            <div id="user-pagination" class="flex items-center justify-center gap-3 p-3 border-t border-border bg-white"></div>
           </div>
           <div class="bg-white rounded-xl border border-border shadow-sm p-5">
             <h3 class="text-sm font-bold text-hug-text mb-1">Pending Mobile Registrations</h3>
@@ -388,7 +423,7 @@
         </div>
       </section>
 
-      <!-- FIELD REGISTRY (SUPER ADMIN) -->
+      <!-- FIELD REGISTRY -->
       <section class="page hidden flex flex-col gap-5" id="page-fields">
         <div class="flex items-center justify-between">
           <h2 class="text-xl font-bold text-hug-text">Block Farm Registry</h2>
@@ -402,7 +437,7 @@
               <div class="flex flex-col gap-1.5"><label for="f-id" class="text-xs font-semibold text-hug-text2">Field ID Code</label><input id="f-id" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white" placeholder="FLD-KTR-0XX"/></div>
               <div class="flex flex-col gap-1.5"><label for="f-owner" class="text-xs font-semibold text-hug-text2">Assigned Owner Name</label><input id="f-owner" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white" placeholder="e.g. Maria Clara"/></div>
               <div class="flex flex-col gap-1.5"><label for="f-area" class="text-xs font-semibold text-hug-text2">Block Hectares Area</label><input id="f-area" type="number" step="0.1" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white" placeholder="e.g. 1.8"/></div>
-              <div class="flex flex-col gap-1.5"><label for="f-stage" class="text-xs font-semibold text-hug-text2">Crop Stage</label><select id="f-stage" aria-label="Field crop stage" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white"><option>Land Preparation</option><option>Planting</option><option>Fertilization Stage 2</option><option>Weeding</option><option>Harvesting</option></select></div>
+              <div class="flex flex-col gap-1.5"><label for="f-stage" class="text-xs font-semibold text-hug-text2">Crop Stage</label><select id="f-stage" aria-label="Field crop stage" title="Field crop stage" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white"><option>Land Preparation</option><option>Planting</option><option>Fertilization Stage 2</option><option>Weeding</option><option>Harvesting</option></select></div>
               <div class="flex gap-2 mt-1">
                 <button onclick="resetFieldForm()" class="flex-1 border border-border text-hug-text2 text-sm font-medium py-2 rounded-lg hover:bg-bg transition-all cursor-pointer">Reset</button>
                 <button onclick="saveFieldChanges()" id="save-field-action-btn" class="flex-1 bg-primary text-white text-sm font-semibold py-2 rounded-lg hover:bg-primary-light transition-all cursor-pointer">Register</button>
@@ -431,6 +466,101 @@
             </tr></thead>
             <tbody id="sync-log-body"></tbody>
           </table></div>
+        </div>
+      </section>
+
+      <!-- MAINTENANCE & SECURITY (SUPER ADMIN) -->
+      <section class="page hidden flex flex-col gap-5" id="page-maintenance">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-hug-text">System Maintenance &amp; Security</h2>
+            <p class="text-sm text-hug-muted">Database health, global settings, and security audits</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+          
+          <div class="flex flex-col gap-5">
+            <!-- Global Settings & DB Maintenance -->
+            <div class="bg-white rounded-xl border border-border shadow-sm p-5 flex flex-col gap-4">
+              <h3 class="text-sm font-bold text-hug-text flex items-center gap-2">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                Global Settings &amp; Database Maintenance
+              </h3>
+              <div class="flex flex-col gap-4 border-t border-border pt-4">
+                <div class="flex items-center justify-between bg-bg p-3 rounded-lg border border-border">
+                  <div>
+                    <p class="text-xs font-bold text-hug-text">Active Crop Year</p>
+                    <p class="text-[10px] text-hug-muted mt-0.5">Defines the current season for all operations.</p>
+                  </div>
+                  <label for="active-crop-year" class="sr-only">Active crop year</label>
+                  <select id="active-crop-year" aria-label="Active crop year" title="Active crop year" class="border border-border rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-primary font-bold text-primary">
+                    <option>CY 2025-2026</option>
+                    <option>CY 2026-2027</option>
+                  </select>
+                </div>
+                
+                <div class="flex items-center justify-between bg-bg p-3 rounded-lg border border-border">
+                  <div>
+                    <p class="text-xs font-bold text-hug-text">System Maintenance Mode</p>
+                    <p class="text-[10px] text-hug-muted mt-0.5">Temporarily pauses all mobile syncs for maintenance.</p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input id="maintenance-mode-toggle" type="checkbox" value="" aria-label="System maintenance mode" title="System maintenance mode" class="sr-only peer">
+                    <div class="w-9 h-5 bg-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-danger"></div>
+                  </label>
+                </div>
+
+                <div class="flex gap-2 mt-2">
+                  <button onclick="toast('Initiating full Firebase database backup...')" class="flex-1 bg-farm-blue text-white text-xs font-bold py-2.5 rounded-lg hover:bg-opacity-90 transition-all flex justify-center items-center gap-2 cursor-pointer">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Run Database Backup
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Historical Archive -->
+            <div class="bg-white rounded-xl border border-border shadow-sm p-5 flex flex-col gap-4">
+              <h3 class="text-sm font-bold text-hug-text flex items-center gap-2">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="10" y1="4" x2="10" y2="20"/><line x1="14" y1="4" x2="14" y2="20"/></svg>
+                Archive Historical Data
+              </h3>
+              <p class="text-xs text-hug-muted leading-relaxed">Offload past crop year records into cold storage to improve current system query performance and clear database space.</p>
+              <div class="bg-warning-bg border border-warning/30 p-3 rounded-lg flex items-start gap-2">
+                <svg width="14" height="14" fill="none" stroke="#F5A623" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <p class="text-[10px] text-[#F5A623] font-medium leading-relaxed">Detected <strong class="font-bold">428 logs</strong> and <strong class="font-bold">14 field registries</strong> from Crop Year 2024-2025 ready for archiving.</p>
+              </div>
+              <button onclick="toast('Archiving CY 2024-2025 data to cold storage...')" class="w-full bg-bg border border-border text-hug-text font-bold text-xs py-2.5 rounded-lg hover:border-primary hover:text-primary transition-all flex justify-center items-center gap-2 cursor-pointer mt-1">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                Archive CY 2024-2025 Data
+              </button>
+            </div>
+          </div>
+
+          <!-- Security Logs Table -->
+          <div class="bg-white rounded-xl border border-border shadow-sm overflow-hidden flex flex-col h-full">
+            <div class="px-5 py-4 border-b border-border bg-white flex justify-between items-center">
+              <h3 class="text-sm font-bold text-hug-text flex items-center gap-2">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                System Security &amp; Access Logs
+              </h3>
+              <span class="text-[10px] bg-danger-bg text-danger font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Live Audit</span>
+            </div>
+            <div class="overflow-x-auto flex-1 max-h-[500px]">
+              <table class="w-full text-sm">
+                <thead class="bg-bg sticky top-0"><tr>
+                  <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Timestamp</th>
+                  <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">User / Terminal</th>
+                  <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Security Event</th>
+                </tr></thead>
+                <tbody id="security-logs-body">
+                  <!-- JS injected -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
       </section>
 
