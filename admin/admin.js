@@ -214,6 +214,21 @@ function renderDashboard() {
   if (countEl) countEl.textContent = `${db.users.length} Users`;
   if (pendingEl) pendingEl.textContent = `${db.pendingUsers.length} pending approvals`;
 
+  const currentRole = localStorage.getItem('hugpong_role') || 'admin';
+  const summarySraAdmins = document.getElementById('summary-sra-admins');
+  const summaryGrid = document.getElementById('descriptive-summary-grid');
+  if (summarySraAdmins && summaryGrid) {
+    if (currentRole === 'superadmin') {
+      summarySraAdmins.classList.remove('hidden');
+      summaryGrid.classList.remove('lg:grid-cols-6');
+      summaryGrid.classList.add('lg:grid-cols-7');
+    } else {
+      summarySraAdmins.classList.add('hidden');
+      summaryGrid.classList.remove('lg:grid-cols-7');
+      summaryGrid.classList.add('lg:grid-cols-6');
+    }
+  }
+
   renderPriceHistoryChart();
   renderCostEfficiencyChart();
   renderCropStageDistribution();
@@ -222,13 +237,18 @@ function renderDashboard() {
   const pendingLogs = db.logs.filter(l => l.status === 'Pending').slice(0, 5);
   const activitiesBody = document.getElementById('dashboard-activities-body');
   const thSource = document.getElementById('dashboard-th-source');
-  const currentRole = localStorage.getItem('hugpong_role') || 'admin';
   const isSRA = currentRole === 'admin' || currentRole === 'superadmin';
 
   const thBlockFarm = document.getElementById('dashboard-th-blockfarm');
-  if (thBlockFarm) {
-    if (isSRA) thBlockFarm.classList.remove('hidden');
-    else thBlockFarm.classList.add('hidden');
+  const thFieldId = document.getElementById('dashboard-th-fieldid');
+  if (thBlockFarm && thFieldId) {
+    if (isSRA) {
+      thBlockFarm.classList.remove('hidden');
+      thFieldId.classList.add('hidden');
+    } else {
+      thBlockFarm.classList.add('hidden');
+      thFieldId.classList.remove('hidden');
+    }
   }
 
   if (activitiesBody) {
@@ -243,16 +263,37 @@ function renderDashboard() {
       };
       activitiesBody.innerHTML = pendingLogs.map(l => {
         let blockFarmCell = '';
+        let displayFieldId = '';
+        let displaySchedule = l.schedule;
+        let displayTask = l.task;
+
         if (isSRA) {
           const farmName = farmMap[l.fieldId] || 'Block Farm A';
           blockFarmCell = `<td style="padding:12px 16px;font-weight:700;color:#1A6B9A;font-size:11px;">${farmName}</td>`;
+          displaySchedule = 'Monthly Compilation';
+
+          const taskLower = l.task.toLowerCase();
+          if (taskLower.includes('labor') || taskLower.includes('crew') || taskLower.includes('weeding')) {
+            displayTask = 'Consolidated Labor & Wages';
+          } else if (taskLower.includes('tractor') || taskLower.includes('plowing') || taskLower.includes('furrowing') || taskLower.includes('clearing')) {
+            displayTask = 'Consolidated Machinery Operations';
+          } else if (taskLower.includes('ertilizer') || taskLower.includes('spray')) {
+            displayTask = 'Consolidated Fertilizers & Chemicals';
+          } else if (taskLower.includes('harvesting') || taskLower.includes('hauling') || taskLower.includes('transport')) {
+            displayTask = 'Consolidated Harvesting & Hauling';
+          } else {
+            displayTask = 'Consolidated General Operations';
+          }
+        } else {
+          displayFieldId = `<td style="padding:12px 16px;font-size:12px;color:#5A6B4A;">${l.fieldId}</td>`;
         }
+
         return `<tr onmouseover="this.style.background='#F2F4EF'" onmouseout="this.style.background=''">`
           + `<td style="padding:12px 16px;font-weight:700;color:#1A2212;font-size:11px;">${l.id}</td>`
           + blockFarmCell
-          + `<td style="padding:12px 16px;font-size:12px;color:#5A6B4A;">${l.fieldId}</td>`
-          + `<td style="padding:12px 16px;"><span style="font-size:10px;font-weight:600;color:#5A6B4A;background:#F2F4EF;border:1px solid #E2E8DC;padding:2px 8px;border-radius:999px;">${l.schedule}</span></td>`
-          + `<td style="padding:12px 16px;font-size:13px;color:#1A2212;">${l.task}</td>`
+          + displayFieldId
+          + `<td style="padding:12px 16px;"><span style="font-size:10px;font-weight:600;color:#5A6B4A;background:#F2F4EF;border:1px solid #E2E8DC;padding:2px 8px;border-radius:999px;">${displaySchedule}</span></td>`
+          + `<td style="padding:12px 16px;font-size:13px;color:#1A2212;">${displayTask}</td>`
           + `<td style="padding:12px 16px;font-weight:700;color:#1A2212;">Php ${l.cost.toLocaleString()}</td>`
           + `<td style="padding:12px 16px;"><span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#FFF3DC;color:#F5A623;">Pending</span></td>`
           + `</tr>`;
@@ -663,9 +704,15 @@ function renderLogs() {
 
   // Dynamic labels for SRA Admin
   const thBlockFarm = document.getElementById('logs-th-blockfarm');
-  if (thBlockFarm) {
-    if (isSRA) thBlockFarm.classList.remove('hidden');
-    else thBlockFarm.classList.add('hidden');
+  const thFieldId = document.getElementById('logs-th-fieldid');
+  if (thBlockFarm && thFieldId) {
+    if (isSRA) {
+      thBlockFarm.classList.remove('hidden');
+      thFieldId.classList.add('hidden');
+    } else {
+      thBlockFarm.classList.add('hidden');
+      thFieldId.classList.remove('hidden');
+    }
   }
 
   const labelEl = document.querySelector('label[for="log-field-filter"]');
@@ -754,18 +801,37 @@ function renderLogs() {
         : '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#FEEBEB;color:#D9534F;">Flagged</span>';
 
     let blockFarmCell = '';
-    let displayFieldId = l.fieldId;
+    let displayFieldId = '';
+    let displaySchedule = l.schedule;
+    let displayTask = l.task;
+
     if (isSRA) {
       const farmName = farmMap[l.fieldId] || 'Block Farm A';
       blockFarmCell = `<td style="padding:12px 16px;font-weight:700;color:#1A6B9A;font-size:11px;">${farmName}</td>`;
+      displaySchedule = 'Monthly Compilation';
+
+      const taskLower = l.task.toLowerCase();
+      if (taskLower.includes('labor') || taskLower.includes('crew') || taskLower.includes('weeding')) {
+        displayTask = 'Consolidated Labor & Wages';
+      } else if (taskLower.includes('tractor') || taskLower.includes('plowing') || taskLower.includes('furrowing') || taskLower.includes('clearing')) {
+        displayTask = 'Consolidated Machinery Operations';
+      } else if (taskLower.includes('ertilizer') || taskLower.includes('spray')) {
+        displayTask = 'Consolidated Fertilizers & Chemicals';
+      } else if (taskLower.includes('harvesting') || taskLower.includes('hauling') || taskLower.includes('transport')) {
+        displayTask = 'Consolidated Harvesting & Hauling';
+      } else {
+        displayTask = 'Consolidated General Operations';
+      }
+    } else {
+      displayFieldId = `<td style="padding:12px 16px;font-size:12px;color:#5A6B4A;">${l.fieldId}</td>`;
     }
 
     return '<tr onmouseover="this.style.background=\'#F2F4EF\'" onmouseout="this.style.background=\'\'">'
       + '<td style="padding:12px 16px;font-weight:700;color:#1A2212;font-size:11px;">' + l.id + '</td>'
       + blockFarmCell
-      + '<td style="padding:12px 16px;font-size:12px;color:#5A6B4A;">' + displayFieldId + '</td>'
-      + '<td style="padding:12px 16px;"><span style="font-size:10px;font-weight:600;color:#5A6B4A;background:#F2F4EF;border:1px solid #E2E8DC;padding:2px 8px;border-radius:999px;">' + l.schedule + '</span></td>'
-      + '<td style="padding:12px 16px;font-size:13px;color:#1A2212;">' + l.task + '</td>'
+      + displayFieldId
+      + '<td style="padding:12px 16px;"><span style="font-size:10px;font-weight:600;color:#5A6B4A;background:#F2F4EF;border:1px solid #E2E8DC;padding:2px 8px;border-radius:999px;">' + displaySchedule + '</span></td>'
+      + '<td style="padding:12px 16px;font-size:13px;color:#1A2212;">' + displayTask + '</td>'
       + '<td style="padding:12px 16px;font-weight:700;color:#1A2212;">Php ' + l.cost.toLocaleString() + '</td>'
       + '<td style="padding:12px 16px;font-size:12px;color:#5A6B4A;">' + l.date + '</td>'
       + '<td style="padding:12px 16px;">' + statusBadge + '</td>'

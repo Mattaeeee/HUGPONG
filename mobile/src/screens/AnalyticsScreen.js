@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
-import { SRA_PRICE_HISTORY, subscribe, getCurrentSession, MOCK_FIELDS } from '../data/mockData';
+import { SRA_PRICE_HISTORY, subscribe, getCurrentSession, MOCK_FIELDS, MOCK_LOGS } from '../data/mockData';
 
 const { width } = Dimensions.get('window');
 
@@ -40,6 +40,9 @@ const CROP_STAGES = [
 
 export default function AnalyticsScreen({ navigation }) {
   const [tab, setTab] = useState('financial');
+  const [selectedFieldId, setSelectedFieldId] = useState('All');
+  const [showAllFields, setShowAllFields] = useState(false);
+  const [showAllPills, setShowAllPills] = useState(false);
   const [priceHistory, setPriceHistory] = useState([...SRA_PRICE_HISTORY]);
   const session = getCurrentSession();
   
@@ -51,22 +54,57 @@ export default function AnalyticsScreen({ navigation }) {
   const dataMaxCost = Math.max(...displayFieldCosts.map(d => d.costPerHa));
   
   const rawTotalHa = isSRA ? BLOCK_FARM_COSTS.reduce((sum, s) => sum + s.ha, 0) : CROP_STAGES.reduce((sum, s) => sum + s.ha, 0);
-  const rawTotalCost = isSRA ? 1580000 : COST_BREAKDOWN.reduce((sum, c) => sum + c.amount, 0);
+  const rawTotalCost = isSRA ? BLOCK_FARM_COSTS.reduce((sum, s) => sum + (s.costPerHa * s.ha), 0) : COST_BREAKDOWN.reduce((sum, c) => sum + c.amount, 0);
   
-  const displayTotalHa = isMember ? displayFieldCosts.reduce((s, f) => s + f.ha, 0) : rawTotalHa;
-  const scale = isMember && rawTotalHa > 0 ? (displayTotalHa / rawTotalHa) : (isSRA ? 12 : 1);
-  const displayTotalCost = rawTotalCost * (isSRA ? 1 : scale);
+  const filteredDisplayFieldCosts = (!isMember && selectedFieldId !== 'All') 
+    ? displayFieldCosts.filter(fc => fc.id === selectedFieldId) 
+    : displayFieldCosts;
+
+  const displayTotalHa = isMember ? displayFieldCosts.reduce((s, f) => s + f.ha, 0) : 
+    ((!isMember && selectedFieldId !== 'All') ? filteredDisplayFieldCosts.reduce((s, f) => s + f.ha, 0) : rawTotalHa);
+    
+  const scale = rawTotalHa > 0 ? (displayTotalHa / rawTotalHa) : 1;
   
-  const displayCostBreakdown = COST_BREAKDOWN.map(c => ({
-    ...c, amount: c.amount * (isSRA ? 12 : scale)
-  }));
+  const displayTotalCost = selectedFieldId === 'All' 
+    ? rawTotalCost 
+    : filteredDisplayFieldCosts.reduce((sum, f) => sum + (f.costPerHa * f.ha), 0);
+  
+  const getPieShift = (id) => {
+    if (id === 'Block Farm A') return [5, -3, -2, 0, 0];
+    if (id === 'Block Farm B') return [-4, 5, 2, -3, 0];
+    if (id === 'Block Farm C') return [2, -5, 4, -1, 0];
+    if (id === 'Block Farm D') return [-3, 2, -4, 4, 1];
+    if (id === 'FLD-KTR-001') return [8, -4, -4, 0, 0];
+    if (id === 'FLD-KTR-003') return [-5, 8, -3, 0, 0];
+    return [0, 0, 0, 0, 0];
+  };
+
+  const shift = getPieShift(selectedFieldId);
+  const displayCostBreakdown = COST_BREAKDOWN.map((c, i) => {
+    const newValue = c.value + shift[i];
+    return {
+      ...c,
+      value: newValue,
+      amount: displayTotalCost * (newValue / 100)
+    };
+  });
   
   const displayCropStages = isMember ? MOCK_FIELDS.filter(f => f.member === session.name).map(f => ({
     label: f.stage,
     ha: parseFloat(f.ha || 0),
     color: COLORS.primary,
     icon: 'leaf'
-  })) : CROP_STAGES.map(s => ({...s, ha: s.ha * (isSRA ? 5.5 : 1)}));
+  })) : (isSRA ? CROP_STAGES.map((s, i) => {
+      const stageVariance = selectedFieldId === 'All' ? 1 : 0.5 + (((selectedFieldId.charCodeAt(selectedFieldId.length - 1) + i) % 5) * 0.3);
+      return {...s, ha: s.ha * scale * stageVariance};
+    }) : 
+    (selectedFieldId === 'All' ? CROP_STAGES : MOCK_FIELDS.filter(f => f.id === selectedFieldId).map(f => ({
+      label: f.stage,
+      ha: parseFloat(f.ha || 0),
+      color: COLORS.primary,
+      icon: 'leaf'
+    })))
+  );
 
   useEffect(() => {
     const unsubscribe = subscribe(() => {
@@ -116,6 +154,54 @@ export default function AnalyticsScreen({ navigation }) {
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
+        {/* FIELD SELECTOR DISPLAY FOR FARM MANAGER & SRA (FINANCIAL TAB) */}
+        {!isMember && tab === 'financial' && (
+          <View style={{ marginBottom: SPACING.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: COLORS.primary + '10', padding: 12, borderRadius: 8 }}>
+            <View>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary, textTransform: 'uppercase' }}>Currently Viewing</Text>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text }}>{selectedFieldId === 'All' ? (isSRA ? 'All Block Farms' : 'All Block Farm Fields') : selectedFieldId}</Text>
+            </View>
+            {selectedFieldId !== 'All' && (
+              <TouchableOpacity onPress={() => setSelectedFieldId('All')} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: COLORS.primary, borderRadius: 12 }}>
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Reset Filter</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* FIELD SELECTOR FOR FARM MANAGER & SRA (CROP & SYNC TABS) */}
+        {!isMember && (tab === 'crop' || tab === 'sync') && (
+          <View style={{ marginBottom: SPACING.md }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.textMuted, marginBottom: 8, textTransform: 'uppercase' }}>{isSRA ? 'Filter by Block Farm' : 'Filter by Field'}</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {(() => {
+                const options = ['All', ...(isSRA ? BLOCK_FARM_COSTS.map(f => f.id) : MOCK_FIELDS.map(f => f.id))];
+                const displayOptions = showAllPills ? options : options.slice(0, 3);
+                return displayOptions.map(id => (
+                  <TouchableOpacity 
+                    key={id} 
+                    onPress={() => setSelectedFieldId(id)}
+                    style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedFieldId === id ? COLORS.primary : '#E2E8F0' }}
+                  >
+                    <Text style={{ color: selectedFieldId === id ? '#fff' : COLORS.text, fontWeight: '600', fontSize: 13 }}>{id === 'All' ? (isSRA ? 'All Block Farms' : 'All Block Farm Fields') : id}</Text>
+                  </TouchableOpacity>
+                ));
+              })()}
+              
+              {(isSRA ? BLOCK_FARM_COSTS.length : MOCK_FIELDS.length) > 2 && (
+                <TouchableOpacity 
+                  onPress={() => setShowAllPills(!showAllPills)}
+                  style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: 'transparent', borderWidth: 1, borderColor: COLORS.primary }}
+                >
+                  <Text style={{ color: COLORS.primary, fontWeight: '700', fontSize: 13 }}>{showAllPills ? 'Show Less' : 'Show More'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
+
+
         {/* ════════════════════════════════════ */}
         {/* FINANCIAL DIAGNOSTICS TAB */}
         {/* ════════════════════════════════════ */}
@@ -125,7 +211,7 @@ export default function AnalyticsScreen({ navigation }) {
             <View style={s.kpiRow}>
               <View style={s.kpiCard}>
                 <Text style={s.kpiLabel}>Total Op. Cost</Text>
-                <Text style={s.kpiValue}>Php {(displayTotalCost / 1000).toFixed(1)}k</Text>
+                <Text style={s.kpiValue}>Php {displayTotalCost >= 1000000 ? (displayTotalCost / 1000000).toFixed(2) + 'M' : (displayTotalCost / 1000).toFixed(1) + 'k'}</Text>
               </View>
               <View style={s.kpiCard}>
                 <Text style={s.kpiLabel}>Avg Cost / Ha</Text>
@@ -172,22 +258,37 @@ export default function AnalyticsScreen({ navigation }) {
               <View style={s.card}>
                 <Text style={s.cardTitle}>Cost-per-Hectare Efficiency</Text>
                 <Text style={s.cardSub}>{isSRA ? 'Compare operational cost efficiency across Block Farms' : 'Compare operational cost efficiency across active fields'}</Text>
-                {displayFieldCosts.map(item => {
+                {(showAllFields ? displayFieldCosts : displayFieldCosts.slice(0, 3)).map(item => {
                   const pct = (item.costPerHa / dataMaxCost) * 100;
                   const isHigh = item.costPerHa === dataMaxCost;
+                  const isSelected = selectedFieldId === item.id;
                   return (
-                    <View key={item.id} style={s.effRow}>
+                    <TouchableOpacity 
+                      key={item.id} 
+                      style={[s.effRow, isSelected && { backgroundColor: COLORS.primary + '10', borderRadius: 8, paddingHorizontal: 8, marginHorizontal: -8, paddingVertical: 12 }]}
+                      onPress={() => setSelectedFieldId(isSelected ? 'All' : item.id)}
+                      activeOpacity={0.7}
+                    >
                       <View style={s.effLeft}>
-                        <Text style={s.effId}>{item.id}</Text>
+                        <Text style={[s.effId, isSelected && { color: COLORS.primary }]}>{item.id}</Text>
                         <Text style={s.effHa}>{item.ha} Ha</Text>
                       </View>
                       <View style={s.effBarWrap}>
-                        <View style={[s.effBar, { width: `${pct}%`, backgroundColor: isHigh ? '#D9534F' : COLORS.primary }]} />
+                        <View style={[s.effBar, { width: `${pct}%`, backgroundColor: isSelected ? COLORS.primary : (isHigh ? '#D9534F' : COLORS.primary + '80') }]} />
                       </View>
-                      <Text style={[s.effCost, isHigh && { color: '#D9534F' }]}>₱{(item.costPerHa / 1000).toFixed(1)}k</Text>
-                    </View>
+                      <Text style={[s.effCost, isHigh && !isSelected && { color: '#D9534F' }, isSelected && { color: COLORS.primary, fontWeight: '800' }]}>₱{(item.costPerHa / 1000).toFixed(1)}k</Text>
+                    </TouchableOpacity>
                   );
                 })}
+                
+                {displayFieldCosts.length > 3 && (
+                  <TouchableOpacity onPress={() => setShowAllFields(!showAllFields)} style={{ alignItems: 'center', paddingVertical: 8, marginTop: 4 }}>
+                    <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: 13 }}>
+                      {showAllFields ? 'Show Less' : `Show All Fields (${displayFieldCosts.length})`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                
                 <View style={s.effNote}>
                   <Ionicons name="information-circle-outline" size={13} color={COLORS.blue} />
                   <Text style={s.effNoteText}>{isSRA ? 'Block Farm B has the highest average cost. Consider reviewing their aggregated reports.' : 'FLD-KTR-007 is the highest cost field. Manager may want to review its operations.'}</Text>
@@ -222,7 +323,7 @@ export default function AnalyticsScreen({ navigation }) {
                   <View style={s.stageBarMini}>
                     <View style={[s.stageBarFill, { width: `${displayTotalHa > 0 ? (st.ha / displayTotalHa) * 100 : 0}%`, backgroundColor: st.color + '50' }]} />
                   </View>
-                  <Text style={s.stageHa}>{st.ha} Ha</Text>
+                  <Text style={s.stageHa}>{st.ha.toFixed(1)} Ha</Text>
                   <Text style={s.stagePct}>{displayTotalHa > 0 ? ((st.ha / displayTotalHa) * 100).toFixed(0) : 0}%</Text>
                 </View>
               ))}
@@ -302,8 +403,10 @@ export default function AnalyticsScreen({ navigation }) {
         {/* OFFLINE SYNC & LAG DIAGNOSTICS TAB */}
         {/* ════════════════════════════════════ */}
         {tab === 'sync' && (() => {
-          const syncedItems = isMember ? session.syncedLogs : (isSRA ? 3412 : 412);
-          const pendingItems = isMember ? session.pendingLogs : (isSRA ? 158 : 38);
+          // Add pseudo-random variance based on selected block farm
+          const variance = selectedFieldId === 'All' ? 1 : 1 + ((selectedFieldId.charCodeAt(selectedFieldId.length - 1) % 5) * 0.25);
+          const syncedItems = isMember ? session.syncedLogs : Math.round((isSRA ? 3412 : 412) * scale);
+          const pendingItems = isMember ? session.pendingLogs : Math.round((isSRA ? 158 : 38) * scale * variance);
           const totalItems = syncedItems + pendingItems;
           const syncPct = totalItems === 0 ? 100 : (syncedItems / totalItems) * 100;
 
@@ -330,7 +433,7 @@ export default function AnalyticsScreen({ navigation }) {
                     <View style={{ position: 'absolute', top: -16, left: -16, right: -16, bottom: -16, borderRadius: 76, borderWidth: 16, borderColor: COLORS.success, borderRightColor: 'transparent', borderTopColor: 'transparent', transform: [{ rotate: '-45deg' }] }} />
                     <View style={{ position: 'absolute', top: -16, left: -16, right: -16, bottom: -16, borderRadius: 76, borderWidth: 16, borderColor: COLORS.success, borderLeftColor: 'transparent', borderBottomColor: 'transparent', transform: [{ rotate: '-45deg' }] }} />
                     {pendingItems > 0 && (
-                      <View style={{ position: 'absolute', top: -16, left: -16, right: -16, bottom: -16, borderRadius: 76, borderWidth: 16, borderColor: '#D9534F', borderBottomColor: 'transparent', borderLeftColor: 'transparent', borderRightColor: 'transparent', transform: [{ rotate: '15deg' }] }} />
+                      <View style={{ position: 'absolute', top: -16, left: -16, right: -16, bottom: -16, borderRadius: 76, borderWidth: 16, borderColor: '#D9534F', borderBottomColor: 'transparent', borderLeftColor: 'transparent', borderRightColor: 'transparent', transform: [{ rotate: `${15 + (variance * 40)}deg` }] }} />
                     )}
                     
                     <Text style={{ fontSize: 24, fontWeight: '800', color: COLORS.text }}>{totalItems}</Text>

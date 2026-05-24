@@ -109,6 +109,9 @@ export default function RegisterScreen({ navigation }) {
   const [showCPw, setShowCPw] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [codeVerified, setCodeVerified] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
 
   const set = (key, val) => { setForm(p => ({ ...p, [key]: val })); setErrors(p => ({ ...p, [key]: null })); };
 
@@ -147,6 +150,8 @@ export default function RegisterScreen({ navigation }) {
       const cleaned = form.contactNumber.replace(/\s/g, '');
       if (!cleaned.startsWith('09') || cleaned.length !== 11) {
         e.contactNumber = 'Enter a valid PH mobile number (09XXXXXXXXX)';
+      } else if (!codeVerified) {
+        e.contactNumber = 'Please verify your mobile number to continue';
       }
     }
     if (activeStepTitle === 'Set Password') {
@@ -247,8 +252,69 @@ export default function RegisterScreen({ navigation }) {
             {/* STEP: CONTACT NUMBER */}
             {activeStepTitle === 'Contact Number' && <>
               <Field label="Contact Number *" error={errors.contactNumber}>
-                <InputBox icon="call-outline" value={form.contactNumber} onChangeText={v => set('contactNumber', v)} placeholder="09XX XXX XXXX" keyboardType="phone-pad" maxLength={13} error={errors.contactNumber} />
+                <InputBox 
+                  icon="call-outline" 
+                  value={form.contactNumber} 
+                  onChangeText={v => { set('contactNumber', v); setCodeSent(false); setCodeVerified(false); }} 
+                  placeholder="09XX XXX XXXX" 
+                  keyboardType="phone-pad" 
+                  maxLength={13} 
+                  error={errors.contactNumber && !codeSent ? errors.contactNumber : null} 
+                  editable={!codeVerified}
+                />
               </Field>
+              
+              {!codeVerified && (
+                <TouchableOpacity 
+                  style={[s.verifyBtn, codeSent && s.verifyBtnSent]} 
+                  onPress={() => {
+                    const cleaned = form.contactNumber.replace(/\s/g, '');
+                    if (cleaned.startsWith('09') && cleaned.length === 11) {
+                      setCodeSent(true);
+                      setErrors({ ...errors, contactNumber: null });
+                    } else {
+                      setErrors({ ...errors, contactNumber: 'Enter full valid number first' });
+                    }
+                  }}
+                >
+                  <Text style={s.verifyBtnText}>{codeSent ? 'Resend Code' : 'Send Verification Code'}</Text>
+                </TouchableOpacity>
+              )}
+
+              {codeSent && !codeVerified && (
+                <Field label="Enter 6-digit Code *" error={errors.verificationCode}>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TextInput 
+                      style={[inp.input, { flex: 1, letterSpacing: 4, textAlign: 'center', fontWeight: '700' }]} 
+                      value={verificationCode} 
+                      onChangeText={setVerificationCode} 
+                      placeholder="XXXXXX" 
+                      keyboardType="number-pad" 
+                      maxLength={6} 
+                    />
+                    <TouchableOpacity 
+                      style={{ backgroundColor: COLORS.primary, justifyContent: 'center', paddingHorizontal: 20, borderRadius: 10 }}
+                      onPress={() => {
+                        if (verificationCode.length === 6) {
+                          setCodeVerified(true);
+                          setErrors({ ...errors, verificationCode: null, contactNumber: null });
+                        } else {
+                          setErrors({ ...errors, verificationCode: 'Code must be 6 digits' });
+                        }
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontWeight: 'bold' }}>Verify</Text>
+                    </TouchableOpacity>
+                  </View>
+                </Field>
+              )}
+              
+              {codeVerified && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.success + '20', padding: 12, borderRadius: 8, marginTop: 10 }}>
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+                  <Text style={{ color: COLORS.success, fontWeight: '700', fontSize: 13 }}>Number verified successfully!</Text>
+                </View>
+              )}
             </>}
 
             {/* STEP: SET PASSWORD */}
@@ -297,4 +363,7 @@ const s = StyleSheet.create({
   btn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   btnDisabled: { opacity: 0.6 },
   btnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  verifyBtn: { backgroundColor: COLORS.border, padding: 12, borderRadius: 10, alignItems: 'center', marginTop: 5, marginBottom: 15 },
+  verifyBtnSent: { backgroundColor: 'transparent', borderWidth: 1, borderColor: COLORS.border },
+  verifyBtnText: { color: COLORS.text, fontWeight: '600', fontSize: 13 },
 });

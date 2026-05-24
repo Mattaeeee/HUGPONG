@@ -35,6 +35,7 @@ export default function SchedulesScreen({ navigation }) {
   const [showLog, setShowLog] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [manualQR, setManualQR] = useState('');
   const [logForm, setLogForm] = useState({ type: 'weekly', fieldId: '', saveFieldId: true, activity: '', cost: '', period: '', hours: '', hectares: '', people: '', taskId: null });
   const [draftLogs, setDraftLogs] = useState([]);
   const [logTab, setLogTab] = useState('submitted');
@@ -50,12 +51,45 @@ export default function SchedulesScreen({ navigation }) {
   const [showManagerAssignModal, setShowManagerAssignModal] = useState(false);
   const [managerAssignForm, setManagerAssignForm] = useState({ memberName: '', fieldId: '', ha: '' });
   const handleGenerateAudit = () => {
+    if (!synced) {
+      Alert.alert('Offline Mode', 'You are currently offline. Please connect to the internet to generate reports.');
+      return;
+    }
+
+    const pendingApprovalLogs = logs.filter(l => !l.approved && !l.declined && !l.isOffline);
+    const offlineLogs = logs.filter(l => !l.approved && !l.declined && l.isOffline);
+    
+    if (pendingApprovalLogs.length > 0 || offlineLogs.length > 0) {
+      let warningMessage = '';
+      if (pendingApprovalLogs.length > 0 && offlineLogs.length > 0) {
+        warningMessage = `There are ${pendingApprovalLogs.length} logs waiting for approval, and ${offlineLogs.length} logs pending offline sync.`;
+      } else if (pendingApprovalLogs.length > 0) {
+        warningMessage = `There are ${pendingApprovalLogs.length} logs waiting for your approval. You should approve or decline them before generating the final report.`;
+      } else {
+        warningMessage = `There are ${offlineLogs.length} offline logs waiting to be synced by field members. You should ask them to sync before generating the final report.`;
+      }
+
+      Alert.alert(
+        'Action Required Before Export',
+        warningMessage,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Generate Anyway', onPress: () => checkMissingFields(), style: 'destructive' }
+        ]
+      );
+      return;
+    }
+
+    checkMissingFields();
+  };
+
+  const checkMissingFields = () => {
     const missingFields = [];
     MOCK_FIELDS.forEach(field => {
       const fieldTasks = cycleTasksByField[field.id] || CYCLE_TASKS;
       const activeTask = fieldTasks.find(t => t.active);
       if (activeTask) {
-        const hasLog = logs.some(l => l.fieldId === field.id && l.taskId === activeTask.id);
+        const hasLog = logs.some(l => l.fieldId === field.id && l.taskId === activeTask.id && !l.declined);
         if (!hasLog) {
           missingFields.push(field.id);
         }
@@ -91,36 +125,67 @@ export default function SchedulesScreen({ navigation }) {
     const targetTask = fieldTasks[taskIndex];
 
     const applyToggle = () => {
-      setCycleTasksByField(prev => {
-        const currentTasks = prev[selectedField.id] || CYCLE_TASKS.map(t => ({...t, done: false, active: false}));
-        const updated = currentTasks.map(t => {
-          if (t.id === taskId) {
-            if (t.done) return { ...t, done: false, active: false };
-            if (t.active) return { ...t, done: true, active: false };
-            return { ...t, done: false, active: true };
-          }
-          if (!targetTask.active && !targetTask.done && t.active) {
-            return { ...t, active: false };
-          }
-          return t;
-        });
-
-        if (targetTask.active) {
-          const nextIndex = updated.findIndex(t => !t.done);
-          if (nextIndex > -1) {
-            updated[nextIndex].active = true;
-          }
+      const currentTasks = cycleTasksByField[selectedField.id] || CYCLE_TASKS.map(t => ({...t, done: false, active: false}));
+      const updated = currentTasks.map(t => {
+        if (t.id === taskId) {
+          if (forceComplete) return { ...t, done: true, active: false };
+          if (t.done) return { ...t, done: false, active: false };
+          if (t.active) return { ...t, done: true, active: false };
+          return { ...t, done: false, active: true };
         }
-
-        const activeTask = updated.find(t => t.active);
-        const newStageLabel = activeTask ? activeTask.label : 'Harvesting & Milling (Completed)';
-        
-        setSelectedField(prevF => ({ ...prevF, stage: newStageLabel }));
-        const mf = MOCK_FIELDS.find(f => f.id === selectedField.id);
-        if (mf) mf.stage = newStageLabel;
-
-        return { ...prev, [selectedField.id]: updated };
+        if (!targetTask.active && !targetTask.done && t.active && !forceComplete) {
+          return { ...t, active: false };
+        }
+        return t;
       });
+
+      let isFullyCompleted = false;
+      if (targetTask.active || forceComplete) {
+        updated.forEach(t => t.active = false);
+        const nextIndex = updated.findIndex(t => !t.done);
+        if (nextIndex === -1) {
+          isFullyCompleted = true;
+        }
+      }
+
+      const activeTask = updated.find(t => t.active);
+      const newStageLabel = activeTask ? activeTask.label : (isFullyCompleted ? 'Harvesting & Milling (Completed)' : 'Waiting to Start Next Stage');
+      
+      setSelectedField(prevF => ({ ...prevF, stage: newStageLabel }));
+      const mf = MOCK_FIELDS.find(f => f.id === selectedField.id);
+      if (mf) mf.stage = newStageLabel;
+
+      setCycleTasksByField(prev => ({ ...prev, [selectedField.id]: updated }));
+
+      if (isFullyCompleted) {
+        setTimeout(() => {
+          Alert.alert(
+            'Crop Cycle Completed!',
+            'All stages for this field are complete. Would you like to reset the timeline for a new crop cycle?',
+            [
+              { text: 'Not Now', style: 'cancel' },
+              { text: 'Start New Cycle', style: 'default', onPress: () => {
+                 setCycleTasksByField(p => ({
+                   ...p,
+                   [selectedField.id]: CYCLE_TASKS.map((t, i) => ({...t, done: false, active: false}))
+                 }));
+                 setSelectedField(prevF => ({ ...prevF, stage: 'Not Started' }));
+                 const resetMf = MOCK_FIELDS.find(f => f.id === selectedField.id);
+                 if (resetMf) resetMf.stage = 'Not Started';
+                 
+                 // Mark logs as past cycle instead of deleting
+                 MOCK_LOGS.forEach(l => {
+                   if (l.fieldId === selectedField.id) l.isPastCycle = true;
+                 });
+                 setLogs([...MOCK_LOGS]);
+                 
+                 // Drafts from previous cycle can be safely removed
+                 setDraftLogs(prev => prev.filter(d => d.fieldId !== selectedField.id));
+              }}
+            ]
+          );
+        }, 500);
+      }
     };
 
     const isProgressing = !targetTask.done;
@@ -128,6 +193,10 @@ export default function SchedulesScreen({ navigation }) {
     if (isProgressing && taskIndex > 0) {
       const hasPendingPrior = fieldTasks.slice(0, taskIndex).some(t => !t.done);
       if (hasPendingPrior) {
+        if (activeRole === 'Member') {
+          Alert.alert('Action Denied', 'You cannot skip ahead. Please submit logs and mark the previous stages as complete first.');
+          return;
+        }
         Alert.alert(
           'Skip Stage Warning',
           'Previous stages in the crop cycle are not yet completed. Are you sure you want to jump ahead?',
@@ -140,8 +209,19 @@ export default function SchedulesScreen({ navigation }) {
       }
     } 
 
+    if (!targetTask.active && !targetTask.done && !forceComplete) {
+       Alert.alert(
+         'Activate Stage',
+         'Mark as current stage?',
+         [
+           { text: 'Cancel', style: 'cancel' },
+           { text: 'Yes', onPress: applyToggle, style: 'default' }
+         ]
+       );
+       return;
+    }
+
     if (targetTask.active && !forceComplete) {
-      const hasOtherDrafts = draftLogs.some(d => d.fieldId === selectedField.id && d.taskId !== targetTask.id);
       Alert.alert(
         `Stage: ${targetTask.phase}`,
         'What would you like to do?',
@@ -171,9 +251,13 @@ export default function SchedulesScreen({ navigation }) {
       );
       return;
     } else if (!isProgressing) {
+      if (activeRole === 'Member') {
+        Alert.alert('Action Denied', 'Members cannot revert completed stages. Please contact your Farm Manager if you made a mistake.');
+        return;
+      }
       const hasSubmittedLogs = logs.some(l => l.fieldId === selectedField.id && l.taskId === taskId);
       if (hasSubmittedLogs) {
-        Alert.alert('Cannot Revert', 'This stage already has submitted logs. Please contact your manager to revert it.');
+        Alert.alert('Cannot Revert', 'This stage already has submitted logs. Please delete or decline them first before reverting.');
         return;
       }
       Alert.alert(
@@ -278,6 +362,7 @@ export default function SchedulesScreen({ navigation }) {
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       approved: false,
       taskId: logForm.taskId,
+      isOffline: !synced,
     };
 
     if (!MOCK_FIELDS.find(f => f.id === submittedFieldId)) {
@@ -292,13 +377,8 @@ export default function SchedulesScreen({ navigation }) {
       if (logForm.taskId !== 'Emergency') {
         Alert.alert(
           'Log Submitted',
-          'Would you also like to mark this stage as Complete in the timeline?',
-          [
-            { text: 'No, Keep Pending', style: 'cancel' },
-            { text: 'Yes, Mark Complete', onPress: () => {
-              toggleTaskStatus(logForm.taskId, true);
-            }}
-          ]
+          'Your log has been sent to the Farm Manager. You can mark this stage as complete once it is approved.',
+          [{ text: 'OK', style: 'default' }]
         );
       }
     } else {
@@ -327,7 +407,7 @@ export default function SchedulesScreen({ navigation }) {
     const idx = DRAFT_LOGS.findIndex(d => d.id === log.id);
     if (idx >= 0) DRAFT_LOGS.splice(idx, 1);
     setDraftLogs([...DRAFT_LOGS]);
-    MOCK_LOGS.unshift({ ...log, approved: false, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) });
+    MOCK_LOGS.unshift({ ...log, approved: false, isOffline: !synced, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) });
     setLogs([...MOCK_LOGS]);
     setLogTab('submitted');
   };
@@ -342,13 +422,8 @@ export default function SchedulesScreen({ navigation }) {
             submitDraft(log);
             Alert.alert(
               'Log Submitted',
-              'Would you also like to mark this stage as Complete in the timeline?',
-              [
-                { text: 'No, Keep Pending', style: 'cancel' },
-                { text: 'Yes, Mark Complete', onPress: () => {
-                  toggleTaskStatus(log.taskId, true);
-                }}
-              ]
+              'Your log has been sent to the Farm Manager. The stage will automatically be marked complete once it is approved.',
+              [{ text: 'OK', style: 'default' }]
             );
         }},
         { text: 'Edit Log', onPress: () => {
@@ -368,30 +443,68 @@ export default function SchedulesScreen({ navigation }) {
   };
 
   const approveLog = (logId) => {
+    if (!synced) {
+      Alert.alert('Offline Mode', 'You are currently offline. Please connect to the internet to approve logs.');
+      return;
+    }
     const l = MOCK_LOGS.find(x => x.id === logId);
-    if (l) l.approved = true;
+    if (l) {
+      l.approved = true;
+
+      // Automatically complete the stage when a log is approved
+      const tasks = cycleTasksByField[l.fieldId] || CYCLE_TASKS.map(t => ({...t, done: false, active: false}));
+      const taskIndex = tasks.findIndex(t => t.id === l.taskId);
+      
+      if (taskIndex > -1 && tasks[taskIndex].active && !tasks[taskIndex].done) {
+        const updated = tasks.map(t => {
+           if (t.id === l.taskId) return { ...t, done: true, active: false };
+           if (t.active) return { ...t, active: false };
+           return t;
+        });
+        
+        setCycleTasksByField(p => ({ ...p, [l.fieldId]: updated }));
+        
+        const isFullyCompleted = updated.findIndex(t => !t.done) === -1;
+        const newStageLabel = isFullyCompleted ? 'Harvesting & Milling (Completed)' : 'Waiting to Start Next Stage';
+        
+        if (l.fieldId === selectedField.id) {
+          setSelectedField(prevF => ({ ...prevF, stage: newStageLabel }));
+        }
+        
+        const mf = MOCK_FIELDS.find(f => f.id === l.fieldId);
+        if (mf) mf.stage = newStageLabel;
+      }
+    }
     setLogs([...MOCK_LOGS]);
     notifyDataUpdate();
   };
 
   const rejectLog = (logId) => {
-    const idx = MOCK_LOGS.findIndex(x => x.id === logId);
-    if (idx >= 0) MOCK_LOGS.splice(idx, 1);
+    if (!synced) {
+      Alert.alert('Offline Mode', 'You are currently offline. Please connect to the internet to decline logs.');
+      return;
+    }
+    const l = MOCK_LOGS.find(x => x.id === logId);
+    if (l) l.declined = true;
     setLogs([...MOCK_LOGS]);
     notifyDataUpdate();
   };
 
-  const fieldLogs = logs.filter(l => l.fieldId === selectedField.id);
+  const visibleLogs = activeRole === 'Member' ? logs : logs.filter(l => !l.isOffline);
+  const fieldLogs = visibleLogs.filter(l => l.fieldId === selectedField.id && !l.isPastCycle);
+  const pastLogs = visibleLogs.filter(l => l.fieldId === selectedField.id && l.isPastCycle);
 
   const unsynced = MOCK_FIELDS.filter(f => !f.synced);
 
   // Dynamic calculations for month-level QR code compilation
-  const uniqueFieldsCount = new Set(logs.map(l => l.fieldId)).size;
-  const totalLogsCount = logs.length;
-  const totalOperationalCost = logs.reduce((sum, l) => sum + l.cost, 0);
+  const activeCycleLogs = visibleLogs.filter(l => !l.isPastCycle);
+  const uniqueFieldsCount = new Set(activeCycleLogs.map(l => l.fieldId)).size;
+  const totalLogsCount = activeCycleLogs.length;
+  const totalOperationalCost = activeCycleLogs.reduce((sum, l) => sum + l.cost, 0);
 
   const renderTimeline = () => {
     const tasks = cycleTasksByField[selectedField.id] || CYCLE_TASKS.map(t => ({...t, done: false, active: false}));
+    const isFullyCompleted = tasks.every(t => t.done);
     return (
       <View style={{ marginBottom: SPACING.md }}>
         <View style={s.sectionRow}>
@@ -425,6 +538,36 @@ export default function SchedulesScreen({ navigation }) {
               </View>
             </TouchableOpacity>
           ))}
+          {isFullyCompleted && (
+            <TouchableOpacity style={{ marginTop: 16, backgroundColor: COLORS.primary, paddingVertical: 12, borderRadius: RADIUS.sm, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }} onPress={() => {
+                 Alert.alert(
+                   'Start New Crop Year',
+                   'Are you sure you want to start a new crop cycle?',
+                   [
+                     { text: 'Cancel', style: 'cancel' },
+                     { text: 'Yes, Start', style: 'default', onPress: () => {
+                        setCycleTasksByField(p => ({
+                          ...p,
+                          [selectedField.id]: CYCLE_TASKS.map((t, i) => ({...t, done: false, active: false}))
+                        }));
+                        setSelectedField(prevF => ({ ...prevF, stage: 'Not Started' }));
+                        const resetMf = MOCK_FIELDS.find(f => f.id === selectedField.id);
+                        if (resetMf) resetMf.stage = 'Not Started';
+                        
+                        MOCK_LOGS.forEach(l => {
+                          if (l.fieldId === selectedField.id) l.isPastCycle = true;
+                        });
+                        setLogs([...MOCK_LOGS]);
+                        
+                        setDraftLogs(prev => prev.filter(d => d.fieldId !== selectedField.id));
+                     }}
+                   ]
+                 );
+            }}>
+              <Ionicons name="refresh" size={16} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Start New Crop Year</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -559,17 +702,20 @@ export default function SchedulesScreen({ navigation }) {
                   Draft Logs {draftLogs.filter(l => l.fieldId === selectedField.id).length > 0 && `(${draftLogs.filter(l => l.fieldId === selectedField.id).length})`}
                 </Text>
               </TouchableOpacity>
+              <TouchableOpacity style={[s.logTabBtn, logTab === 'past' && s.logTabBtnActive]} onPress={() => setLogTab('past')}>
+                <Text style={[s.logTabText, logTab === 'past' && s.logTabTextActive]}>Past Cycles</Text>
+              </TouchableOpacity>
             </View>
 
-            {logTab === 'submitted' && (
+            {(logTab === 'submitted' || logTab === 'past') && (
               <>
-                {fieldLogs.length === 0 && (
+                {(logTab === 'submitted' ? fieldLogs : pastLogs).length === 0 && (
                   <View style={s.emptyCard}>
-                    <Ionicons name="document-outline" size={32} color={COLORS.border} />
-                    <Text style={s.emptyText}>No submitted logs yet.</Text>
+                    <Ionicons name={logTab === 'past' ? "time-outline" : "document-outline"} size={32} color={COLORS.border} />
+                    <Text style={s.emptyText}>No {logTab === 'past' ? 'logs from past cycles' : 'submitted logs'} yet.</Text>
                   </View>
                 )}
-                {fieldLogs.map(log => (
+                {(logTab === 'submitted' ? fieldLogs : pastLogs).map(log => (
                   <View key={log.id} style={s.receiptCard}>
                     <View style={s.receiptHeader}>
                       <Text style={[s.receiptTitle, log.taskId === 'Emergency' && { color: '#D9534F' }]}>
@@ -588,10 +734,13 @@ export default function SchedulesScreen({ navigation }) {
                       </View>
                       <View style={s.receiptRow}>
                         <Text style={s.receiptLabel}>Status</Text>
-                        <View style={[s.receiptStatusBadge, { backgroundColor: log.approved ? '#F2FBF2' : '#FFFBF0', borderColor: log.approved ? '#E8F5E8' : '#FEF0D0' }]}>
-                          <Ionicons name={log.approved ? 'checkmark-circle-outline' : 'time-outline'} size={14} color={log.approved ? '#267326' : '#C97A00'} />
-                          <Text style={[s.receiptStatusText, { color: log.approved ? '#267326' : '#C97A00' }]}>
-                            {log.approved ? 'Approved by Manager' : (!synced ? 'Pending Sync (Offline)' : 'Pending Manager Review')}
+                        <View style={[s.receiptStatusBadge, { 
+                          backgroundColor: log.declined ? '#FFEAEB' : (log.approved ? '#F2FBF2' : '#FFFBF0'), 
+                          borderColor: log.declined ? '#FFD4D4' : (log.approved ? '#E8F5E8' : '#FEF0D0') 
+                        }]}>
+                          <Ionicons name={log.declined ? 'close-circle-outline' : (log.approved ? 'checkmark-circle-outline' : 'time-outline')} size={14} color={log.declined ? '#D9534F' : (log.approved ? '#267326' : '#C97A00')} />
+                          <Text style={[s.receiptStatusText, { color: log.declined ? '#D9534F' : (log.approved ? '#267326' : '#C97A00') }]}>
+                            {log.declined ? 'Declined by Manager' : (log.approved ? 'Approved by Manager' : (log.isOffline ? 'Pending Sync (Offline)' : 'Pending Manager Review'))}
                           </Text>
                         </View>
                       </View>
@@ -769,24 +918,33 @@ export default function SchedulesScreen({ navigation }) {
             <View style={s.logTabsRow}>
               <TouchableOpacity style={[s.logTabBtn, managerLogTab === 'pending' && s.logTabBtnActive]} onPress={() => setManagerLogTab('pending')}>
                 <Text style={[s.logTabText, managerLogTab === 'pending' && s.logTabTextActive]}>
-                  Waiting Approval {fieldLogs.filter(l => !l.approved).length > 0 && `(${fieldLogs.filter(l => !l.approved).length})`}
+                  Waiting Approval {fieldLogs.filter(l => !l.approved && !l.declined).length > 0 && `(${fieldLogs.filter(l => !l.approved && !l.declined).length})`}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.logTabBtn, managerLogTab === 'approved' && s.logTabBtnActive]} onPress={() => setManagerLogTab('approved')}>
                 <Text style={[s.logTabText, managerLogTab === 'approved' && s.logTabTextActive]}>
-                  Approved Logs
+                  Approved
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.logTabBtn, managerLogTab === 'declined' && s.logTabBtnActive]} onPress={() => setManagerLogTab('declined')}>
+                <Text style={[s.logTabText, managerLogTab === 'declined' && s.logTabTextActive]}>
+                  Declined
                 </Text>
               </TouchableOpacity>
             </View>
             
             {(() => {
-              const displayLogs = managerLogTab === 'pending' ? fieldLogs.filter(l => !l.approved) : fieldLogs.filter(l => l.approved);
+              const displayLogs = managerLogTab === 'pending' 
+                ? fieldLogs.filter(l => !l.approved && !l.declined) 
+                : managerLogTab === 'approved' 
+                  ? fieldLogs.filter(l => l.approved && !l.declined) 
+                  : fieldLogs.filter(l => l.declined);
               return (
                 <>
                   {displayLogs.length === 0 && (
                     <View style={s.emptyCard}>
                       <Ionicons name={managerLogTab === 'pending' ? "checkmark-circle-outline" : "document-outline"} size={32} color={managerLogTab === 'pending' ? COLORS.success : COLORS.border} />
-                      <Text style={s.emptyText}>{managerLogTab === 'pending' ? 'All logs are approved.' : 'No approved logs yet.'}</Text>
+                      <Text style={s.emptyText}>{managerLogTab === 'pending' ? 'All logs are approved.' : managerLogTab === 'declined' ? 'No declined logs.' : 'No approved logs yet.'}</Text>
                     </View>
                   )}
                   {displayLogs.map(log => (
@@ -817,22 +975,31 @@ export default function SchedulesScreen({ navigation }) {
                         </View>
                         <View style={s.receiptRow}>
                           <Text style={s.receiptLabel}>Status</Text>
-                          <View style={[s.receiptStatusBadge, { backgroundColor: log.approved ? '#F2FBF2' : '#FFFBF0', borderColor: log.approved ? '#E8F5E8' : '#FEF0D0' }]}>
-                            <Ionicons name={log.approved ? 'checkmark-circle-outline' : 'time-outline'} size={14} color={log.approved ? '#267326' : '#C97A00'} />
-                            <Text style={[s.receiptStatusText, { color: log.approved ? '#267326' : '#C97A00' }]}>
-                              {log.approved ? 'Approved' : (!synced ? 'Pending Sync (Offline)' : 'Awaiting Approval')}
+                          <View style={[s.receiptStatusBadge, { 
+                            backgroundColor: log.declined ? '#FFEAEB' : (log.approved ? '#F2FBF2' : '#FFFBF0'), 
+                            borderColor: log.declined ? '#FFD4D4' : (log.approved ? '#E8F5E8' : '#FEF0D0') 
+                          }]}>
+                            <Ionicons name={log.declined ? 'close-circle-outline' : (log.approved ? 'checkmark-circle-outline' : 'time-outline')} size={14} color={log.declined ? '#D9534F' : (log.approved ? '#267326' : '#C97A00')} />
+                            <Text style={[s.receiptStatusText, { color: log.declined ? '#D9534F' : (log.approved ? '#267326' : '#C97A00') }]}>
+                              {log.declined ? 'Declined by Manager' : (log.approved ? 'Approved' : (!synced ? 'Pending Sync (Offline)' : 'Awaiting Approval'))}
                             </Text>
                           </View>
                         </View>
                       </View>
 
-                      {!log.approved && synced && (
-                        <TouchableOpacity style={s.receiptApproveBtn} onPress={() => approveLog(log.id)}>
-                          <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
-                          <Text style={s.receiptApproveBtnText}>Approve Log</Text>
-                        </TouchableOpacity>
+                      {!log.approved && !log.declined && (log.isOffline === false || log.isOffline === undefined) && (
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TouchableOpacity style={[s.receiptApproveBtn, { flex: 1, backgroundColor: '#D9534F' }]} onPress={() => rejectLog(log.id)}>
+                            <Ionicons name="close-circle-outline" size={16} color="#fff" />
+                            <Text style={s.receiptApproveBtnText}>Decline</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[s.receiptApproveBtn, { flex: 1 }]} onPress={() => approveLog(log.id)}>
+                            <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                            <Text style={s.receiptApproveBtnText}>Approve</Text>
+                          </TouchableOpacity>
+                        </View>
                       )}
-                      {!log.approved && !synced && (
+                      {!log.approved && log.isOffline === true && (
                         <View style={[s.receiptApproveBtn, { backgroundColor: '#E2E8F0' }]}>
                           <Ionicons name="cloud-offline-outline" size={16} color="#64748B" />
                           <Text style={[s.receiptApproveBtnText, { color: '#64748B' }]}>Pending Sync</Text>
@@ -881,21 +1048,33 @@ export default function SchedulesScreen({ navigation }) {
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, padding: SPACING.sm }}>
                 {(() => {
                   const isAll = selectedFarm === 'All Block Farms';
-                  const fFields = isAll ? MOCK_FIELDS : MOCK_FIELDS.filter(f => f.blockFarm === selectedFarm);
+                  
+                  // Keep the actual data synchronized with AnalyticsScreen logic
+                  const BLOCK_FARM_DATA = {
+                    'Silay Block Farm A': { ha: 18.5, members: 42, cost: 262700, pending: 8, logs: 840, declined: 14 },
+                    'Silay Block Farm B': { ha: 20.0, members: 55, cost: 336000, pending: 12, logs: 915, declined: 22 },
+                    'Silay Block Farm C': { ha: 28.0, members: 89, cost: 366800, pending: 5, logs: 1105, declined: 9 },
+                    'Silay Block Farm D': { ha: 22.0, members: 63, cost: 253000, pending: 14, logs: 552, declined: 18 },
+                  };
+
+                  const displayHa = isAll ? 88.5 : (BLOCK_FARM_DATA[selectedFarm]?.ha || 0);
+                  const displayMembers = isAll ? 249 : (BLOCK_FARM_DATA[selectedFarm]?.members || 0);
+                  const displayCost = isAll ? 1218500 : (BLOCK_FARM_DATA[selectedFarm]?.cost || 0);
+                  const displayPending = isAll ? 39 : (BLOCK_FARM_DATA[selectedFarm]?.pending || 0);
+                  const displayLogs = isAll ? 3412 : (BLOCK_FARM_DATA[selectedFarm]?.logs || 0);
+                  const displayDeclined = isAll ? 63 : (BLOCK_FARM_DATA[selectedFarm]?.declined || 0);
                   const fManagers = isAll ? MOCK_MANAGERS : MOCK_MANAGERS.filter(m => m.blockFarm === selectedFarm);
-                  const fFieldIds = fFields.map(f => f.id);
-                  const fLogs = MOCK_LOGS.filter(l => fFieldIds.includes(l.fieldId));
 
                   return [
                     {
                       label: 'Total Hectares',
-                      value: `${fFields.reduce((sum, f) => sum + parseFloat(f.ha || 0), 0).toFixed(1)} Ha`,
+                      value: `${displayHa.toFixed(1)} Ha`,
                       icon: 'map-outline',
                       color: COLORS.primary,
                     },
                     {
                       label: 'Active Members',
-                      value: `${[...new Set(fFields.map(f => f.member))].length} Members`,
+                      value: `${displayMembers} Members`,
                       icon: 'people-outline',
                       color: '#1A6B9A',
                     },
@@ -907,20 +1086,26 @@ export default function SchedulesScreen({ navigation }) {
                     },
                     {
                       label: 'Approved Logs',
-                      value: `${fLogs.filter(l => l.approved).length} Logs`,
+                      value: `${displayLogs} Logs`,
                       icon: 'checkmark-circle-outline',
                       color: COLORS.success,
                     },
                     {
                       label: 'Total Op. Cost',
-                      value: `₱${fLogs.filter(l => l.approved).reduce((sum, l) => sum + (l.cost || 0), 0).toLocaleString()}`,
+                      value: `₱${displayCost >= 1000000 ? (displayCost / 1000000).toFixed(2) + 'M' : (displayCost / 1000).toFixed(1) + 'k'}`,
                       icon: 'cash-outline',
                       color: '#F5A623',
                     },
                     {
                       label: 'Pending Logs',
-                      value: `${fLogs.filter(l => !l.approved).length} Pending`,
+                      value: `${displayPending} Pending`,
                       icon: 'time-outline',
+                      color: '#C97A00',
+                    },
+                    {
+                      label: 'Declined Logs',
+                      value: `${displayDeclined} Declined`,
+                      icon: 'close-circle-outline',
                       color: '#D9534F',
                     },
                   ].map(stat => (
@@ -949,6 +1134,33 @@ export default function SchedulesScreen({ navigation }) {
               </View>
             </TouchableOpacity>
 
+            {/* Manual QR Input Fallback */}
+            <View style={{ backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.lg, marginBottom: SPACING.xl, ...SHADOW.card }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textMuted, marginBottom: 8, letterSpacing: 1 }}>OR ENTER MANUALLY</Text>
+              <TextInput 
+                style={{ backgroundColor: '#f2f4ef', borderRadius: 8, padding: 12, fontSize: 14, fontWeight: '700', letterSpacing: 2, color: COLORS.text, borderWidth: 1, borderColor: COLORS.border, marginBottom: 12 }}
+                placeholder="HUG-XXXXXX-XXXX"
+                placeholderTextColor={COLORS.textMuted}
+                value={manualQR}
+                onChangeText={setManualQR}
+                autoCapitalize="characters"
+              />
+              <TouchableOpacity
+                style={{ backgroundColor: manualQR.length > 0 ? COLORS.primary : COLORS.border, paddingVertical: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}
+                disabled={manualQR.length === 0}
+                onPress={() => {
+                  setManualQR('');
+                  Alert.alert(
+                    'Report Loaded Successfully ✓',
+                    `May 2026 Block Farm Report loaded.\n\n• ${uniqueFieldsCount} fields\n• ${totalLogsCount} operation logs\n• Total cost: Php ${totalOperationalCost.toLocaleString()}\n• Manager: Jose Reyes`,
+                    [{ text: 'View Report', style: 'default' }]
+                  );
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: manualQR.length > 0 ? '#fff' : COLORS.textMuted }}>Submit Manual ID</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Last Audit Summary */}
             <Text style={s.sectionLabel}>Last Scanned Report</Text>
             <View style={s.auditCard}>
@@ -960,7 +1172,22 @@ export default function SchedulesScreen({ navigation }) {
               <View style={s.auditRow}><Text style={s.auditLabel}>Total Operational Cost</Text><Text style={s.auditVal}>Php {totalOperationalCost.toLocaleString()}</Text></View>
               <View style={s.auditRow}><Text style={s.auditLabel}>Logs Approved by Manager</Text><Text style={s.auditVal}>{logs.filter(l => l.approved).length} / {totalLogsCount}</Text></View>
               <View style={s.auditRow}><Text style={s.auditLabel}>Report Generated</Text><Text style={s.auditVal}>May 21, 2026</Text></View>
-              <TouchableOpacity style={s.pdfBtn}>
+              <TouchableOpacity 
+                style={s.pdfBtn}
+                onPress={() => {
+                  Alert.alert(
+                    'Exporting PDF',
+                    `Generating District Operations Report for ${selectedFarm}...`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { 
+                        text: 'Download', 
+                        onPress: () => Alert.alert('Success', 'HUGPONG_District_Ops_Report.pdf has been securely saved to your device Downloads folder.')
+                      }
+                    ]
+                  );
+                }}
+              >
                 <Ionicons name="download-outline" size={16} color={COLORS.primary} />
                 <Text style={s.pdfBtnText}>Export PDF Report</Text>
               </TouchableOpacity>

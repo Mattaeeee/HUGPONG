@@ -143,6 +143,18 @@
 
       <!-- DASHBOARD -->
       <section class="page flex flex-col gap-5" id="page-dashboard">
+        <!-- Live Descriptive Summary (Synced with Phone) -->
+        <div class="bg-white rounded-xl p-5 border border-border shadow-sm">
+          <div id="descriptive-summary-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div class="flex flex-col gap-1 lg:border-r border-border pr-2"><span class="text-[10px] text-hug-muted font-semibold uppercase tracking-wider">Active Members</span><span class="text-xl font-black text-[#1A6B9A]">249</span></div>
+            <div class="flex flex-col gap-1 lg:border-r border-border pr-2"><span class="text-[10px] text-hug-muted font-semibold uppercase tracking-wider">Farm Managers</span><span class="text-xl font-black text-[#8F3A8F]">14</span></div>
+            <div id="summary-sra-admins" class="hidden flex flex-col gap-1 lg:border-r border-border pr-2"><span class="text-[10px] text-hug-muted font-semibold uppercase tracking-wider">SRA Admins</span><span class="text-xl font-black text-primary">3</span></div>
+            <div class="flex flex-col gap-1 lg:border-r border-border pr-2"><span class="text-[10px] text-hug-muted font-semibold uppercase tracking-wider">Approved Logs</span><span class="text-xl font-black text-success">3,412</span></div>
+            <div class="flex flex-col gap-1 lg:border-r border-border pr-2"><span class="text-[10px] text-hug-muted font-semibold uppercase tracking-wider">Total Op. Cost</span><span class="text-xl font-black text-accent">₱1.22M</span></div>
+            <div class="flex flex-col gap-1 lg:border-r border-border pr-2"><span class="text-[10px] text-hug-muted font-semibold uppercase tracking-wider">Pending Logs</span><span class="text-xl font-black text-[#C97A00]">39</span></div>
+            <div class="flex flex-col gap-1"><span class="text-[10px] text-hug-muted font-semibold uppercase tracking-wider">Declined Logs</span><span class="text-xl font-black text-danger">63</span></div>
+          </div>
+        </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div class="bg-white rounded-xl p-5 border border-border shadow-sm flex gap-3.5 items-start">
             <div class="w-11 h-11 rounded-xl bg-success-bg text-success flex items-center justify-center flex-shrink-0"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
@@ -353,7 +365,7 @@
             <thead class="bg-bg"><tr>
               <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Log ID</th>
               <th id="logs-th-blockfarm" class="hidden text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Block Farm</th>
-              <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Field ID</th>
+              <th id="logs-th-fieldid" class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Field ID</th>
               <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Type</th>
               <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Operation</th>
               <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs border-b border-border">Expense</th>
@@ -369,8 +381,7 @@
 
       <!-- DESCRIPTIVE ANALYTICS -->
       <section class="page hidden flex flex-col gap-5" id="page-analytics">
-        <div><h2 class="text-xl font-bold text-hug-text">Descriptive Analytics Diagnostics</h2><p class="text-sm text-hug-muted">Cost and efficiency diagnostics derived from approved operation logs</p></div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div><h2 class="text-xl font-bold text-hug-text">Descriptive Analytics Diagnostics</h2><p class="text-sm text-hug-muted">Cost and efficiency diagnostics derived from approved operation logs</p></div>        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="bg-white rounded-xl p-5 border border-border shadow-sm flex gap-3.5 items-start">
             <div class="w-11 h-11 rounded-xl bg-success-bg text-success flex items-center justify-center flex-shrink-0"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
             <div><p class="text-xs text-hug-muted mb-1">Cumulative Operations Cost</p><p class="text-2xl font-black text-hug-text leading-none mb-1" id="diagnostics-total-cost">Php 136,830</p><p class="text-xs text-hug-muted">Across 4 operational fields</p></div>

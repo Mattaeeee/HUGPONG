@@ -152,6 +152,19 @@ export const setSynced = (synced) => {
   } else {
     CURRENT_SESSION.syncedLogs = CURRENT_SESSION.syncedLogs + CURRENT_SESSION.pendingLogs;
     CURRENT_SESSION.pendingLogs = 0;
+    
+    // Convert any offline logs to synced logs
+    MOCK_LOGS.forEach(log => {
+      if (log.isOffline) log.isOffline = false;
+    });
+    
+    // Convert any unsynced fields to synced
+    MOCK_FIELDS.forEach(f => {
+      if (!f.synced) {
+        f.synced = true;
+        f.lastSync = 'Just now';
+      }
+    });
   }
   notify();
 };
