@@ -101,7 +101,7 @@ const PAGES = {
   logs: { heading: 'Field Operation Logs', sub: 'Review weekly and monthly operation logs logged by members' },
   analytics: { heading: 'Descriptive Analytics', sub: 'Macro-level diagnostic diagnostics on costs and hectare efficiency' },
   users: { heading: 'User Management', sub: 'Review active directory roles and approve pending registrations' },
-  fields: { heading: 'Block Farm Registry', sub: 'Supervise registered Field IDs, transfer ownerships, and track sync statuses' },
+  fields: { heading: 'Block Farm Registry', sub: 'Supervise registered block farms, transfer ownership IDs, and track sync statuses' },
   sync: { heading: 'Sync Audit Monitor', sub: 'Audit mobile terminals transactions synchronization logs' },
   maintenance: { heading: 'System Maintenance & Security', sub: 'Manage global parameters, database health, and security' }
 };
@@ -285,7 +285,8 @@ function renderDashboard() {
             displayTask = 'Consolidated General Operations';
           }
         } else {
-          displayFieldId = `<td style="padding:12px 16px;font-size:12px;color:#5A6B4A;">${l.fieldId}</td>`;
+          const farmName = farmMap[l.fieldId] || 'Block Farm A';
+          displayFieldId = `<td style="padding:12px 16px;font-size:12px;color:#1A6B9A;font-weight:700;">${farmName}</td>`;
         }
 
         return `<tr onmouseover="this.style.background='#F2F4EF'" onmouseout="this.style.background=''">`
@@ -1079,86 +1080,146 @@ function renderFields() {
   const gridContainer = document.getElementById('fields-grid-container');
   if (!gridContainer) return;
 
-  gridContainer.innerHTML = db.fields.map(f => {
-    const syncBadge = f.synced
-      ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#E8F5E8;color:#3A8F3A;margin-top:8px;">&#10003; Synced</span>'
-      : '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#FEEBEB;color:#D9534F;margin-top:8px;">&#9888; ' + f.lag + '</span>';
-    const warningBanner = !f.synced
-      ? '<div style="margin-top:10px;background:#FEEBEB;border:1px solid rgba(217,83,79,0.3);border-radius:8px;padding:8px 10px;font-size:11px;font-weight:700;color:#D9534F;">&#9888;&#65039; ALERT: Device out of sync (' + f.lag + ')</div>' : '';
-    const borderColor = f.synced ? '#E2E8DC' : '#D9534F';
+  const farmMap = {
+    'FLD-KTR-001': 'Block Farm A', 'FLD-KTR-002': 'Block Farm A',
+    'FLD-KTR-003': 'Block Farm B', 'FLD-KTR-004': 'Block Farm B',
+    'FLD-KTR-007': 'Block Farm C', 'FLD-KTR-008': 'Block Farm C',
+    'FLD-KTR-009': 'Block Farm D', 'FLD-KTR-010': 'Block Farm D'
+  };
+
+  const grouped = {};
+  db.fields.forEach(f => {
+    const farm = farmMap[f.id] || 'Unassigned Block Farm';
+    if (!grouped[farm]) grouped[farm] = { name: farm, totalArea: 0, synced: 0, totalFields: 0, fieldIds: [] };
+    grouped[farm].totalArea += Number(f.area) || 0;
+    grouped[farm].totalFields += 1;
+    grouped[farm].synced += f.synced ? 1 : 0;
+    grouped[farm].fieldIds.push(f.id);
+  });
+
+  const cards = Object.values(grouped).map(group => {
+    const manager = db.users.find(u => u.role === 'Farm Manager' && u.blockFarm === group.name);
+    const managerName = manager ? manager.name : 'Unassigned';
+    const blockId = getBlockId(group.name);
+    const allSynced = group.synced === group.totalFields;
+    const borderColor = allSynced ? '#E2E8DC' : '#D9534F';
+    const syncBadge = allSynced
+      ? '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#E8F5E8;color:#3A8F3A;margin-top:8px;">&#10003; Fully Synced</span>'
+      : '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#FEEBEB;color:#D9534F;margin-top:8px;">&#9888; Partial Sync</span>';
+
     return '<div style="background:#fff;border-radius:12px;border:1px solid ' + borderColor + ';box-shadow:0 2px 12px rgba(45,80,22,0.06);padding:16px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;">'
       + '<div>'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
-      + '<strong style="font-size:15px;color:#2D5016;font-weight:800;">' + f.id + '</strong>'
-      + '<span style="font-size:11px;font-weight:700;color:#5A6B4A;background:#F2F4EF;border:1px solid #E2E8DC;padding:3px 10px;border-radius:999px;">' + f.area + ' Ha</span>'
+      + '<strong style="font-size:15px;color:#2D5016;font-weight:800;">' + group.name + '</strong>'
+      + '<span style="font-size:11px;font-weight:700;color:#5A6B4A;background:#F2F4EF;border:1px solid #E2E8DC;padding:3px 10px;border-radius:999px;">' + group.totalArea.toFixed(1) + ' Ha</span>'
       + '</div>'
       + '<div style="display:flex;flex-direction:column;gap:4px;font-size:13px;">'
-      + '<p style="color:#5A6B4A;"><strong style="color:#1A2212;">Owner:</strong> ' + f.owner + '</p>'
-      + '<p style="color:#8A9B7A;font-size:11px;"><strong style="color:#5A6B4A;">Stage:</strong> ' + f.stage + '</p>'
-      + '<p style="color:#8A9B7A;font-size:11px;"><strong style="color:#5A6B4A;">Crop Age:</strong> ' + f.age + '</p>'
+      + '<p style="color:#5A6B4A;"><strong style="color:#1A2212;">Farm Manager:</strong> ' + managerName + '</p>'
+      + '<p style="color:#8A9B7A;font-size:11px;"><strong style="color:#5A6B4A;">Block ID:</strong> ' + blockId + '</p>'
+      + '<p style="color:#8A9B7A;font-size:11px;"><strong style="color:#5A6B4A;">Registered Fields:</strong> ' + group.totalFields + '</p>'
       + '</div>'
-      + syncBadge + warningBanner
+      + syncBadge
       + '</div>'
       + '<div style="display:flex;gap:6px;border-top:1px solid #E2E8DC;padding-top:10px;">'
-      + '<button onclick="loadFieldForEdit(\'' + f.id + '\')" style="flex:1;border:1px solid #E2E8DC;color:#5A6B4A;background:none;border-radius:8px;padding:7px;font-size:11px;font-weight:500;cursor:pointer;">Edit Field</button>'
-      + '<button onclick="archiveField(\'' + f.id + '\')" style="flex:1;border:1px solid rgba(217,83,79,0.4);color:#D9534F;background:none;border-radius:8px;padding:7px;font-size:11px;font-weight:500;cursor:pointer;">Archive</button>'
+      + '<button onclick="loadFieldForEdit(\'' + group.fieldIds[0] + '\')" style="flex:1;border:1px solid #E2E8DC;color:#5A6B4A;background:none;border-radius:8px;padding:7px;font-size:11px;font-weight:500;cursor:pointer;">Edit Block Farm</button>'
+      + '<button onclick="archiveBlockFarm(\'' + group.name + '\')" style="flex:1;border:1px solid rgba(217,83,79,0.4);color:#D9534F;background:none;border-radius:8px;padding:7px;font-size:11px;font-weight:500;cursor:pointer;">Archive Block Farm</button>'
       + '</div></div>';
-  }).join('');
+  });
+
+  gridContainer.innerHTML = cards.join('');
 }
 
 let editFieldId = null;
 
+function getBlockFarmName(fieldId) {
+  const farmMap = {
+    'FLD-KTR-001': 'Block Farm A', 'FLD-KTR-002': 'Block Farm A',
+    'FLD-KTR-003': 'Block Farm B', 'FLD-KTR-004': 'Block Farm B',
+    'FLD-KTR-007': 'Block Farm C', 'FLD-KTR-008': 'Block Farm C',
+    'FLD-KTR-009': 'Block Farm D', 'FLD-KTR-010': 'Block Farm D'
+  };
+  return farmMap[fieldId] || fieldId;
+}
+
+function getBlockId(blockFarmName) {
+  const map = {
+    'Block Farm A': 'BLK-A',
+    'Block Farm B': 'BLK-B',
+    'Block Farm C': 'BLK-C',
+    'Block Farm D': 'BLK-D'
+  };
+  return map[blockFarmName] || ('BLK-' + blockFarmName.replace(/[^A-Za-z0-9]/g, '').toUpperCase());
+}
+
+function showFieldFormPanel() {
+  const panel = document.getElementById('field-form-panel');
+  if (!panel) return;
+  panel.classList.remove('hidden');
+  panel.classList.add('flex');
+}
+
+function hideFieldFormPanel() {
+  const panel = document.getElementById('field-form-panel');
+  if (!panel) return;
+  panel.classList.add('hidden');
+  panel.classList.remove('flex');
+}
+
 function loadFieldForEdit(fieldId) {
   const currentRole = localStorage.getItem('hugpong_role') || 'admin';
-  if (currentRole !== 'superadmin') {
-    toast('Access Denied: Requires Super Admin clearance.');
+  if (currentRole !== 'superadmin' && currentRole !== 'admin') {
+    toast('Access Denied: Requires SRA (Admin) or Super Admin clearance.');
     return;
   }
   const db = getDB();
   const f = db.fields.find(field => field.id === fieldId);
   if (!f) return;
 
+  showFieldFormPanel();
   editFieldId = fieldId;
-  document.getElementById('field-form-title').textContent = 'Transfer & Edit Field Registry';
-  document.getElementById('f-id').value = f.id;
+  document.getElementById('field-form-title').textContent = 'Transfer & Edit Block Farm Registry';
+  document.getElementById('f-id').value = getBlockFarmName(f.id);
   document.getElementById('f-id').disabled = true;
   document.getElementById('f-owner').value = f.owner;
   document.getElementById('f-area').value = f.area;
-  document.getElementById('f-stage').value = f.stage;
   const btn = document.getElementById('save-field-action-btn');
-  if (btn) btn.textContent = 'Transfer Ownership';
+  if (btn) btn.textContent = 'Transfer Owner ID';
 }
 
 function showNewFieldForm() {
+  const panel = document.getElementById('field-form-panel');
+  if (panel && !panel.classList.contains('hidden')) {
+    hideFieldFormPanel();
+    return;
+  }
+  showFieldFormPanel();
   resetFieldForm();
-  document.getElementById('field-form-title').textContent = 'Assign New Field ID';
+  document.getElementById('field-form-title').textContent = 'Assign New Block Farm';
   const btn = document.getElementById('save-field-action-btn');
   if (btn) btn.textContent = 'Register';
 }
 
 function resetFieldForm() {
   editFieldId = null;
-  document.getElementById('field-form-title').textContent = 'Assign New Field ID';
+  document.getElementById('field-form-title').textContent = 'Assign New Block Farm';
   document.getElementById('f-id').value = '';
   document.getElementById('f-id').disabled = false;
   document.getElementById('f-owner').value = '';
   document.getElementById('f-area').value = '';
-  document.getElementById('f-stage').value = 'Land Preparation';
   const btn = document.getElementById('save-field-action-btn');
   if (btn) btn.textContent = 'Register';
 }
 
 function saveFieldChanges() {
   const currentRole = localStorage.getItem('hugpong_role') || 'admin';
-  if (currentRole !== 'superadmin') {
-    toast('Access Denied: Requires Super Admin clearance.');
+  if (currentRole !== 'superadmin' && currentRole !== 'admin') {
+    toast('Access Denied: Requires SRA (Admin) or Super Admin clearance.');
     return;
   }
 
-  const id = document.getElementById('f-id').value.trim().toUpperCase();
+  const id = document.getElementById('f-id').value.trim();
   const owner = document.getElementById('f-owner').value.trim();
   const area = parseFloat(document.getElementById('f-area').value);
-  const stage = document.getElementById('f-stage').value;
 
   if (!id || !owner || isNaN(area)) {
     toast('Error: Missing operational registry parameters.');
@@ -1171,37 +1232,45 @@ function saveFieldChanges() {
     if (f) {
       f.owner = owner;
       f.area = area;
-      f.stage = stage;
-      toast(`Block Owner of Field ${f.id} transferred to ${owner}`);
+      toast(`Block owner ID of ${f.id} transferred to ${owner}`);
     }
   } else {
     if (db.fields.some(f => f.id === id)) {
-      toast('Error: Field ID code already registered.');
+      toast('Error: Block Farm already registered.');
       return;
     }
-    db.fields.push({ id, owner, area, stage, age: '0.1 months', synced: true, lag: 'Synced' });
-    toast(`Registered field ${id} assigned to ${owner}`);
+    db.fields.push({ id, owner, area, age: '0.1 months', synced: true, lag: 'Synced' });
+    toast(`Registered Block Farm ${id} assigned to owner ID ${owner}`);
   }
 
   saveDB(db);
   resetFieldForm();
+  hideFieldFormPanel();
   renderFields();
   renderDashboard();
 }
 
-function archiveField(fieldId) {
+function archiveBlockFarm(blockFarmName) {
   const currentRole = localStorage.getItem('hugpong_role') || 'admin';
-  if (currentRole !== 'superadmin') {
-    toast('Access Denied: Requires Super Admin clearance.');
+  if (currentRole !== 'superadmin' && currentRole !== 'admin') {
+    toast('Access Denied: Requires SRA (Admin) or Super Admin clearance.');
     return;
   }
-  if (!confirm(`Are you sure you want to archive Field ${fieldId}?`)) return;
+  if (!confirm(`Are you sure you want to archive ${blockFarmName}?`)) return;
+
+  const farmMap = {
+    'FLD-KTR-001': 'Block Farm A', 'FLD-KTR-002': 'Block Farm A',
+    'FLD-KTR-003': 'Block Farm B', 'FLD-KTR-004': 'Block Farm B',
+    'FLD-KTR-007': 'Block Farm C', 'FLD-KTR-008': 'Block Farm C',
+    'FLD-KTR-009': 'Block Farm D', 'FLD-KTR-010': 'Block Farm D'
+  };
+
   const db = getDB();
-  db.fields = db.fields.filter(f => f.id !== fieldId);
+  db.fields = db.fields.filter(f => (farmMap[f.id] || f.id) !== blockFarmName);
   saveDB(db);
   renderFields();
   renderDashboard();
-  toast(`Field ${fieldId} archived successfully.`);
+  toast(`${blockFarmName} archived successfully.`);
 }
 
 // ── SYNC MONITOR transactions ────────────────────────────

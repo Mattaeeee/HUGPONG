@@ -204,7 +204,7 @@
               <thead class="bg-bg"><tr>
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs uppercase tracking-wide border-b border-border">Log ID</th>
                 <th id="dashboard-th-blockfarm" class="hidden text-left px-4 py-2.5 text-hug-muted font-semibold text-xs uppercase tracking-wide border-b border-border">Block Farm</th>
-                <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs uppercase tracking-wide border-b border-border">Field ID</th>
+                <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs uppercase tracking-wide border-b border-border">Block Farm</th>
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs uppercase tracking-wide border-b border-border">Type</th>
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs uppercase tracking-wide border-b border-border">Operation</th>
                 <th class="text-left px-4 py-2.5 text-hug-muted font-semibold text-xs uppercase tracking-wide border-b border-border">Cost</th>
@@ -438,17 +438,16 @@
       <section class="page hidden flex flex-col gap-5" id="page-fields">
         <div class="flex items-center justify-between">
           <h2 class="text-xl font-bold text-hug-text">Block Farm Registry</h2>
-          <button onclick="showNewFieldForm()" class="bg-primary text-white font-semibold text-sm px-4 py-2 rounded-lg hover:bg-primary-light transition-all cursor-pointer">+ Register Field ID</button>
+          <button onclick="showNewFieldForm()" class="bg-primary text-white font-semibold text-sm px-4 py-2 rounded-lg hover:bg-primary-light transition-all cursor-pointer">+ Register Block Farm</button>
         </div>
         <div class="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5 items-start">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="fields-grid-container"></div>
-          <div class="bg-white rounded-xl border border-border shadow-sm p-5 flex flex-col gap-4">
-            <h3 class="text-sm font-bold text-hug-text" id="field-form-title">Assign New Field ID</h3>
+          <div id="field-form-panel" class="hidden bg-white rounded-xl border border-border shadow-sm p-5 flex-col gap-4">
+            <h3 class="text-sm font-bold text-hug-text" id="field-form-title">Assign New Block Farm</h3>
             <div class="flex flex-col gap-3">
-              <div class="flex flex-col gap-1.5"><label for="f-id" class="text-xs font-semibold text-hug-text2">Field ID Code</label><input id="f-id" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white" placeholder="FLD-KTR-0XX"/></div>
-              <div class="flex flex-col gap-1.5"><label for="f-owner" class="text-xs font-semibold text-hug-text2">Assigned Owner Name</label><input id="f-owner" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white" placeholder="e.g. Maria Clara"/></div>
+              <div class="flex flex-col gap-1.5"><label for="f-id" class="text-xs font-semibold text-hug-text2">Block Farm</label><input id="f-id" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white" placeholder="e.g. Block Farm A"/></div>
+              <div class="flex flex-col gap-1.5"><label for="f-owner" class="text-xs font-semibold text-hug-text2">ASSIGN OWNER ID</label><input id="f-owner" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white" placeholder="e.g. OWN-001"/></div>
               <div class="flex flex-col gap-1.5"><label for="f-area" class="text-xs font-semibold text-hug-text2">Block Hectares Area</label><input id="f-area" type="number" step="0.1" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white" placeholder="e.g. 1.8"/></div>
-              <div class="flex flex-col gap-1.5"><label for="f-stage" class="text-xs font-semibold text-hug-text2">Crop Stage</label><select id="f-stage" aria-label="Field crop stage" title="Field crop stage" class="border border-border rounded-lg px-3 py-2 text-sm bg-bg focus:outline-none focus:border-primary focus:bg-white"><option>Land Preparation</option><option>Planting</option><option>Fertilization Stage 2</option><option>Weeding</option><option>Harvesting</option></select></div>
               <div class="flex gap-2 mt-1">
                 <button onclick="resetFieldForm()" class="flex-1 border border-border text-hug-text2 text-sm font-medium py-2 rounded-lg hover:bg-bg transition-all cursor-pointer">Reset</button>
                 <button onclick="saveFieldChanges()" id="save-field-action-btn" class="flex-1 bg-primary text-white text-sm font-semibold py-2 rounded-lg hover:bg-primary-light transition-all cursor-pointer">Register</button>
