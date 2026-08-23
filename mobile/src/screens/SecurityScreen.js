@@ -6,24 +6,37 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
+import { getSecurityPreferences, updateSecurityPreferences, subscribe } from '../data/mockData';
+import { useTranslation } from '../services/i18n';
 
 export default function SecurityScreen({ navigation }) {
+  const { t } = useTranslation();
   const [showChangePw, setShowChangePw] = useState(false);
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
-  const [biometrics, setBiometrics] = useState(false);
-  const [pinEnabled, setPinEnabled] = useState(false);
-  const [twoFactor, setTwoFactor] = useState(false);
-  const [sessionAlert, setSessionAlert] = useState(true);
+
+  const [prefs, setPrefs] = useState(getSecurityPreferences());
+
+  React.useEffect(() => {
+    const unsubscribe = subscribe(() => {
+      setPrefs(getSecurityPreferences());
+    });
+    return unsubscribe;
+  }, []);
+
+  const handleToggle = (key, val) => {
+    updateSecurityPreferences({ [key]: val });
+  };
 
   const submitPasswordChange = () => {
-    if (!currentPw) { Alert.alert('Required', 'Enter your current password'); return; }
-    if (newPw.length < 8) { Alert.alert('Too Short', 'New password must be at least 8 characters'); return; }
-    if (newPw !== confirmPw) { Alert.alert('Mismatch', 'New passwords do not match'); return; }
-    Alert.alert('Password Changed', 'Your password has been updated successfully.', [
+    if (!currentPw) { Alert.alert(t('error_title', 'Required'), t('sec_err_curr_pw', 'Enter your current password')); return; }
+    if (newPw.length < 8) { Alert.alert(t('error_title', 'Too Short'), t('sec_err_short', 'New password must be at least 8 characters')); return; }
+    if (newPw !== confirmPw) { Alert.alert(t('error_title', 'Mismatch'), t('sec_err_mismatch', 'New passwords do not match')); return; }
+    updateSecurityPreferences({ lastPasswordChange: new Date().toISOString().split('T')[0] });
+    Alert.alert(t('sec_pw_changed', 'Password Changed'), t('sec_pw_changed_msg', 'Your password has been updated successfully.'), [
       { text: 'OK', onPress: () => { setShowChangePw(false); setCurrentPw(''); setNewPw(''); setConfirmPw(''); } }
     ]);
   };
@@ -34,7 +47,7 @@ export default function SecurityScreen({ navigation }) {
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={20} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Security & Password</Text>
+        <Text style={s.headerTitle}>{t('sec_title', 'Security & Password')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -44,8 +57,8 @@ export default function SecurityScreen({ navigation }) {
         <View style={s.warningCard}>
           <Ionicons name="shield" size={22} color={COLORS.primary} />
           <View style={s.warningBody}>
-            <Text style={s.warningTitle}>Data Protection</Text>
-            <Text style={s.warningText}>Your account data is encrypted. Never share your password with anyone, including HUGPONG staff.</Text>
+            <Text style={s.warningTitle}>{t('sec_data_protect_title', 'Data Protection')}</Text>
+            <Text style={s.warningText}>{t('sec_data_protect_text', 'Your account data is encrypted. Never share your password with anyone, including HUGPONG staff.')}</Text>
           </View>
         </View>
 
@@ -55,16 +68,16 @@ export default function SecurityScreen({ navigation }) {
             <View style={[s.secIcon, { backgroundColor: COLORS.primaryBg }]}>
               <Ionicons name="lock-closed" size={17} color={COLORS.primary} />
             </View>
-            <Text style={s.sectionLabel}>Change Password</Text>
+            <Text style={s.sectionLabel}>{t('sec_change_pw', 'Change Password')}</Text>
             <Ionicons name={showChangePw ? 'chevron-up' : 'chevron-down'} size={16} color={COLORS.textMuted} />
           </TouchableOpacity>
 
           {showChangePw && (
             <View style={s.pwForm}>
               {[
-                { label: 'Current Password', val: currentPw, set: setCurrentPw, show: showCurrent, toggle: () => setShowCurrent(p => !p) },
-                { label: 'New Password', val: newPw, set: setNewPw, show: showNew, toggle: () => setShowNew(p => !p) },
-                { label: 'Confirm New Password', val: confirmPw, set: setConfirmPw, show: showNew, toggle: () => setShowNew(p => !p) },
+                { label: t('sec_curr_pw', 'Current Password'), val: currentPw, set: setCurrentPw, show: showCurrent, toggle: () => setShowCurrent(p => !p) },
+                { label: t('sec_new_pw', 'New Password'), val: newPw, set: setNewPw, show: showNew, toggle: () => setShowNew(p => !p) },
+                { label: t('sec_confirm_pw', 'Confirm New Password'), val: confirmPw, set: setConfirmPw, show: showNew, toggle: () => setShowNew(p => !p) },
               ].map(f => (
                 <View key={f.label} style={s.pwField}>
                   <Text style={s.pwLabel}>{f.label}</Text>
@@ -85,23 +98,28 @@ export default function SecurityScreen({ navigation }) {
               ))}
               {newPw.length > 0 && (
                 <View style={s.pwStrength}>
-                  {['8+ chars', 'Uppercase', 'Number', 'Symbol'].map(check => {
+                  {[
+                    { key: '8+ chars', label: t('sec_strength_8chars', '8+ chars') },
+                    { key: 'Uppercase', label: t('sec_strength_uppercase', 'Uppercase') },
+                    { key: 'Number', label: t('sec_strength_number', 'Number') },
+                    { key: 'Symbol', label: t('sec_strength_symbol', 'Symbol') }
+                  ].map(check => {
                     const passed =
-                      check === '8+ chars' ? newPw.length >= 8 :
-                      check === 'Uppercase' ? /[A-Z]/.test(newPw) :
-                      check === 'Number' ? /\d/.test(newPw) :
+                      check.key === '8+ chars' ? newPw.length >= 8 :
+                      check.key === 'Uppercase' ? /[A-Z]/.test(newPw) :
+                      check.key === 'Number' ? /\d/.test(newPw) :
                       /[^a-zA-Z0-9]/.test(newPw);
                     return (
-                      <View key={check} style={s.strengthItem}>
+                      <View key={check.key} style={s.strengthItem}>
                         <Ionicons name={passed ? 'checkmark-circle' : 'ellipse-outline'} size={13} color={passed ? COLORS.success : COLORS.textMuted} />
-                        <Text style={[s.strengthText, { color: passed ? COLORS.success : COLORS.textMuted }]}>{check}</Text>
+                        <Text style={[s.strengthText, { color: passed ? COLORS.success : COLORS.textMuted }]}>{check.label}</Text>
                       </View>
                     );
                   })}
                 </View>
               )}
               <TouchableOpacity style={s.saveBtn} onPress={submitPasswordChange}>
-                <Text style={s.saveBtnText}>Update Password</Text>
+                <Text style={s.saveBtnText}>{t('sec_update_pw', 'Update Password')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -109,13 +127,13 @@ export default function SecurityScreen({ navigation }) {
 
         {/* Security Toggles */}
         <View style={s.card}>
-          <Text style={s.cardTitle}>Authentication</Text>
+          <Text style={s.cardTitle}>{t('sec_auth_title', 'Authentication')}</Text>
           {[
-            { icon: 'finger-print', label: 'Biometric Login', sub: 'Use fingerprint or face ID', color: '#4A7C2F', val: biometrics, set: setBiometrics },
-            { icon: 'keypad', label: 'PIN Lock', sub: 'Require PIN on app open', color: COLORS.blue, val: pinEnabled, set: setPinEnabled },
-            { icon: 'phone-portrait', label: 'Two-Factor Auth', sub: 'Send OTP to your mobile', color: COLORS.accent, val: twoFactor, set: setTwoFactor },
+            { icon: 'finger-print', label: t('sec_bio_login', 'Biometric Login'), sub: t('sec_bio_login_sub', 'Use fingerprint or face ID'), color: '#4A7C2F', key: 'biometrics', val: prefs.biometrics },
+            { icon: 'keypad', label: t('sec_pin_lock', 'PIN Lock'), sub: t('sec_pin_lock_sub', 'Require PIN on app open'), color: COLORS.blue, key: 'pinEnabled', val: prefs.pinEnabled },
+            { icon: 'phone-portrait', label: t('sec_2fa', 'Two-Factor Auth'), sub: t('sec_2fa_sub', 'Send OTP to your mobile'), color: COLORS.accent, key: 'twoFactor', val: prefs.twoFactor },
           ].map(item => (
-            <View key={item.label} style={s.toggleRow}>
+            <View key={item.key} style={s.toggleRow}>
               <View style={[s.secIcon, { backgroundColor: item.color + '18' }]}>
                 <Ionicons name={item.icon} size={17} color={item.color} />
               </View>
@@ -125,7 +143,7 @@ export default function SecurityScreen({ navigation }) {
               </View>
               <Switch
                 value={item.val}
-                onValueChange={item.set}
+                onValueChange={(v) => handleToggle(item.key, v)}
                 trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
                 thumbColor={item.val ? COLORS.primary : '#f4f3f4'}
               />
@@ -135,29 +153,43 @@ export default function SecurityScreen({ navigation }) {
 
         {/* Alerts & Sessions */}
         <View style={s.card}>
-          <Text style={s.cardTitle}>Session & Alerts</Text>
+          <Text style={s.cardTitle}>{t('sec_session_title', 'Session & Alerts')}</Text>
           <View style={s.toggleRow}>
             <View style={[s.secIcon, { backgroundColor: COLORS.successLight }]}>
               <Ionicons name="notifications" size={17} color={COLORS.success} />
             </View>
             <View style={s.toggleBody}>
-              <Text style={s.toggleLabel}>Login Alerts</Text>
-              <Text style={s.toggleSub}>Notify when a new session starts</Text>
+              <Text style={s.toggleLabel}>{t('sec_login_alerts', 'Login Alerts')}</Text>
+              <Text style={s.toggleSub}>{t('sec_login_alerts_sub', 'Notify when a new session starts')}</Text>
             </View>
             <Switch
-              value={sessionAlert}
-              onValueChange={setSessionAlert}
+              value={prefs.sessionAlert}
+              onValueChange={(v) => handleToggle('sessionAlert', v)}
               trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
-              thumbColor={sessionAlert ? COLORS.primary : '#f4f3f4'}
+              thumbColor={prefs.sessionAlert ? COLORS.primary : '#f4f3f4'}
             />
           </View>
-          <TouchableOpacity style={s.dangerRow} onPress={() => Alert.alert('Sign Out All Devices', 'This will end all active sessions on all devices.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Sign Out All', style: 'destructive' }])}>
+          <TouchableOpacity 
+            style={s.dangerRow} 
+            onPress={() => Alert.alert(
+              t('sec_signout_all_title', 'Sign Out All Devices'), 
+              t('sec_signout_all_msg', 'This will end all active sessions on all devices and require re-authentication.'), 
+              [
+                { text: t('btn_cancel', 'Cancel'), style: 'cancel' }, 
+                { 
+                  text: t('sec_btn_signout_all', 'Sign Out All'), 
+                  style: 'destructive',
+                  onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] })
+                }
+              ]
+            )}
+          >
             <View style={[s.secIcon, { backgroundColor: '#FFF0F0' }]}>
               <Ionicons name="log-out" size={17} color="#D9534F" />
             </View>
             <View style={s.toggleBody}>
-              <Text style={[s.toggleLabel, { color: '#D9534F' }]}>Sign Out All Devices</Text>
-              <Text style={s.toggleSub}>Revoke all active sessions</Text>
+              <Text style={[s.toggleLabel, { color: '#D9534F' }]}>{t('sec_signout_all', 'Sign Out All Devices')}</Text>
+              <Text style={s.toggleSub}>{t('sec_signout_all_sub', 'Revoke all active sessions')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
           </TouchableOpacity>

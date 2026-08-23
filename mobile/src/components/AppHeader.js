@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, Animated, Easing, Aler
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme';
 import { subscribe, getIsSynced, getCurrentSession, setSynced } from '../data/mockData';
+import { useTranslation } from '../services/i18n';
 
 const LOGO = require('../../assets/HUGPONG LOGO.png');
 
@@ -11,6 +12,7 @@ const LOGO = require('../../assets/HUGPONG LOGO.png');
  * Features a dynamic sync indicator button on the right that turns green/yellow.
  */
 export default function AppHeader({ right }) {
+  const { t } = useTranslation();
   const [synced, setSyncedState] = useState(getIsSynced());
   const [pendingCount, setPendingCount] = useState(getCurrentSession().pendingLogs);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -28,8 +30,8 @@ export default function AppHeader({ right }) {
     if (isSyncing) return;
     if (synced && pendingCount === 0) {
       Alert.alert(
-        'Synced ✓',
-        'Your sugarcane records are fully synchronized with the HUGPONG cloud. Safe to work offline.'
+        t('synced', 'Synced'),
+        t('sync_toast_synced', 'Your sugarcane records are fully synchronized with the HUGPONG cloud. Safe to work offline.')
       );
       return;
     }
@@ -45,8 +47,8 @@ export default function AppHeader({ right }) {
       setIsSyncing(false);
       setSynced(true);
       Alert.alert(
-        'Sync Complete ✓',
-        'All local sugarcane operation logs have been successfully uploaded and compiled.'
+        t('sync_status_synced', 'Sync Successful'),
+        t('sync_toast_complete', 'All local sugarcane operation logs have been successfully uploaded and compiled.')
       );
     });
   };

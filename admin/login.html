@@ -22,10 +22,33 @@
       --color-hug-muted: #8A9B7A;
       --font-sans: 'Inter', system-ui, sans-serif;
     }
-    body {
-      font-family: var(--font-sans);
+    html.dark {
+      --color-bg: #0C1015;
+      --color-primary: #10B981;
+      --color-primary-light: #34D399;
+      --color-primary-bg: rgba(16, 185, 129, 0.12);
+      --color-accent: #F59E0B;
+      --color-border: #232E3C;
+      --color-hug-text: #F8FAFC;
+      --color-hug-text2: #94A3B8;
+      --color-hug-muted: #64748B;
     }
+    body { font-family: var(--font-sans); }
+    html.dark body { background-color: #0C1015 !important; color: #F8FAFC !important; }
+    html.dark .bg-white { background-color: #151C24 !important; border-color: #232E3C !important; color: #F8FAFC !important; }
+    html.dark .bg-bg { background-color: #0F151C !important; }
+    html.dark input { background-color: #0F151C !important; border-color: #232E3C !important; color: #F8FAFC !important; }
+    html.dark input:focus { border-color: #10B981 !important; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important; }
+    html.dark .text-primary { color: #34D399 !important; }
+    html.dark .text-hug-text { color: #F8FAFC !important; }
+    html.dark .text-hug-text2 { color: #94A3B8 !important; }
+    html.dark .text-hug-muted { color: #64748B !important; }
   </style>
+  <script>
+    if (localStorage.getItem('hugpong_theme') === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
 </head>
 <body class="min-h-screen bg-bg flex items-center justify-center relative">
 
@@ -42,10 +65,12 @@
 
     <!-- Logo + Heading -->
     <div class="flex flex-col items-center gap-3 mb-7">
-      <img src="logo.png" alt="HUGPONG Logo" class="w-20 h-20 object-contain" />
+      <div class="w-20 h-20 rounded-2xl bg-white border border-border/80 p-2 flex items-center justify-center shadow-xs" style="background-color: #FFFFFF !important;">
+        <img src="logo.png" alt="HUGPONG Logo" class="w-full h-full object-contain" />
+      </div>
       <div class="text-center">
-        <h1 class="text-2xl font-black text-primary leading-tight">Admin Console</h1>
-        <p class="text-sm text-hug-muted mt-1 leading-snug">Enter your credentials to manage Silay Farm operations.</p>
+        <h1 class="text-2xl font-black text-primary leading-tight">HUGPONG</h1>
+        <p class="text-sm text-hug-muted mt-1 leading-snug">Sugarcane Block Farm Management Console</p>
       </div>
     </div>
 
@@ -87,40 +112,12 @@
         <span id="btn-text">Sign In</span>
       </button>
 
-      <!-- Forgot Password -->
+      <!-- Forgot Password & Provisioning Note -->
       <div class="text-center mt-1">
-        <a href="#" class="text-xs text-hug-muted hover:text-primary transition-colors">Forgot password? Contact your administrator.</a>
+        <p class="text-xs text-hug-muted">Forgot password or need an account? <span class="text-primary font-semibold">Contact your SRA District Administrator.</span></p>
       </div>
 
     </form>
-
-    <!-- Demo Presets -->
-    <div class="mt-7 pt-6 border-t border-dashed border-border">
-      <p class="text-[10px] font-bold text-hug-muted uppercase tracking-widest text-center mb-3">Quick Demo Access</p>
-      <div class="grid grid-cols-2 gap-3">
-
-        <!-- SRA (Admin) -->
-        <button
-          onclick="triggerDemoLogin('admin')"
-          class="flex flex-col items-start gap-1.5 bg-primary-bg border border-border rounded-xl p-3 text-left hover:border-primary hover:shadow-sm transition-all cursor-pointer"
-        >
-          <span class="text-[10px] font-bold text-primary bg-white border border-primary/30 rounded-full px-2 py-0.5 uppercase tracking-wide">SRA (Admin)</span>
-          <p class="text-xs font-semibold text-hug-text leading-tight">Admin Console</p>
-          <p class="text-[10px] text-hug-muted font-mono">09171234567</p>
-        </button>
-
-        <!-- Super Admin -->
-        <button
-          onclick="triggerDemoLogin('superadmin')"
-          class="flex flex-col items-start gap-1.5 bg-purple-50 border border-border rounded-xl p-3 text-left hover:border-purple-400 hover:shadow-sm transition-all cursor-pointer"
-        >
-          <span class="text-[10px] font-bold text-purple-700 bg-white border border-purple-300 rounded-full px-2 py-0.5 uppercase tracking-wide">Super Admin</span>
-          <p class="text-xs font-semibold text-hug-text leading-tight">Root Console</p>
-          <p class="text-[10px] text-hug-muted font-mono">09187654321</p>
-        </button>
-
-      </div>
-    </div>
 
   </div>
   <!-- /Login Card -->
@@ -140,13 +137,6 @@
   </div>
 
   <script>
-    function triggerDemoLogin(role) {
-      document.getElementById('contact-input').value = role === 'admin' ? '09171234567' : '09187654321';
-      document.getElementById('password-input').value = role === 'admin' ? 'admin123' : 'superadmin123';
-      localStorage.setItem('hugpong_role', role);
-      setTimeout(() => document.getElementById('login-form').dispatchEvent(new Event('submit', { cancelable: true })), 300);
-    }
-
     function handleLoginSubmit(e) {
       e.preventDefault();
       const contactNum = document.getElementById('contact-input').value;
@@ -155,8 +145,25 @@
       const submitBtn = document.getElementById('submit-btn');
       const overlay = document.getElementById('loading-overlay');
       const statusText = document.getElementById('overlay-status');
-      if (!localStorage.getItem('hugpong_role')) {
-        localStorage.setItem('hugpong_role', contactNum === '09187654321' ? 'superadmin' : 'admin');
+      try {
+        const db = JSON.parse(localStorage.getItem('hugpong_db') || '{}');
+        const cleanContact = contactNum.replace(/\D/g, '');
+        const found = (db.users || []).find(u => u.contact && u.contact.replace(/\D/g, '') === cleanContact);
+        if (found) {
+          if (found.role === 'Super Admin') localStorage.setItem('hugpong_role', 'superadmin');
+          else if (found.role === 'Farm Manager') localStorage.setItem('hugpong_role', 'manager');
+          else localStorage.setItem('hugpong_role', 'admin');
+        } else if (!localStorage.getItem('hugpong_role')) {
+          if (contactNum === '09189876543') {
+            localStorage.setItem('hugpong_role', 'manager');
+          } else if (contactNum === '09187654321') {
+            localStorage.setItem('hugpong_role', 'superadmin');
+          } else {
+            localStorage.setItem('hugpong_role', 'admin');
+          }
+        }
+      } catch (err) {
+        if (!localStorage.getItem('hugpong_role')) localStorage.setItem('hugpong_role', 'admin');
       }
       spinner.style.display = 'inline-block';
       btnText.textContent = 'Authenticating...';
@@ -170,6 +177,27 @@
       }, 300);
     }
   </script>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js';
+    import { getFirestore } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
 
+    const webFirebaseConfig = {
+      apiKey: "AIzaSyDYkv9afZa2ZlhxLzIEZfk2b5wP_s2XXpI",
+      authDomain: "hugpong-ff.firebaseapp.com",
+      projectId: "hugpong-ff",
+      storageBucket: "hugpong-ff.firebasestorage.app",
+      messagingSenderId: "516809927909",
+      appId: "1:516809927909:web:195ec4886bde93e811f80c"
+    };
+
+    try {
+      const app = initializeApp(webFirebaseConfig);
+      const db = getFirestore(app);
+      window.firebaseApp = app;
+      window.firebaseDB = db;
+    } catch (e) {
+      console.warn('[HUGPONG] Firebase login init notice:', e);
+    }
+  </script>
 </body>
 </html>

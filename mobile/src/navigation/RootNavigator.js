@@ -13,12 +13,12 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
 import HomeScreen from '../screens/HomeScreen';
 import AnalyticsScreen from '../screens/AnalyticsScreen';
-import CalculatorScreen from '../screens/CalculatorScreen';
-import SchedulesScreen from '../screens/SchedulesScreen';
-import TaskDetailScreen from '../screens/TaskDetailScreen';
+import PlannerScreen from '../screens/PlannerScreen';
+import FieldOpsScreen from '../screens/FieldOpsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SecurityScreen from '../screens/SecurityScreen';
 import SyncMonitorScreen from '../screens/SyncMonitorScreen';
+import { useTranslation } from '../services/i18n';
 
 const Root = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -39,6 +39,7 @@ function HomeNavigator() {
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
       <HomeStack.Screen name="Analytics" component={AnalyticsScreen} options={{ animation: 'slide_from_right' }} />
+      <HomeStack.Screen name="SyncMonitor" component={SyncMonitorScreen} options={{ animation: 'slide_from_right' }} />
     </HomeStack.Navigator>
   );
 }
@@ -46,7 +47,7 @@ function HomeNavigator() {
 function CalcNavigator() {
   return (
     <CalcStack.Navigator screenOptions={{ headerShown: false }}>
-      <CalcStack.Screen name="CalcMain" component={CalculatorScreen} />
+      <CalcStack.Screen name="CalcMain" component={PlannerScreen} />
     </CalcStack.Navigator>
   );
 }
@@ -54,8 +55,8 @@ function CalcNavigator() {
 function SchedNavigator() {
   return (
     <SchedStack.Navigator screenOptions={{ headerShown: false }}>
-      <SchedStack.Screen name="SchedMain" component={SchedulesScreen} />
-      <SchedStack.Screen name="TaskDetail" component={TaskDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <SchedStack.Screen name="SchedMain" component={FieldOpsScreen} />
+      <SchedStack.Screen name="SyncMonitor" component={SyncMonitorScreen} options={{ animation: 'slide_from_right' }} />
     </SchedStack.Navigator>
   );
 }
@@ -72,6 +73,7 @@ function ProfileNavigator() {
 
 function MainTabs() {
   const [role, setRole] = React.useState(getCurrentSession().role);
+  const { t } = useTranslation();
 
   React.useEffect(() => {
     return subscribe(() => {
@@ -89,28 +91,28 @@ function MainTabs() {
           backgroundColor: COLORS.surface,
           borderTopColor: COLORS.border,
           borderTopWidth: 1,
-          height: 72,
-          paddingBottom: 12,
-          paddingTop: 8,
+          height: 62,
+          paddingBottom: 8,
+          paddingTop: 6,
           ...SHADOW.float,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', letterSpacing: 0.2, marginTop: 2 },
+        tabBarLabelStyle: { fontSize: 10.5, fontWeight: '600', letterSpacing: 0.2, marginTop: 1 },
         tabBarIcon: ({ focused, color }) => {
           const cfg = TAB_ICONS[route.name];
           return <Ionicons name={focused ? cfg.active : cfg.inactive} size={23} color={color} />;
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeNavigator} />
+      <Tab.Screen name="Home" component={HomeNavigator} options={{ tabBarLabel: t('tab_home', 'Home') }} />
       {role !== 'SRA (Admin)' && (
-        <Tab.Screen name="Planner" component={CalcNavigator} />
+        <Tab.Screen name="Planner" component={CalcNavigator} options={{ tabBarLabel: t('tab_planner', 'Planner') }} />
       )}
       <Tab.Screen 
         name="Field Ops" 
         component={SchedNavigator} 
-        options={{ tabBarLabel: role === 'SRA (Admin)' ? 'District Ops' : 'Field Ops' }}
+        options={{ tabBarLabel: role === 'SRA (Admin)' ? 'District Ops' : t('tab_field_ops', 'Field Ops') }}
       />
-      <Tab.Screen name="Profile" component={ProfileNavigator} />
+      <Tab.Screen name="Profile" component={ProfileNavigator} options={{ tabBarLabel: t('tab_profile', 'Profile') }} />
     </Tab.Navigator>
   );
 }

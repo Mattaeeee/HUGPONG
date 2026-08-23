@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ScrollView,
+  KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../../theme';
+import { registerUser } from '../../data/mockData';
 
 const ROLES = ['Member', 'Farm Manager', 'SRA (Admin)'];
 
@@ -18,7 +19,8 @@ const ROLE_DESCRIPTIONS = {
 const BLOCK_FARMS = [
   'Silay Block Farm A',
   'Silay Block Farm B',
-  'Silay Block Farm C'
+  'Silay Block Farm C',
+  'Silay Block Farm D'
 ];
 
 function ProgressBar({ step, totalSteps }) {
@@ -68,28 +70,12 @@ const inp = StyleSheet.create({
   input: { flex: 1, fontSize: 15, color: COLORS.text, fontWeight: '500' },
 });
 
-function RoleChip({ label, description, selected, onPress }) {
-  return (
-    <TouchableOpacity style={[rc.chip, selected && rc.selected]} onPress={onPress}>
-      <View style={rc.chipInner}>
-        <View style={rc.chipHeader}>
-          {selected && <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />}
-          <Text style={[rc.text, selected && rc.textSelected]}>{label}</Text>
-        </View>
-        <Text style={[rc.desc, selected && rc.descSelected]}>{description}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
 const rc = StyleSheet.create({
   chip: { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.md, backgroundColor: '#fff' },
   selected: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg },
-  chipInner: { gap: 4 },
   chipHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   text: { fontSize: 14, color: COLORS.textSecondary, fontWeight: '500' },
   textSelected: { color: COLORS.primary, fontWeight: '700' },
-  desc: { fontSize: 12, color: COLORS.textMuted, fontWeight: '400' },
-  descSelected: { color: COLORS.primary, opacity: 0.8 },
 });
 
 export default function RegisterScreen({ navigation }) {
@@ -99,7 +85,7 @@ export default function RegisterScreen({ navigation }) {
     middleInitial: '',
     lastName: '',
     nickname: '',
-    role: '',
+    role: 'Member',
     blockFarm: '',
     contactNumber: '',
     password: '', 
@@ -115,22 +101,13 @@ export default function RegisterScreen({ navigation }) {
 
   const set = (key, val) => { setForm(p => ({ ...p, [key]: val })); setErrors(p => ({ ...p, [key]: null })); };
 
-  const requiresBlockFarm = ['Member', 'Farm Manager'].includes(form.role);
-  
-  const getStepTitles = () => {
-    const titles = [
-      { title: 'Personal Info', sub: 'Tell us about yourself' },
-      { title: 'Your Role', sub: 'Select your role in the block farm' },
-    ];
-    if (requiresBlockFarm) {
-      titles.push({ title: 'Block Farm', sub: 'Assign your registry location' });
-    }
-    titles.push({ title: 'Contact Number', sub: 'Used as your login credential' });
-    titles.push({ title: 'Set Password', sub: 'Secure your HUGPONG account' });
-    return titles;
-  };
+  const stepTitles = [
+    { title: 'Personal Info', sub: 'Enter your official farmer identity' },
+    { title: 'Select Block Farm', sub: 'Assign your sugarcane block farm cooperative' },
+    { title: 'Contact Number', sub: 'Used as your mobile login credential' },
+    { title: 'Set Password', sub: 'Secure your HUGPONG account' },
+  ];
 
-  const stepTitles = getStepTitles();
   const totalSteps = stepTitles.length;
   const activeStepTitle = stepTitles[step - 1].title;
 
@@ -140,11 +117,8 @@ export default function RegisterScreen({ navigation }) {
       if (!form.firstName.trim()) e.firstName = 'First name is required';
       if (!form.lastName.trim()) e.lastName = 'Last name is required';
     }
-    if (activeStepTitle === 'Your Role') {
-      if (!form.role) e.role = 'Please select a role';
-    }
-    if (activeStepTitle === 'Block Farm') {
-      if (!form.blockFarm) e.blockFarm = 'Please select a block farm';
+    if (activeStepTitle === 'Select Block Farm') {
+      if (!form.blockFarm) e.blockFarm = 'Please select your block farm';
     }
     if (activeStepTitle === 'Contact Number') {
       const cleaned = form.contactNumber.replace(/\s/g, '');
@@ -166,7 +140,14 @@ export default function RegisterScreen({ navigation }) {
     if (!validateStep()) return;
     if (step < totalSteps) { setStep(s => s + 1); return; }
     setLoading(true);
-    setTimeout(() => { setLoading(false); navigation.replace('MainTabs'); }, 1400);
+
+    setTimeout(() => {
+      registerUser(form);
+      setLoading(false);
+      Alert.alert('Registration Successful', `Welcome to HUGPONG, ${form.firstName}! Your farmer member account is now active.`, [
+        { text: 'Go to Dashboard', onPress: () => navigation.replace('MainTabs') }
+      ]);
+    }, 800);
   };
 
   const back = () => step > 1 ? setStep(s => s - 1) : navigation.replace('Login');
@@ -179,7 +160,7 @@ export default function RegisterScreen({ navigation }) {
           <TouchableOpacity style={s.backBtn} onPress={back}>
             <Ionicons name="arrow-back" size={20} color={COLORS.text} />
           </TouchableOpacity>
-          <Text style={s.navTitle}>Create Account</Text>
+          <Text style={s.navTitle}>Member Farmer Registration</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -208,26 +189,9 @@ export default function RegisterScreen({ navigation }) {
               </Field>
             </>}
 
-            {/* STEP: YOUR ROLE */}
-            {activeStepTitle === 'Your Role' && <>
-              <Field label="System Role *" error={errors.role}>
-                <View style={{ gap: 8 }}>
-                  {ROLES.map(r => (
-                    <RoleChip
-                      key={r}
-                      label={r}
-                      description={ROLE_DESCRIPTIONS[r]}
-                      selected={form.role === r}
-                      onPress={() => set('role', r)}
-                    />
-                  ))}
-                </View>
-              </Field>
-            </>}
-
             {/* STEP: BLOCK FARM */}
-            {activeStepTitle === 'Block Farm' && <>
-              <Field label="Select Block Farm *" error={errors.blockFarm}>
+            {activeStepTitle === 'Select Block Farm' && <>
+              <Field label="Select Your Assigned Block Farm *" error={errors.blockFarm}>
                 <View style={{ gap: 8 }}>
                   {BLOCK_FARMS.map(farm => (
                     <TouchableOpacity 
@@ -344,6 +308,13 @@ export default function RegisterScreen({ navigation }) {
             <Text style={s.btnText}>{loading ? 'Creating account...' : step === totalSteps ? 'Create Account' : 'Continue'}</Text>
             {!loading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
           </TouchableOpacity>
+
+          <View style={s.adminNoteBox}>
+            <Ionicons name="information-circle-outline" size={16} color={COLORS.textMuted} />
+            <Text style={s.adminNoteText}>
+              Are you a Farm Manager or SRA Officer? Your accounts are provisioned directly by the SRA District Administrator. Please contact your coordinator.
+            </Text>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -366,4 +337,6 @@ const s = StyleSheet.create({
   verifyBtn: { backgroundColor: COLORS.border, padding: 12, borderRadius: 10, alignItems: 'center', marginTop: 5, marginBottom: 15 },
   verifyBtnSent: { backgroundColor: 'transparent', borderWidth: 1, borderColor: COLORS.border },
   verifyBtnText: { color: COLORS.text, fontWeight: '600', fontSize: 13 },
+  adminNoteBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, backgroundColor: COLORS.background, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, marginTop: 4 },
+  adminNoteText: { flex: 1, fontSize: 11, color: COLORS.textMuted, lineHeight: 16 },
 });
