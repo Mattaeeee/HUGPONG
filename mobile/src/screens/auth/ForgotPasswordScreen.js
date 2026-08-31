@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingVi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../../theme';
+import { useTranslation } from '../../services/i18n';
 
 export default function ForgotPasswordScreen({ navigation }) {
+  const { t } = useTranslation();
   const [mobile, setMobile] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -21,7 +23,7 @@ export default function ForgotPasswordScreen({ navigation }) {
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={20} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={s.navTitle}>Forgot Password</Text>
+        <Text style={s.navTitle}>{t('forgot_pw_title', 'Forgot Password')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -33,11 +35,11 @@ export default function ForgotPasswordScreen({ navigation }) {
                 <Ionicons name="lock-open-outline" size={48} color={COLORS.primary} />
               </View>
               <View style={s.textBlock}>
-                <Text style={s.title}>Reset your password</Text>
-                <Text style={s.sub}>Enter your registered mobile number and we'll send a password reset link via SMS.</Text>
+                <Text style={s.title}>{t('reset_pw_heading', 'Reset your password')}</Text>
+                <Text style={s.sub}>{t('reset_pw_sub', "Enter your registered mobile number and we'll send a password reset link via SMS.")}</Text>
               </View>
               <View style={s.card}>
-                <Text style={s.label}>Mobile Number</Text>
+                <Text style={s.label}>{t('lbl_mobile_num', 'Mobile Number')}</Text>
                 <View style={s.inputWrap}>
                   <Ionicons name="phone-portrait-outline" size={18} color={COLORS.textMuted} />
                   <TextInput
@@ -52,7 +54,7 @@ export default function ForgotPasswordScreen({ navigation }) {
                 </View>
               </View>
               <TouchableOpacity style={[s.btn, loading && { opacity: 0.6 }]} onPress={handleSend} disabled={loading}>
-                <Text style={s.btnText}>{loading ? 'Sending...' : 'Send Reset Link'}</Text>
+                <Text style={s.btnText}>{loading ? t('sending', 'Sending...') : t('send_reset_link', 'Send Reset Link')}</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -60,10 +62,10 @@ export default function ForgotPasswordScreen({ navigation }) {
               <View style={s.successIcon}>
                 <Ionicons name="checkmark-circle" size={60} color={COLORS.success} />
               </View>
-              <Text style={s.successTitle}>Link Sent!</Text>
-              <Text style={s.successSub}>Check your mobile messages for the password reset link. It expires in 15 minutes.</Text>
+              <Text style={s.successTitle}>{t('link_sent_title', 'Link Sent!')}</Text>
+              <Text style={s.successSub}>{t('link_sent_msg', 'Check your mobile messages for the password reset link. It expires in 15 minutes.')}</Text>
               <TouchableOpacity style={s.btn} onPress={() => navigation.navigate('Login')}>
-                <Text style={s.btnText}>Back to Sign In</Text>
+                <Text style={s.btnText}>{t('back_to_signin', 'Back to Sign In')}</Text>
               </TouchableOpacity>
             </View>
           )}

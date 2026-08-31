@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Modal, Animated, Dimensions, Alert, Switch, TextInput,
+  Modal, Dimensions, Alert, Switch, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
-import { subscribe, getIsSynced, getCurrentSession, setSynced, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS, MOCK_TICKETS, submitSupportTicket, resetLocalCache } from '../data/mockData';
+import { subscribe, getIsSynced, getCurrentSession, setSynced, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS, MOCK_TICKETS, submitSupportTicket, resetLocalCache, authenticateUser } from '../data/dataStore';
 import { useTranslation, LANGUAGES } from '../services/i18n';
 
 const { height } = Dimensions.get('window');
@@ -94,6 +94,37 @@ export default function ProfileScreen({ navigation }) {
             Alert.alert(t('cache_cleared', 'Cache Cleared'), t('cache_cleared_msg', 'Local offline buffer and cached drafts have been reset.'));
           } 
         },
+      ]
+    );
+  };
+
+  const switchDemoRole = () => {
+    Alert.alert(
+      '⚡ Fast Role Switch',
+      'Choose an active role to switch viewpoints immediately:',
+      [
+        {
+          text: '🌿 Member (Juan dela Cruz)',
+          onPress: () => {
+            authenticateUser('09171234567', 'password123');
+            Alert.alert('Role Switched', 'Active session updated to Member (Juan dela Cruz).');
+          }
+        },
+        {
+          text: '🚜 Farm Manager (Jose Reyes)',
+          onPress: () => {
+            authenticateUser('09189876543', 'manager123');
+            Alert.alert('Role Switched', 'Active session updated to Farm Manager (Jose Reyes).');
+          }
+        },
+        {
+          text: '🏛️ SRA Admin (Maria Santos)',
+          onPress: () => {
+            authenticateUser('09194448888', 'admin123');
+            Alert.alert('Role Switched', 'Active session updated to SRA Admin (Maria Santos).');
+          }
+        },
+        { text: 'Cancel', style: 'cancel' }
       ]
     );
   };
@@ -186,7 +217,7 @@ export default function ProfileScreen({ navigation }) {
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#F0F2EC', marginTop: 4 }}>
               <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{t('profile_district_cert', 'District Certification:')}</Text>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.success }}>{t('profile_sra_certified', 'District VII Certified')}</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.success }}>{t('profile_sra_certified', 'Silay SRA Certified')}</Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#F0F2EC' }}>
               <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{t('profile_sra_circular', 'SRA Circular Version:')}</Text>
@@ -325,6 +356,7 @@ export default function ProfileScreen({ navigation }) {
               color: COLORS.blue, 
               onPress: () => navigation.navigate('SyncMonitor') 
             }] : [])),
+            { icon: 'swap-horizontal-outline', label: '⚡ Fast Role Switch', color: COLORS.primary, onPress: switchDemoRole },
             { icon: 'trash-outline', label: t('profile_cache', 'Clear Local Cache'), color: COLORS.accent, onPress: clearCache },
           ].map(item => (
             <TouchableOpacity key={item.label} style={s.settingRow} onPress={item.onPress}>
@@ -340,7 +372,7 @@ export default function ProfileScreen({ navigation }) {
         {/* ── Sign Out ── */}
         <TouchableOpacity style={s.signOutBtn} onPress={signOut}>
           <Ionicons name="log-out-outline" size={18} color="#D9534F" />
-          <Text style={s.signOutText}>{t('profile_logout', 'Sign Out / Switch User')}</Text>
+          <Text style={s.signOutText}>{t('profile_logout', 'Sign Out')}</Text>
         </TouchableOpacity>
 
         <Text style={s.footerNote}>{t('profile_footer', 'v1.0.0 · HUGPONG Agricultural Platform\nData is encrypted and stored securely.')}</Text>

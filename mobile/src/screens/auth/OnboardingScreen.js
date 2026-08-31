@@ -2,53 +2,61 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, FlatList, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, FONTS, SPACING, RADIUS } from '../../theme';
+import { COLORS, SPACING, RADIUS } from '../../theme';
+import { useTranslation } from '../../services/i18n';
+import { setItem } from '../../services/storageService';
 
 const { width } = Dimensions.get('window');
 
-const SLIDES = [
-  {
-    icon: 'leaf',
-    iconBg: '#E8F5E0',
-    title: 'Manage Your Farm\nOperations',
-    sub: 'Track tasks, record operation costs, and monitor every sector of your block farm — all in one place.',
-  },
-  {
-    icon: 'trending-up',
-    iconBg: '#E0F0E8',
-    title: 'Live SRA Price\nMonitoring',
-    sub: 'Get real-time sugarcane market prices and instant income estimates based on your land and yield.',
-  },
-  {
-    icon: 'cloud-done',
-    iconBg: '#E0EAF5',
-    title: 'Offline-First,\nAlways Synced',
-    sub: 'Work without internet and sync automatically when back online. Your data is always safe.',
-  },
-];
-
 export default function OnboardingScreen({ navigation }) {
+  const { t } = useTranslation();
   const [current, setCurrent] = useState(0);
   const flatRef = useRef(null);
   const scrollX = useRef(new Animated.Value(0)).current;
 
+  const slides = [
+    {
+      icon: 'leaf',
+      iconBg: '#E8F5E0',
+      title: t('onboard_slide1_title', 'Manage Your Farm\nOperations'),
+      sub: t('onboard_slide1_sub', 'Track tasks, record operation costs, and monitor every sector of your block farm — all in one place.'),
+    },
+    {
+      icon: 'trending-up',
+      iconBg: '#E0F0E8',
+      title: t('onboard_slide2_title', 'Live SRA Price\nMonitoring'),
+      sub: t('onboard_slide2_sub', 'Get real-time sugarcane market prices and instant income estimates based on your land and yield.'),
+    },
+    {
+      icon: 'cloud-done',
+      iconBg: '#E0EAF5',
+      title: t('onboard_slide3_title', 'Offline-First,\nAlways Synced'),
+      sub: t('onboard_slide3_sub', 'Work without internet and sync automatically when back online. Your data is always safe.'),
+    },
+  ];
+
+  const handleFinish = async () => {
+    await setItem('@hugpong_onboarded', 'true');
+    navigation.replace('Login');
+  };
+
   const goNext = () => {
-    if (current < SLIDES.length - 1) {
+    if (current < slides.length - 1) {
       flatRef.current?.scrollToIndex({ index: current + 1, animated: true });
     } else {
-      navigation.replace('Register');
+      handleFinish();
     }
   };
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-      <TouchableOpacity style={s.skip} onPress={() => navigation.replace('Register')}>
-        <Text style={s.skipText}>Skip</Text>
+      <TouchableOpacity style={s.skip} onPress={handleFinish}>
+        <Text style={s.skipText}>{t('onboard_skip', 'Skip')}</Text>
       </TouchableOpacity>
 
       <FlatList
         ref={flatRef}
-        data={SLIDES}
+        data={slides}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -68,7 +76,7 @@ export default function OnboardingScreen({ navigation }) {
 
       {/* Dots */}
       <View style={s.dots}>
-        {SLIDES.map((_, i) => {
+        {slides.map((_, i) => {
           const opacity = scrollX.interpolate({
             inputRange: [(i - 1) * width, i * width, (i + 1) * width],
             outputRange: [0.3, 1, 0.3],
@@ -86,12 +94,12 @@ export default function OnboardingScreen({ navigation }) {
       {/* CTA */}
       <View style={s.footer}>
         <TouchableOpacity style={s.btn} onPress={goNext}>
-          <Text style={s.btnText}>{current === SLIDES.length - 1 ? 'Get Started' : 'Next'}</Text>
+          <Text style={s.btnText}>{current === slides.length - 1 ? t('onboard_get_started', 'Get Started') : t('reg_btn_continue', 'Next')}</Text>
           <Ionicons name="arrow-forward" size={18} color="#fff" />
         </TouchableOpacity>
-        {current === SLIDES.length - 1 && (
+        {current === slides.length - 1 && (
           <TouchableOpacity style={s.loginLink} onPress={() => navigation.replace('Login')}>
-            <Text style={s.loginLinkText}>Already have an account? <Text style={s.loginLinkBold}>Sign In</Text></Text>
+            <Text style={s.loginLinkText}>{t('auth_no_account', "Don't have an account?")} <Text style={s.loginLinkBold}>{t('auth_register_now', 'Create Account')}</Text></Text>
           </TouchableOpacity>
         )}
       </View>

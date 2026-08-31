@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════
-// HUGPONG Web Firebase Configuration & Cloud Connector (ES Module)
+// HUGPONG Web Firebase SDK Initializer & Cloud Connector
 // Project: hugpong-ff
 // ══════════════════════════════════════════════════════════════
 
@@ -21,7 +21,7 @@ import {
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js';
 
-export const webFirebaseConfig = {
+export const webFirebaseConfig = (typeof window !== 'undefined' && window.HUGPONG_FIREBASE_CONFIG) ? window.HUGPONG_FIREBASE_CONFIG : {
   apiKey: "AIzaSyDYkv9afZa2ZlhxLzIEZfk2b5wP_s2XXpI",
   authDomain: "hugpong-ff.firebaseapp.com",
   projectId: "hugpong-ff",
@@ -34,7 +34,7 @@ export const webFirebaseConfig = {
 const app = initializeApp(webFirebaseConfig);
 const db = getFirestore(app);
 
-// Attach globally for admin.js and console tools
+// Attach globally for core.js and role dashboards
 window.firebaseApp = app;
 window.firebaseDB = db;
 window.firestore = {
@@ -53,6 +53,6 @@ window.firestore = {
   serverTimestamp
 };
 
-// Dispatch custom event to notify admin.js that Firestore is ready
+// Dispatch custom event to notify listeners that Firestore is ready
 window.dispatchEvent(new CustomEvent('hugpong:firebase_ready', { detail: { db, app } }));
 console.log('[HUGPONG] Firebase Firestore connected to project: hugpong-ff');

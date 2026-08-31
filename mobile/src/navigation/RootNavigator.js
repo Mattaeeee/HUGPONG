@@ -1,11 +1,13 @@
 import React from 'react';
+import { View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOW } from '../theme';
-import { getCurrentSession, subscribe } from '../data/mockData';
+import { getCurrentSession, subscribe } from '../data/dataStore';
 
 import SplashScreen from '../screens/auth/SplashScreen';
+import LanguageSelectScreen from '../screens/auth/LanguageSelectScreen';
 import OnboardingScreen from '../screens/auth/OnboardingScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -18,6 +20,7 @@ import FieldOpsScreen from '../screens/FieldOpsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SecurityScreen from '../screens/SecurityScreen';
 import SyncMonitorScreen from '../screens/SyncMonitorScreen';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '../services/i18n';
 
 const Root = createNativeStackNavigator();
@@ -38,6 +41,7 @@ function HomeNavigator() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
+      <HomeStack.Screen name="FieldOps" component={FieldOpsScreen} options={{ animation: 'slide_from_right' }} />
       <HomeStack.Screen name="Analytics" component={AnalyticsScreen} options={{ animation: 'slide_from_right' }} />
       <HomeStack.Screen name="SyncMonitor" component={SyncMonitorScreen} options={{ animation: 'slide_from_right' }} />
     </HomeStack.Navigator>
@@ -56,6 +60,7 @@ function SchedNavigator() {
   return (
     <SchedStack.Navigator screenOptions={{ headerShown: false }}>
       <SchedStack.Screen name="SchedMain" component={FieldOpsScreen} />
+      <SchedStack.Screen name="Analytics" component={AnalyticsScreen} options={{ animation: 'slide_from_right' }} />
       <SchedStack.Screen name="SyncMonitor" component={SyncMonitorScreen} options={{ animation: 'slide_from_right' }} />
     </SchedStack.Navigator>
   );
@@ -74,6 +79,8 @@ function ProfileNavigator() {
 function MainTabs() {
   const [role, setRole] = React.useState(getCurrentSession().role);
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const bottomInset = insets.bottom > 0 ? Math.min(insets.bottom, 16) : 0;
 
   React.useEffect(() => {
     return subscribe(() => {
@@ -85,34 +92,50 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: {
           backgroundColor: COLORS.surface,
           borderTopColor: COLORS.border,
           borderTopWidth: 1,
-          height: 62,
-          paddingBottom: 8,
-          paddingTop: 6,
+          height: 52 + bottomInset,
+          paddingTop: 4,
+          paddingBottom: bottomInset > 0 ? bottomInset : 4,
           ...SHADOW.float,
         },
-        tabBarLabelStyle: { fontSize: 10.5, fontWeight: '600', letterSpacing: 0.2, marginTop: 1 },
-        tabBarIcon: ({ focused, color }) => {
+        tabBarItemStyle: {
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: 44,
+        },
+        tabBarIcon: ({ focused }) => {
           const cfg = TAB_ICONS[route.name];
-          return <Ionicons name={focused ? cfg.active : cfg.inactive} size={23} color={color} />;
+          return (
+            <View style={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 44,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: focused ? '#E2EED9' : 'transparent',
+            }}>
+              <Ionicons
+                name={focused ? cfg.active : cfg.inactive}
+                size={22}
+                color={focused ? COLORS.primary : COLORS.textMuted}
+              />
+            </View>
+          );
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeNavigator} options={{ tabBarLabel: t('tab_home', 'Home') }} />
+      <Tab.Screen name="Home" component={HomeNavigator} />
       {role !== 'SRA (Admin)' && (
-        <Tab.Screen name="Planner" component={CalcNavigator} options={{ tabBarLabel: t('tab_planner', 'Planner') }} />
+        <Tab.Screen name="Planner" component={CalcNavigator} />
       )}
-      <Tab.Screen 
-        name="Field Ops" 
-        component={SchedNavigator} 
-        options={{ tabBarLabel: role === 'SRA (Admin)' ? 'District Ops' : t('tab_field_ops', 'Field Ops') }}
-      />
-      <Tab.Screen name="Profile" component={ProfileNavigator} options={{ tabBarLabel: t('tab_profile', 'Profile') }} />
+      <Tab.Screen name="Field Ops" component={SchedNavigator} />
+      <Tab.Screen name="Profile" component={ProfileNavigator} />
     </Tab.Navigator>
   );
 }
@@ -121,6 +144,7 @@ export default function RootNavigator() {
   return (
     <Root.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
       <Root.Screen name="Splash" component={SplashScreen} />
+      <Root.Screen name="LanguageSelect" component={LanguageSelectScreen} options={{ animation: 'fade' }} />
       <Root.Screen name="Onboarding" component={OnboardingScreen} options={{ animation: 'slide_from_right' }} />
       <Root.Screen name="Login" component={LoginScreen} options={{ animation: 'slide_from_right' }} />
       <Root.Screen name="Register" component={RegisterScreen} options={{ animation: 'slide_from_right' }} />

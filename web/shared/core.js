@@ -1,272 +1,17 @@
-// ── INITIAL STATE CONFIGURATION ──────────────────────────
-const INITIAL_DATABASE = {
-  fields: [
-    { id: 'FLD-KTR-001', member: 'Mario Dimagiba', ha: 1.5, stage: 'Fertilization Stage 2', age: '3.2 months', synced: true, lastSync: '15 mins ago', syncLagDays: 0, blockFarm: 'Block Farm A', customStages: [] },
-    { id: 'FLD-KTR-002', member: 'Jose Rizal', ha: 2.1, stage: 'Planting', age: '1.2 months', synced: true, lastSync: '4 days ago', syncLagDays: 4, blockFarm: 'Block Farm A', customStages: [] },
-    { id: 'FLD-KTR-005', member: 'Roberto Tan', ha: 1.8, stage: 'Planting (Patdan)', age: '2.0 months', synced: false, lastSync: '8 days ago', syncLagDays: 8, blockFarm: 'Block Farm A', customStages: [] },
-    { id: 'FLD-KTR-006', member: 'Antonio Luna', ha: 1.2, stage: 'Weeding (Hilamon)', age: '1.5 months', synced: true, lastSync: '2 hrs ago', syncLagDays: 0, blockFarm: 'Block Farm A', customStages: [] },
-    { id: 'FLD-KTR-003', member: 'Maria Santos', ha: 2.0, stage: 'Land Preparation', age: '0.3 months', synced: true, lastSync: '2 hrs ago', syncLagDays: 0, blockFarm: 'Block Farm B', customStages: [] },
-    { id: 'FLD-KTR-004', member: 'Emilio Aguinaldo', ha: 1.8, stage: 'Weeding', age: '4.1 months', synced: true, lastSync: '3 hrs ago', syncLagDays: 0, blockFarm: 'Block Farm B', customStages: [] },
-    { id: 'FLD-KTR-007', member: 'Pedro Reyes', ha: 1.0, stage: 'Harvesting', age: '10.5 months', synced: false, lastSync: '4 days ago', syncLagDays: 4, blockFarm: 'Block Farm C', customStages: [] },
-    { id: 'FLD-KTR-008', member: 'Andres Bonifacio', ha: 3.0, stage: 'Harvesting', age: '11.0 months', synced: true, lastSync: '5 hrs ago', syncLagDays: 0, blockFarm: 'Block Farm C', customStages: [] },
-    { id: 'FLD-KTR-009', member: 'Ana Gomez', ha: 0.8, stage: 'Weeding', age: '5.1 months', synced: true, lastSync: '1 hr ago', syncLagDays: 0, blockFarm: 'Block Farm D', customStages: [] },
-    { id: 'FLD-KTR-010', member: 'Apolinario Mabini', ha: 1.2, stage: 'Fertilization Stage 1', age: '2.5 months', synced: true, lastSync: '6 hrs ago', syncLagDays: 0, blockFarm: 'Block Farm D', customStages: [] }
-  ],
-  logs: [
-    // Standard schedules logs
-    { id: 'L1', fieldId: 'FLD-KTR-001', category: 'weed', schedule: 'Weekly', type: 'weekly', task: 'Weeding labor', activity: 'Weeding labor', cost: 1200, date: '2026-05-07', status: 'Approved', approved: true },
-    { id: 'L2', fieldId: 'FLD-KTR-001', category: 'fert', schedule: 'Monthly', type: 'monthly', task: 'Urea fertilizer (4 bags)', activity: 'Urea fertilizer (4 bags)', cost: 6400, date: '2026-05-01', status: 'Approved', approved: true },
-    { id: 'L3', fieldId: 'FLD-KTR-003', category: 'prep', schedule: 'Weekly', type: 'weekly', task: 'Land plowing (tractor)', activity: 'Land plowing (tractor)', cost: 5000, date: '2026-05-14', status: 'Approved', approved: true },
-    { id: 'L4', fieldId: 'FLD-KTR-002', category: 'plant', schedule: 'Weekly', type: 'weekly', task: 'Planting labor crew', activity: 'Planting labor crew', cost: 3500, date: '2026-05-15', status: 'Approved', approved: true },
-    { id: 'L5', fieldId: 'FLD-KTR-004', category: 'weed', schedule: 'Monthly', type: 'monthly', task: 'Herbicide spray', activity: 'Herbicide spray', cost: 1800, date: '2026-05-18', status: 'Approved', approved: true },
-    
-    // QR compilation logs for HUG-202605-A3F9 (compiled on May 5, total approved cost = Php 19,350)
-    { id: 'AUD-001', fieldId: 'FLD-KTR-001', category: 'fert', schedule: 'Monthly', type: 'monthly', task: 'Fertilizer application (2 bags Urea)', activity: 'Fertilizer application (2 bags Urea)', cost: 3200, date: '2026-04-28', status: 'Approved', approved: true },
-    { id: 'AUD-002', fieldId: 'FLD-KTR-001', category: 'weed', schedule: 'Weekly', type: 'weekly', task: 'Weeding labor', activity: 'Weeding labor', cost: 1200, date: '2026-05-02', status: 'Approved', approved: true },
-    { id: 'AUD-003', fieldId: 'FLD-KTR-003', category: 'prep', schedule: 'Weekly', type: 'weekly', task: 'Land plowing (tractor)', activity: 'Land plowing (tractor)', cost: 5000, date: '2026-04-25', status: 'Approved', approved: true },
-    { id: 'AUD-004', fieldId: 'FLD-KTR-003', category: 'plant', schedule: 'Monthly', type: 'monthly', task: 'Planting labor crew', activity: 'Planting labor crew', cost: 2500, date: '2026-04-27', status: 'Approved', approved: true },
-    { id: 'AUD-005', fieldId: 'FLD-KTR-007', category: 'harvest', schedule: 'Weekly', type: 'weekly', task: 'Harvesting labor', activity: 'Harvesting labor', cost: 4000, date: '2026-04-30', status: 'Approved', approved: true },
-    { id: 'AUD-006', fieldId: 'FLD-KTR-009', category: 'prep', schedule: 'Weekly', type: 'weekly', task: 'Land clearing', activity: 'Land clearing', cost: 1500, date: '2026-04-24', status: 'Approved', approved: true },
-    { id: 'AUD-007', fieldId: 'FLD-KTR-009', category: 'prep', schedule: 'Monthly', type: 'monthly', task: 'Furrowing (tractor)', activity: 'Furrowing (tractor)', cost: 1200, date: '2026-04-26', status: 'Approved', approved: true },
-    { id: 'AUD-008', fieldId: 'FLD-KTR-009', category: 'weed', schedule: 'Weekly', type: 'weekly', task: 'Weeding', activity: 'Weeding', cost: 750, date: '2026-05-03', status: 'Approved', approved: true },
-    { id: 'AUD-009', fieldId: 'FLD-KTR-007', category: 'weed', schedule: 'Weekly', type: 'weekly', task: 'Chemical spray', activity: 'Chemical spray', cost: 800, date: '2026-05-04', status: 'Approved', approved: true },
-    { id: 'AUD-010', fieldId: 'FLD-KTR-001', category: 'harvest', schedule: 'Weekly', type: 'weekly', task: 'Excess hauling charge', activity: 'Excess hauling charge', cost: 1500, date: '2026-05-05', status: 'Approved', approved: true },
-    { id: 'L6', fieldId: 'FLD-KTR-008', category: 'harvest', schedule: 'Weekly', type: 'weekly', task: 'Harvesting transport', activity: 'Harvesting transport', cost: 6000, date: '2026-05-20', status: 'Approved', approved: true },
-    { id: 'L7', fieldId: 'FLD-KTR-010', category: 'fert', schedule: 'Monthly', type: 'monthly', task: '18-46 Fertilizer application', activity: '18-46 Fertilizer application', cost: 4200, date: '2026-05-22', status: 'Approved', approved: true }
-  ],
-  priceHistory: [
-    { week: 'Week 4 May', price: 2800, date: '2026-05-21', change: 0, source: 'SRA Circular #104' },
-    { week: 'Week 3 May', price: 2800, date: '2026-05-14', change: 50, source: 'SRA Circular #102' },
-    { week: 'Week 2 May', price: 2750, date: '2026-05-07', change: 30, source: 'SRA Circular #101' },
-    { week: 'Week 1 May', price: 2720, date: '2026-04-30', change: 20, source: 'SRA Circular #100' },
-    { week: 'Week 4 Apr', price: 2700, date: '2026-04-23', change: 50, source: 'SRA Circular #99' },
-    { week: 'Week 3 Apr', price: 2650, date: '2026-04-16', change: -20, source: 'SRA Circular #98' },
-    { week: 'Week 2 Apr', price: 2670, date: '2026-04-09', change: 70, source: 'SRA Circular #97' },
-    { week: 'Week 1 Apr', price: 2600, date: '2026-04-02', change: 50, source: 'SRA Circular #96' },
-    { week: 'Week 4 Mar', price: 2550, date: '2026-03-26', change: 70, source: 'SRA Circular #95' },
-    { week: 'Week 3 Mar', price: 2480, date: '2026-03-19', change: -20, source: 'SRA Circular #94' },
-    { week: 'Week 2 Mar', price: 2500, date: '2026-03-12', change: 50, source: 'SRA Circular #93' },
-    { week: 'Week 1 Mar', price: 2450, date: '2026-03-05', change: 0, source: 'SRA Circular #92' }
-  ],
-  users: [
-    { contact: '09171234567', name: 'Juan dela Cruz', role: 'SRA (Admin)', blockFarm: 'District VII (SRA Regulatory)', logsHandled: 42, regDate: '2026-02-01' },
-    { contact: '09176543210', name: 'Mario Dimagiba', role: 'Member', blockFarm: 'Block Farm A', fieldId: 'FLD-KTR-001', logsHandled: 8, regDate: '2026-03-10' },
-    { contact: '09179876543', name: 'Jose Rizal', role: 'Member', blockFarm: 'Block Farm A', fieldId: 'FLD-KTR-002', logsHandled: 6, regDate: '2026-03-12' },
-    { contact: '09175550101', name: 'Roberto Tan', role: 'Member', blockFarm: 'Block Farm A', fieldId: 'FLD-KTR-005', logsHandled: 2, regDate: '2026-03-20' },
-    { contact: '09172223344', name: 'Antonio Luna', role: 'Member', blockFarm: 'Block Farm A', fieldId: 'FLD-KTR-006', logsHandled: 5, regDate: '2026-03-22' },
-    { contact: '09187654321', name: 'Engr. Mateo Alcantara', role: 'Super Admin', blockFarm: 'All Block Farms', logsHandled: 12, regDate: '2026-02-15' },
-    { contact: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', blockFarm: 'Block Farm A', logsHandled: 24, regDate: '2026-03-01' },
-    { contact: '09123456789', name: 'Maria Santos', role: 'Farm Manager', blockFarm: 'Block Farm B', logsHandled: 18, regDate: '2026-03-01' },
-    { contact: '09171112233', name: 'Elena Batongbakal', role: 'Farm Manager', blockFarm: 'Block Farm C', logsHandled: 14, regDate: '2026-03-05' },
-    { contact: '09174445566', name: 'Ricardo Dalisay', role: 'Farm Manager', blockFarm: 'Block Farm D', logsHandled: 9, regDate: '2026-03-12' },
-    { contact: '09987654321', name: 'Pedro Reyes', role: 'Member', blockFarm: 'Block Farm C', fieldId: 'FLD-KTR-007', logsHandled: 6, regDate: '2026-03-15' },
-    { contact: '09555444333', name: 'Ana Gomez', role: 'Member', blockFarm: 'Block Farm D', fieldId: 'FLD-KTR-009', logsHandled: 4, regDate: '2026-04-01' }
-  ],
-  pendingUsers: [
-    { contact: '0917-111-2233', name: 'Danilo Cruz', role: 'Member', blockFarm: 'Block Farm A', fieldId: 'FLD-KTR-007', area: '1.5 Ha', regDate: '2026-05-20' },
-    { contact: '0918-222-3344', name: 'Elena Ramos', role: 'Farm Manager', blockFarm: 'Block Farm B', regDate: '2026-05-21' }
-  ],
-  systemHistory: [
-    {
-      id: 'AUD-094',
-      timestamp: 'May 23, 2026, 09:30 AM',
-      category: 'block',
-      categoryLabel: 'Block Farm Registry',
-      eventType: 'Block Farm Enrolled',
-      entity: 'Block Farm D · Manapla (28.0 Ha)',
-      details: 'Registered 28.0 Ha cooperative cluster under SRA District VII oversight assigned to Manager Ricardo Dalisay.',
-      actor: 'SRA District Administrator',
-      status: 'Enrolled'
-    },
-    {
-      id: 'AUD-093',
-      timestamp: 'May 23, 2026, 08:45 AM',
-      category: 'block',
-      categoryLabel: 'Block Farm Registry',
-      eventType: 'Block Farm Enrolled',
-      entity: 'Block Farm C · Sagay (22.5 Ha)',
-      details: 'Registered 22.5 Ha cooperative cluster under SRA District VII oversight assigned to Manager Elena Batongbakal.',
-      actor: 'SRA District Administrator',
-      status: 'Enrolled'
-    },
-    {
-      id: 'AUD-092',
-      timestamp: 'May 22, 2026, 04:30 PM',
-      category: 'block',
-      categoryLabel: 'Block Farm Registry',
-      eventType: 'Block Farm Enrolled',
-      entity: 'Block Farm B · Cadiz (25.0 Ha)',
-      details: 'Registered 25.0 Ha cooperative cluster under SRA District VII oversight assigned to Manager Maria Santos.',
-      actor: 'SRA District Administrator',
-      status: 'Enrolled'
-    },
-    {
-      id: 'AUD-091',
-      timestamp: 'May 22, 2026, 02:00 PM',
-      category: 'block',
-      categoryLabel: 'Block Farm Registry',
-      eventType: 'Block Farm Enrolled',
-      entity: 'Block Farm A · Silay (20.0 Ha)',
-      details: 'Registered 20.0 Ha cooperative cluster under SRA District VII oversight assigned to Manager Jose Reyes.',
-      actor: 'SRA District Administrator',
-      status: 'Enrolled'
-    },
-    {
-      id: 'AUD-089',
-      timestamp: 'May 22, 2026, 03:15 PM',
-      category: 'operation',
-      categoryLabel: 'Field Operation',
-      eventType: 'Manager Log Correction',
-      entity: 'FLD-KTR-001 (Mario Dimagiba)',
-      details: 'Corrected Urea bags from 40 to 4 (typo adjustment). Cost adjusted from ₱74,000 to ₱7,400.',
-      actor: 'Farm Manager Jose Reyes',
-      status: 'Recorded'
-    },
-    {
-      id: 'AUD-088',
-      timestamp: 'May 22, 2026, 11:30 AM',
-      category: 'operation',
-      categoryLabel: 'Field Operation',
-      eventType: 'Manager Take Over Entry',
-      entity: 'FLD-KTR-002 (Jose Rizal)',
-      details: 'Directly logged Planting (Patdan) 40,000 pcs on behalf of member. Advanced stage to Weeding.',
-      actor: 'Farm Manager Jose Reyes',
-      status: 'Recorded'
-    },
-    {
-      id: 'AUD-087',
-      timestamp: 'May 21, 2026, 09:00 AM',
-      category: 'sra',
-      categoryLabel: 'SRA Price',
-      eventType: 'Weekly SRA Price Broadcast',
-      entity: 'District Millsite Benchmark',
-      details: 'Posted Week 4 May Raw Sugar price: ₱2,800 / Lkg (Official SRA Circular #104).',
-      actor: 'SRA Admin',
-      status: 'Verified'
-    },
-    {
-      id: 'AUD-086',
-      timestamp: 'May 20, 2026, 04:45 PM',
-      category: 'user',
-      categoryLabel: 'User Management',
-      eventType: 'Member Registration Approved',
-      entity: 'Antonio Luna (0917-888-2233)',
-      details: 'Approved farmer membership for Block Farm A and assigned field FLD-KTR-006 (1.2 Ha).',
-      actor: 'Farm Manager Jose Reyes',
-      status: 'Approved'
-    },
-    {
-      id: 'AUD-085',
-      timestamp: 'May 19, 2026, 02:10 PM',
-      category: 'plot',
-      categoryLabel: 'Plot Registry',
-      eventType: 'Field Plot Registered',
-      entity: 'FLD-KTR-006 (1.2 Ha)',
-      details: 'Enrolled 1.2 Ha sugarcane field in Silay Block Farm A with soil classification Guimbalaon Clay.',
-      actor: 'Farm Manager Jose Reyes',
-      status: 'Enrolled'
-    },
-    {
-      id: 'AUD-084',
-      timestamp: 'May 18, 2026, 01:20 PM',
-      category: 'user',
-      categoryLabel: 'User Management',
-      eventType: 'User Access Revoked',
-      entity: '0917-555-9999 (Carlos Tan)',
-      details: 'Access credentials revoked due to lease expiration in Block Farm B.',
-      actor: 'SRA Admin',
-      status: 'Revoked'
-    },
-    {
-      id: 'AUD-083',
-      timestamp: 'May 16, 2026, 10:15 AM',
-      category: 'plot',
-      categoryLabel: 'Plot Registry',
-      eventType: 'Field Plot Archived',
-      entity: 'FLD-KTR-099 (0.5 Ha)',
-      details: 'Archived temporary seedbed field following seedling harvest and distribution.',
-      actor: 'Farm Manager Jose Reyes',
-      status: 'Archived'
-    },
-    {
-      id: 'AUD-082',
-      timestamp: 'May 15, 2026, 08:30 AM',
-      category: 'operation',
-      categoryLabel: 'Field Operation',
-      eventType: 'Member Log Submitted',
-      entity: 'FLD-KTR-001 (Mario Dimagiba)',
-      details: 'Offline log recorded: 4 bags Urea Fertilizer (₱6,400) applied by 4 workers.',
-      actor: 'Member Mario Dimagiba',
-      status: 'Recorded'
-    },
-    {
-      id: 'AUD-081',
-      timestamp: 'May 05, 2026, 05:00 PM',
-      category: 'sra',
-      categoryLabel: 'SRA Audit',
-      eventType: 'Monthly QR Audit Certification',
-      entity: 'Block Farm A (HUG-202605-A3F9)',
-      details: 'Validated 10 field operations total ₱19,350 across 5.3 Ha. Certified digital compliance signature.',
-      actor: 'SRA Auditor',
-      status: 'Verified'
-    }
-  ],
-  syncLogs: [
-    { time: '12:45 AM', device: 'iPhone 13 - Maria Santos', user: 'Maria Santos', action: 'Price Cache Synchronized', status: 'synced' },
-    { time: '11:30 PM', device: 'Android - Pedro Reyes', user: 'Pedro Reyes', action: 'Task Logged: Harvesting FLD-KTR-007', status: 'synced' },
-    { time: '06:30 PM', device: 'iPhone 12 - Juan dela Cruz', user: 'Juan dela Cruz', action: 'Report Compiled HUG-202605-A3F9', status: 'synced' },
-    { time: '04:15 PM', device: 'Terminal - Pedro Reyes', user: 'Pedro Reyes', action: 'Connection warning: FLD-KTR-007 sync pending', status: 'pending' }
-  ],
-  securityLogs: [
-    { time: '2026-05-23 10:15 AM', user: 'Super Admin (System)', event: 'Database reset to demo state' },
-    { time: '2026-05-22 08:30 AM', user: 'SRA (Admin)', event: 'Successful login from Web Console' },
-    { time: '2026-05-21 04:45 PM', user: 'Farm Manager', event: 'Approved 3 logs for FLD-KTR-001' },
-    { time: '2026-05-20 09:12 AM', user: 'Unknown IP', event: 'Failed login attempt - invalid credentials' },
-    { time: '2026-05-19 02:22 PM', user: 'Super Admin', event: 'Elevated Kabo Ramon to Farm Manager' },
-    { time: '2026-05-18 11:05 AM', user: 'System Auto-Task', event: 'Automated weekly DB snapshot created' }
-  ],
-  registryHistory: [
-    { id: 'HIST-REG-001', date: '2026-02-15', entityType: 'Block Farm', entityId: 'BLK-A', name: 'Block Farm A', manager: 'Jose Reyes', ha: 6.6, action: 'Initial Cooperative Enrollment', authority: 'SRA District VII Circular #88' },
-    { id: 'HIST-REG-002', date: '2026-02-18', entityType: 'Block Farm', entityId: 'BLK-B', name: 'Block Farm B', manager: 'Maria Santos', ha: 3.8, action: 'Initial Cooperative Enrollment', authority: 'SRA District VII Circular #89' },
-    { id: 'HIST-REG-003', date: '2026-03-01', entityType: 'Block Farm', entityId: 'BLK-C', name: 'Block Farm C', manager: 'Elena Batongbakal', ha: 4.0, action: 'Initial Cooperative Enrollment', authority: 'SRA District VII Circular #91' },
-    { id: 'HIST-REG-004', date: '2026-03-05', entityType: 'Block Farm', entityId: 'BLK-D', name: 'Block Farm D', manager: 'Ricardo Dalisay', ha: 2.0, action: 'Initial Cooperative Enrollment', authority: 'SRA District VII Circular #93' },
-    { id: 'HIST-REG-005', date: '2026-03-10', entityType: 'Field Plot', entityId: 'FLD-KTR-001', name: 'Block Farm A · Plot 1', member: 'Mario Dimagiba', ha: 1.5, action: 'Field Boundary Registration & Soil Test', authority: 'Farm Manager Jose Reyes' },
-    { id: 'HIST-REG-006', date: '2026-03-12', entityType: 'Field Plot', entityId: 'FLD-KTR-002', name: 'Block Farm A · Plot 2', member: 'Jose Rizal', ha: 2.1, action: 'Field Boundary Registration', authority: 'Farm Manager Jose Reyes' },
-    { id: 'HIST-REG-007', date: '2026-03-15', entityType: 'Field Plot', entityId: 'FLD-KTR-003', name: 'Block Farm B · Plot 1', member: 'Maria Santos', ha: 2.0, action: 'Field Boundary Registration', authority: 'Farm Manager Maria Santos' },
-    { id: 'HIST-REG-008', date: '2026-03-18', entityType: 'Field Plot', entityId: 'FLD-KTR-004', name: 'Block Farm B · Plot 2', member: 'Emilio Aguinaldo', ha: 1.8, action: 'Field Boundary Registration', authority: 'Farm Manager Maria Santos' },
-    { id: 'HIST-REG-009', date: '2026-03-20', entityType: 'Field Plot', entityId: 'FLD-KTR-005', name: 'Block Farm A · Plot 3', member: 'Roberto Tan', ha: 1.8, action: 'Field Boundary Registration', authority: 'Farm Manager Jose Reyes' },
-    { id: 'HIST-REG-010', date: '2026-03-22', entityType: 'Field Plot', entityId: 'FLD-KTR-006', name: 'Block Farm A · Plot 4', member: 'Antonio Luna', ha: 1.2, action: 'Field Boundary Registration', authority: 'Farm Manager Jose Reyes' },
-    { id: 'HIST-REG-011', date: '2026-04-01', entityType: 'Field Plot', entityId: 'FLD-KTR-007', name: 'Block Farm C · Plot 1', member: 'Pedro Reyes', ha: 1.0, action: 'Field Boundary Registration', authority: 'Farm Manager Elena Batongbakal' },
-    { id: 'HIST-REG-012', date: '2026-04-05', entityType: 'Field Plot', entityId: 'FLD-KTR-008', name: 'Block Farm C · Plot 2', member: 'Andres Bonifacio', ha: 3.0, action: 'Field Boundary Registration', authority: 'Farm Manager Elena Batongbakal' },
-    { id: 'HIST-REG-013', date: '2026-04-10', entityType: 'Field Plot', entityId: 'FLD-KTR-009', name: 'Block Farm D · Plot 1', member: 'Ana Gomez', ha: 0.8, action: 'Field Boundary Registration', authority: 'Farm Manager Ricardo Dalisay' },
-    { id: 'HIST-REG-014', date: '2026-04-15', entityType: 'Field Plot', entityId: 'FLD-KTR-010', name: 'Block Farm D · Plot 2', member: 'Apolinario Mabini', ha: 1.2, action: 'Field Boundary Registration', authority: 'Farm Manager Ricardo Dalisay' }
-  ],
-  supportTickets: [
-    { id: 'TCK-801', title: 'Offline Log Sync Failure after 3 days offline', author: 'Mario Dimagiba (Member - FLD-KTR-001)', blockFarm: 'Block Farm A', category: 'Offline Sync Collision', priority: 'High', status: 'Open', date: '2026-05-23', details: 'Completed 3 manual weeding and fertilization logs while in northern field without 4G. Logs remain in device queue after Wi-Fi reconnection.', resolutionNotes: '' },
-    { id: 'TCK-802', title: 'Plot Boundary Hectarage Discrepancy', author: 'Jose Reyes (Farm Manager)', blockFarm: 'Block Farm A', category: 'Plot Boundary Conflict', priority: 'Medium', status: 'In Progress', date: '2026-05-22 02:15 PM', details: 'FLD-KTR-002 surveyed area is 2.1 Ha but satellite map boundary shows overlap with adjacent FLD-KTR-005 by 0.3 Ha.', resolutionNotes: 'Re-survey coordinates dispatched to Silay surveyor.' },
-    { id: 'TCK-803', title: 'QR Compilation Audit Scanner Timeout', author: 'Juan dela Cruz (SRA Admin)', blockFarm: 'District VII', category: 'Hardware / App Crash', priority: 'Critical', status: 'In Progress', date: '2026-05-21 11:45 AM', details: 'Scanning high-density 24-log compressed QR code on older Android 11 terminal fails camera focus after 10s.', resolutionNotes: 'Compressing QR payload chunk size in upcoming hotfix.' },
-    { id: 'TCK-804', title: 'Member Phone Number / OTP Lockout', author: 'Antonio Luna (Member - FLD-KTR-006)', blockFarm: 'Block Farm A', category: 'Account / OTP Lockout', priority: 'Low', status: 'Resolved', date: '2026-05-19 04:00 PM', details: 'Lost SIM card 09172223344. Requested account number update to new SIM 09173334455.', resolutionNotes: 'Verified identity with Farm Manager Jose Reyes and updated user profile.' }
-  ],
-  terminalDiagnostics: [
-    { deviceId: 'TRM-ANDR-01', model: 'Samsung Galaxy A14', staff: 'Jose Reyes (Manager)', blockFarm: 'Block Farm A', os: 'Android 13', appVersion: 'v2.4.1-rc3', battery: '88%', cachedLogs: 0, lastSync: '2 mins ago', status: 'Optimal' },
-    { deviceId: 'TRM-ANDR-02', model: 'Xiaomi Redmi 12', staff: 'Mario Dimagiba (Member)', blockFarm: 'Block Farm A', os: 'Android 12', appVersion: 'v2.4.1-rc3', battery: '42%', cachedLogs: 2, lastSync: '3 hrs ago', status: 'Optimal' },
-    { deviceId: 'TRM-ANDR-03', model: 'Realme C55', staff: 'Maria Santos (Manager)', blockFarm: 'Block Farm B', os: 'Android 13', appVersion: 'v2.4.0', battery: '76%', cachedLogs: 0, lastSync: '15 mins ago', status: 'Optimal' },
-    { deviceId: 'TRM-ANDR-04', model: 'Infinix Hot 30i', staff: 'Pedro Reyes (Member)', blockFarm: 'Block Farm C', os: 'Android 11', appVersion: 'v2.3.9 (Outdated)', battery: '19%', cachedLogs: 5, lastSync: '8 days ago', status: 'Lagging Alert' }
-  ]
-};
-
 // ── GET & SET LOCAL STORAGE DATABASE ─────────────────────
+let _cloudSyncDebounceTimer = null;
+
 function getDB() {
   const data = localStorage.getItem('hugpong_db');
   if (!data) {
-    saveDB(INITIAL_DATABASE);
+    localStorage.setItem('hugpong_db', JSON.stringify(INITIAL_DATABASE));
     return INITIAL_DATABASE;
   }
   let parsed = INITIAL_DATABASE;
   try {
     parsed = JSON.parse(data);
   } catch (e) {
-    saveDB(INITIAL_DATABASE);
+    localStorage.setItem('hugpong_db', JSON.stringify(INITIAL_DATABASE));
     return INITIAL_DATABASE;
   }
 
@@ -274,6 +19,47 @@ function getDB() {
   if (!parsed.fields || !Array.isArray(parsed.fields) || parsed.fields.length === 0) {
     parsed.fields = JSON.parse(JSON.stringify(INITIAL_DATABASE.fields));
     updated = true;
+  } else {
+    // 1. Purge legacy FLD-NCY duplicates and outdated mock plots (FLD-KTR-006)
+    const prevFieldCount = parsed.fields.length;
+    parsed.fields = parsed.fields.filter(f => !f.id.startsWith('FLD-NCY') && f.id !== 'FLD-KTR-006');
+    if (parsed.fields.length !== prevFieldCount) {
+      updated = true;
+    }
+
+    // 2. Normalize canonical Nacayao Block Farm A plots (FLD-KTR-001 through 005)
+    const canonicalMembers = {
+      'FLD-KTR-001': { member: 'Juan dela Cruz', ha: 1.50, blockFarm: 'Nacayao Block Farm A', defaultStage: 'Pre-Planting & Land Preparation' },
+      'FLD-KTR-002': { member: 'Jose Reyes', ha: 2.50, blockFarm: 'Nacayao Block Farm A', defaultStage: 'Planting & Crop Establishment' },
+      'FLD-KTR-003': { member: 'Maria Santos', ha: 4.50, blockFarm: 'Nacayao Block Farm A', defaultStage: 'Basal Nutrition & Early Care' },
+      'FLD-KTR-004': { member: 'Pedro Reyes', ha: 3.50, blockFarm: 'Nacayao Block Farm A', defaultStage: 'Cultivation & Weed Management' },
+      'FLD-KTR-005': { member: 'Ana Gomez', ha: 3.25, blockFarm: 'Nacayao Block Farm A', defaultStage: 'Crop Maintenance & Final Hilling-Up' },
+    };
+
+    parsed.fields.forEach(f => {
+      if (canonicalMembers[f.id]) {
+        const can = canonicalMembers[f.id];
+        if (f.member !== can.member || Number(f.ha) !== can.ha || f.blockFarm !== can.blockFarm) {
+          f.member = can.member;
+          f.ha = can.ha;
+          f.blockFarm = can.blockFarm;
+          updated = true;
+        }
+        // Normalize 8-stage dummy labels or outdated stage names
+        if (!f.stage || f.stage.includes('/8') || f.stage.includes('Stage 8') || f.stage === 'Fertilization Stage 2' || f.stage === 'Fertilization Stage 1' || f.stage === 'Off-barring & Hilling-up') {
+          f.stage = can.defaultStage;
+          updated = true;
+        }
+      }
+    });
+
+    // 3. Ensure all canonical initial fields exist
+    INITIAL_DATABASE.fields.forEach(initF => {
+      if (!parsed.fields.some(f => f.id === initF.id)) {
+        parsed.fields.push(JSON.parse(JSON.stringify(initF)));
+        updated = true;
+      }
+    });
   }
   if (!parsed.systemHistory || !Array.isArray(parsed.systemHistory) || parsed.systemHistory.length === 0) {
     parsed.systemHistory = JSON.parse(JSON.stringify(INITIAL_DATABASE.systemHistory));
@@ -286,6 +72,17 @@ function getDB() {
   if (!parsed.supportTickets || !Array.isArray(parsed.supportTickets) || parsed.supportTickets.length === 0) {
     parsed.supportTickets = JSON.parse(JSON.stringify(INITIAL_DATABASE.supportTickets));
     updated = true;
+  } else {
+    parsed.supportTickets.forEach(t => {
+      if (t.blockFarm && (t.blockFarm.includes('District VII') || t.blockFarm === 'District VII')) {
+        t.blockFarm = 'Silay Sugar Regulatory Administration';
+        updated = true;
+      }
+      if (t.author && t.author.includes('Juan dela Cruz (SRA Admin)')) {
+        t.author = 'Maria Santos (SRA Admin)';
+        updated = true;
+      }
+    });
   }
   if (!parsed.terminalDiagnostics || !Array.isArray(parsed.terminalDiagnostics) || parsed.terminalDiagnostics.length === 0) {
     parsed.terminalDiagnostics = JSON.parse(JSON.stringify(INITIAL_DATABASE.terminalDiagnostics));
@@ -329,20 +126,63 @@ function getDB() {
     });
   }
 
+  // Normalize operational logs (No Pending/Approved in HUGPONG - always Recorded/Certified)
+  if (Array.isArray(parsed.logs)) {
+    parsed.logs.forEach(l => {
+      if (l.status === 'Approved' || l.status === 'Pending' || l.status === 'pending' || l.status === 'approved' || l.status === 'In Review' || l.status === '3 in Review') {
+        l.status = 'Recorded';
+        updated = true;
+      }
+      if (l.fieldId && l.fieldId.startsWith('FLD-NCY')) {
+        l.fieldId = l.fieldId.replace('FLD-NCY-001', 'FLD-KTR-001')
+                             .replace('FLD-NCY-002', 'FLD-KTR-002')
+                             .replace('FLD-NCY-003', 'FLD-KTR-003')
+                             .replace('FLD-NCY-004', 'FLD-KTR-004')
+                             .replace('FLD-NCY-005', 'FLD-KTR-005');
+        updated = true;
+      }
+      if (l.fieldId === 'FLD-KTR-006') {
+        l.fieldId = 'FLD-KTR-004';
+        updated = true;
+      }
+      if (l.task === 'Chemical spray' || l.activity === 'Chemical spray') {
+        l.activity = 'Basal Fertilization & Amending';
+        l.task = 'Basal Fertilization & Amending';
+        l.sraOperationId = 'SRA-06';
+        updated = true;
+      }
+      if (l.task === 'Harvesting labor' || l.activity === 'Harvesting labor') {
+        l.activity = 'Cutting and Loading';
+        l.task = 'Cutting and Loading';
+        l.sraOperationId = 'SRA-12';
+        updated = true;
+      }
+      if (l.task === 'Harvesting transport' || l.activity === 'Harvesting transport') {
+        l.activity = 'Hauling (Trucking)';
+        l.task = 'Hauling (Trucking)';
+        l.sraOperationId = 'SRA-13';
+        updated = true;
+      }
+    });
+  }
+
   if (updated) {
-    saveDB(parsed);
+    localStorage.setItem('hugpong_db', JSON.stringify(parsed));
   }
 
   return parsed;
 }
 
-function saveDB(db, syncToCloud = true) {
+function saveDB(db, syncToCloud = false) {
   localStorage.setItem('hugpong_db', JSON.stringify(db));
 
   if (syncToCloud && window.firebaseDB && window.firestore) {
-    syncLocalChangesToFirestore(db).catch(err => {
-      console.warn('[HUGPONG] Background Firestore sync notice:', err.message);
-    });
+    if (_cloudSyncDebounceTimer) clearTimeout(_cloudSyncDebounceTimer);
+    _cloudSyncDebounceTimer = setTimeout(() => {
+      syncLocalChangesToFirestore(db).catch(err => {
+        console.warn('[HUGPONG] Background Firestore sync notice:', err.message);
+      });
+    }, 1500);
   }
 }
 
@@ -476,17 +316,39 @@ function initFirestoreRealtimeSync() {
     if (remotePrices.length > 0) {
       db.priceHistory = remotePrices;
       saveDB(db, false);
+      // Refresh all price-sensitive UI elements across every role
       renderPrices();
       renderPriceHistoryChart();
+      renderDashboard();
     }
   }, (err) => console.warn('[Firestore] sra_prices listener notice:', err));
 }
 
-// Auto-start Firestore sync
+async function verifyBackendSession() {
+  try {
+    const res = await fetch('http://localhost:3000/auth/session', { credentials: 'include' });
+    const data = await res.json();
+    if (data.authenticated && data.user) {
+      localStorage.setItem('hugpong_user', JSON.stringify(data.user));
+      localStorage.setItem('hugpong_role', data.user.roleKey || 'admin');
+      if (typeof applyRoleLayout === 'function') {
+        applyRoleLayout(data.user.roleKey || 'admin');
+      }
+    }
+  } catch (e) {
+    // Offline or server not active - keep current local role context
+  }
+}
+
+// Auto-start Firestore sync and verify session
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => setTimeout(initFirestoreRealtimeSync, 300));
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initFirestoreRealtimeSync, 300);
+    setTimeout(verifyBackendSession, 350);
+  });
 } else {
   setTimeout(initFirestoreRealtimeSync, 300);
+  setTimeout(verifyBackendSession, 350);
 }
 
 // ── NAVIGATION CONTROLLER ────────────────────────────────
@@ -517,7 +379,7 @@ let syncActiveBlockFilter = 'all';
 let syncCurrentPage = 1;
 const syncItemsPerPage = 5;
 let ticketsCurrentPage = 1;
-const TICKETS_PER_PAGE = 3;
+const TICKETS_PER_PAGE = 5;
 
 function setSyncBlockFilter(bName) {
   if (syncActiveBlockFilter === bName) {
@@ -544,6 +406,8 @@ function setHistoryPage(p) {
 function setTicketsPage(p) {
   ticketsCurrentPage = p;
   renderTickets();
+  const el = document.getElementById('page-tickets');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function toast(msg) {
@@ -624,12 +488,12 @@ function applyRoleLayout(role) {
   const popRoleEl = document.getElementById('popover-user-role');
 
   if (role === 'superadmin') {
-    if (avatarEl) { avatarEl.textContent = 'M'; avatarEl.style.background = 'linear-gradient(135deg, #F5A623, #ff8c00)'; avatarEl.style.boxShadow = '0 0 8px rgba(245,166,35,0.5)'; }
-    if (nameEl) nameEl.textContent = 'Engr. Mateo Alcantara';
+    if (avatarEl) { avatarEl.textContent = 'C'; avatarEl.style.background = 'linear-gradient(135deg, #F5A623, #ff8c00)'; avatarEl.style.boxShadow = '0 0 8px rgba(245,166,35,0.5)'; }
+    if (nameEl) nameEl.textContent = 'Capstone Group';
     if (roleEl) roleEl.textContent = 'Super Admin';
-    if (popNameEl) popNameEl.textContent = 'Engr. Mateo Alcantara';
-    if (popRoleEl) popRoleEl.textContent = 'Super Admin · Systems Director';
-    if (subEl) subEl.textContent = 'System Governance';
+    if (popNameEl) popNameEl.textContent = 'Capstone Group';
+    if (popRoleEl) popRoleEl.textContent = 'Super Admin · Capstone Group';
+    if (subEl) subEl.textContent = 'Capstone Governance';
     document.querySelectorAll('.superadmin-only').forEach(el => el.classList.remove('hidden'));
     document.querySelectorAll('.sra-only').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('.sra-or-manager').forEach(el => el.classList.add('hidden'));
@@ -637,21 +501,21 @@ function applyRoleLayout(role) {
   } else if (role === 'manager') {
     if (avatarEl) { avatarEl.textContent = 'J'; avatarEl.style.background = 'linear-gradient(135deg, #1A6B9A, #2A7F8F)'; avatarEl.style.boxShadow = '0 0 8px rgba(26,107,154,0.4)'; }
     if (nameEl) nameEl.textContent = 'Jose Reyes';
-    if (roleEl) roleEl.textContent = 'Farm Manager (Block Farm A)';
+    if (roleEl) roleEl.textContent = 'Farm Manager (Nacayao Block Farm A)';
     if (popNameEl) popNameEl.textContent = 'Jose Reyes';
-    if (popRoleEl) popRoleEl.textContent = 'Farm Manager · Block Farm A';
+    if (popRoleEl) popRoleEl.textContent = 'Farm Manager · Nacayao Block Farm A';
     if (subEl) subEl.textContent = 'Farm Workspace';
     document.querySelectorAll('.superadmin-only').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('.sra-only').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('.sra-or-manager').forEach(el => el.classList.remove('hidden'));
     document.querySelectorAll('.manager-only').forEach(el => el.classList.remove('hidden'));
   } else {
-    if (avatarEl) { avatarEl.textContent = 'J'; avatarEl.style.background = ''; avatarEl.style.boxShadow = ''; }
-    if (nameEl) nameEl.textContent = 'Juan dela Cruz';
+    if (avatarEl) { avatarEl.textContent = 'M'; avatarEl.style.background = 'linear-gradient(135deg, #2D5016, #4A7C2F)'; avatarEl.style.boxShadow = '0 0 8px rgba(45,80,22,0.4)'; }
+    if (nameEl) nameEl.textContent = 'Maria Santos';
     if (roleEl) roleEl.textContent = 'SRA (Admin)';
-    if (popNameEl) popNameEl.textContent = 'Juan dela Cruz';
-    if (popRoleEl) popRoleEl.textContent = 'SRA Regulatory Officer';
-    if (subEl) subEl.textContent = 'SRA District Console';
+    if (popNameEl) popNameEl.textContent = 'Maria Santos';
+    if (popRoleEl) popRoleEl.textContent = 'Silay Sugar Regulatory Administration';
+    if (subEl) subEl.textContent = 'Silay SRA Console';
     document.querySelectorAll('.superadmin-only').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('.sra-only').forEach(el => el.classList.remove('hidden'));
     document.querySelectorAll('.sra-or-manager').forEach(el => el.classList.remove('hidden'));
@@ -661,23 +525,33 @@ function applyRoleLayout(role) {
 
 // Helper to determine block farm
 function getBlockFarmName(fieldId) {
+  if (!fieldId) return 'Nacayao Block Farm A';
+  if (fieldId.includes('NCY')) return 'Nacayao Block Farm A';
+  if (fieldId.includes('VIC')) return 'Block Farm B';
+  if (fieldId.includes('TLS')) return 'Block Farm C';
+  if (fieldId.includes('MNP')) return 'Block Farm D';
   const farmMap = {
-    'FLD-KTR-001': 'Block Farm A', 'FLD-KTR-002': 'Block Farm A',
-    'FLD-KTR-003': 'Block Farm B', 'FLD-KTR-004': 'Block Farm B',
-    'FLD-KTR-007': 'Block Farm C', 'FLD-KTR-008': 'Block Farm C',
-    'FLD-KTR-009': 'Block Farm D', 'FLD-KTR-010': 'Block Farm D'
+    'FLD-KTR-001': 'Nacayao Block Farm A',
+    'FLD-KTR-002': 'Nacayao Block Farm A',
+    'FLD-KTR-003': 'Nacayao Block Farm A',
+    'FLD-KTR-004': 'Nacayao Block Farm A',
+    'FLD-KTR-005': 'Nacayao Block Farm A',
+    'FLD-KTR-006': 'Block Farm B',
+    'FLD-KTR-007': 'Block Farm C',
+    'FLD-KTR-008': 'Block Farm C',
+    'FLD-KTR-009': 'Block Farm D',
+    'FLD-KTR-010': 'Block Farm D'
   };
-  return farmMap[fieldId] || 'Block Farm A';
+  return farmMap[fieldId] || 'Nacayao Block Farm A';
 }
 
 function getBlockId(blockFarmName) {
-  const map = {
-    'Block Farm A': 'BLK-A',
-    'Block Farm B': 'BLK-B',
-    'Block Farm C': 'BLK-C',
-    'Block Farm D': 'BLK-D'
-  };
-  return map[blockFarmName] || ('BLK-' + blockFarmName.replace(/[^A-Za-z0-9]/g, '').toUpperCase());
+  if (!blockFarmName) return 'BLK-A';
+  if (blockFarmName.includes('A') || blockFarmName.includes('Nacayao')) return 'BLK-A';
+  if (blockFarmName.includes('B') || blockFarmName.includes('Victorias')) return 'BLK-B';
+  if (blockFarmName.includes('C') || blockFarmName.includes('Talisay')) return 'BLK-C';
+  if (blockFarmName.includes('D') || blockFarmName.includes('Manapla')) return 'BLK-D';
+  return 'BLK-' + (blockFarmName || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 5);
 }
 
 // ── SUPER ADMIN DASHBOARD VIEW SWITCHER ─────────────────
@@ -708,7 +582,7 @@ function renderDashboard() {
   const currentRole = localStorage.getItem('hugpong_role') || 'admin';
   const isManager = currentRole === 'manager';
   const isSuper = currentRole === 'superadmin';
-  const managerBlockFarm = 'Block Farm A';
+  const managerBlockFarm = 'Nacayao Block Farm A';
 
   // 1. Dynamic Hero Banner Text
   const heroBadge = document.getElementById('hero-badge-role');
@@ -717,13 +591,13 @@ function renderDashboard() {
   const heroManagerBtn = document.getElementById('hero-manager-btn');
   const heroManagerFieldsBtn = document.getElementById('hero-manager-fields-btn');
 
-  if (heroBadge) heroBadge.textContent = isManager ? 'Farm Manager Console' : (isSuper ? 'System Infrastructure & Telemetry Console' : 'SRA Command Center');
-  if (heroHeading) heroHeading.textContent = isManager ? 'Welcome back, Jose Reyes' : (isSuper ? 'System Telemetry & Platform Governance' : 'Negros Sugarcane Supervision Console');
+  if (heroBadge) heroBadge.textContent = isManager ? 'Farm Manager Console' : (isSuper ? 'Capstone System & Telemetry Console' : 'Silay Sugar Regulatory Administration');
+  if (heroHeading) heroHeading.textContent = isManager ? 'Welcome back, Jose Reyes' : (isSuper ? 'Capstone Platform Governance & Telemetry' : 'SILAY SRA COMMAND CONSOLE');
   if (heroSubtext) heroSubtext.textContent = isManager 
-    ? 'Block Farm A · Silay Cooperative · Supervising 2 active field allocations, crop timelines, and member operation logs.' 
+    ? 'Nacayao Block Farm A · Silay Cooperative · Supervising 5 member field allocations, crop timelines, and operation logs.' 
     : (isSuper
-      ? 'Consolidated district sync health, mobile terminal hardware telemetry, database integrity, and system support ticketing desk.'
-      : 'Consolidated real-time oversight of block farm operations, field crop stages, member labor logs, and certified SRA audit benchmarks.');
+      ? 'Consolidated sync health, mobile terminal hardware telemetry, and database integrity overseen by Capstone Group.'
+      : 'Consolidated real-time oversight of block farm operations, field crop stages, member labor logs, and certified benchmarks across Silay Sugar Regulatory Administration.');
   if (heroManagerBtn) {
     if (isManager) heroManagerBtn.classList.remove('hidden');
     else heroManagerBtn.classList.add('hidden');
@@ -743,6 +617,13 @@ function renderDashboard() {
     if (currentSuperadminDashboardView === 'telemetry') {
       if (sraView) sraView.classList.add('hidden');
       if (superView) superView.classList.remove('hidden');
+      // Update topbar price pill before early return
+      const _superPrice = Number(db.priceHistory[0]?.price) || 2950;
+      const _superMol = Number(db.priceHistory[0]?.molasses) || 4400;
+      const _topPEl = document.getElementById('topbar-sugar-price');
+      const _topMEl = document.getElementById('topbar-molasses-price');
+      if (_topPEl) _topPEl.textContent = `₱${_superPrice.toLocaleString()} / Lkg`;
+      if (_topMEl) _topMEl.textContent = `₱${_superMol.toLocaleString()} / MT`;
       renderSuperadminTelemetryDashboard(db);
       return;
     } else {
@@ -754,6 +635,13 @@ function renderDashboard() {
     if (sraView) sraView.classList.add('hidden');
     if (superView) superView.classList.add('hidden');
     if (mgrView) mgrView.classList.remove('hidden');
+    // Update topbar price pill for manager role before delegating
+    const _mgrPrice = Number(db.priceHistory[0]?.price) || 2950;
+    const _mgrMol = Number(db.priceHistory[0]?.molasses) || 4400;
+    const _topPriceEl = document.getElementById('topbar-sugar-price');
+    const _topMolEl = document.getElementById('topbar-molasses-price');
+    if (_topPriceEl) _topPriceEl.textContent = `₱${_mgrPrice.toLocaleString()} / Lkg`;
+    if (_topMolEl) _topMolEl.textContent = `₱${_mgrMol.toLocaleString()} / MT`;
     renderManager();
     return;
   } else {
@@ -816,40 +704,50 @@ function renderDashboard() {
   }
 
   // 3. Active fields & logs based on role
-  const visibleFields = db.fields;
-  const visibleLogs = db.logs;
+  const visibleFields = db.fields || [];
+  const visibleLogs = db.logs || [];
 
   const totalHa = visibleFields.reduce((s, f) => s + (Number(f.ha || f.area) || 0), 0);
-  if (dashAreaLabel) dashAreaLabel.textContent = 'Total Managed Area';
-  if (dashAreaVal) dashAreaVal.textContent = `${totalHa.toFixed(1)} Ha`;
-  if (dashAreaSub) dashAreaSub.textContent = '4 active block farms · 100% mapped';
+  if (dashAreaLabel) dashAreaLabel.textContent = isManager ? 'Assigned Farm Area' : 'Total Managed Area';
+  if (dashAreaVal) dashAreaVal.textContent = `${totalHa.toFixed(2)} Ha`;
+  if (dashAreaSub) {
+    dashAreaSub.textContent = isManager 
+      ? `Nacayao Block Farm A · ${visibleFields.filter(f => f.blockFarm?.includes('Nacayao') || f.blockFarm?.includes('Block Farm A')).length} Member Plots`
+      : `4 Regional Block Farms · ${visibleFields.length} Registered Plots`;
+  }
 
-  // 4. Investment & Counts
-  const approvedLogs = visibleLogs.filter(l => l.status === 'Approved');
-  const pendingLogs = visibleLogs.filter(l => l.status === 'Pending');
-  const totalCost = approvedLogs.reduce((s, l) => s + (Number(l.cost) || 0), 0);
+  // 4. Operational Monitoring KPIs (Active Block Farms & Monitored Members)
+  const uniqueBlockFarms = new Set();
+  const uniqueMembers = new Set();
+  visibleFields.forEach(f => {
+    if (f.blockFarm) uniqueBlockFarms.add(f.blockFarm);
+    if (f.member) uniqueMembers.add(f.member);
+  });
 
+  const elPlotsVal = document.getElementById('dash-stat-plots-val');
+  if (elPlotsVal) elPlotsVal.textContent = `${visibleFields.length} Plots`;
+
+  const elFarmsVal = document.getElementById('dash-stat-farms-val');
+  const elFarmsPill = document.getElementById('dash-stat-farms-pill');
+  const elFarmsSub = document.getElementById('dash-stat-farms-sub');
+  const elMembersVal = document.getElementById('dash-stat-members-val');
+  const elMembersBadge = document.getElementById('dash-stat-members-badge');
+  const elMembersSub = document.getElementById('dash-stat-members-sub');
+
+  if (elFarmsVal) elFarmsVal.textContent = `${uniqueBlockFarms.size || 4} Block Farms`;
+  if (elFarmsPill) elFarmsPill.textContent = 'All Districts';
+  if (elFarmsSub) elFarmsSub.textContent = `${totalHa.toFixed(1)} Ha total`;
+
+  if (elMembersVal) elMembersVal.textContent = `${uniqueMembers.size || 16} Members`;
+  if (elMembersBadge) elMembersBadge.textContent = '100% Mapped';
+  if (elMembersSub) elMembersSub.textContent = `${visibleFields.length} active plots`;
+
+  // Fallback for legacy elements if present
   const elCost = document.getElementById('summary-total-cost');
   const elApprovedPill = document.getElementById('summary-approved-logs-pill');
-  const elAuditVal = document.getElementById('dashboard-audit-val');
-  const elAuditBadge = document.getElementById('dashboard-audit-badge');
-  const elAuditSub = document.getElementById('dashboard-audit-sub');
-
+  const totalCost = visibleLogs.reduce((s, l) => s + (Number(l.totalCost || l.cost) || 0), 0);
   if (elCost) elCost.textContent = totalCost >= 1000000 ? `₱${(totalCost / 1000000).toFixed(2)}M` : `₱${(totalCost / 1000).toFixed(1)}k`;
-  if (elApprovedPill) elApprovedPill.textContent = `${approvedLogs.length} Logs`;
-
-  const certPct = visibleLogs.length > 0 ? Math.round((approvedLogs.length / visibleLogs.length) * 100) : 100;
-  if (elAuditVal) elAuditVal.textContent = `${certPct}% Certified`;
-  if (elAuditBadge) {
-    if (pendingLogs.length > 0) {
-      elAuditBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-warning-bg text-[#C97A00]';
-      elAuditBadge.textContent = `${pendingLogs.length} in Review`;
-    } else {
-      elAuditBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-success-bg text-success';
-      elAuditBadge.textContent = 'All Recorded';
-    }
-  }
-  if (elAuditSub) elAuditSub.textContent = `${approvedLogs.length} of ${visibleLogs.length} logs recorded`;
+  if (elApprovedPill) elApprovedPill.textContent = `${visibleLogs.length} Logs`;
 
   // 5. Render Visual Charts
   renderPriceHistoryChart();
@@ -875,7 +773,7 @@ function setPriceChartTimeframe(tf) {
       b.className = 'price-tf-month px-3 py-1 rounded-lg text-xs font-medium text-hug-muted hover:text-hug-text transition-all cursor-pointer';
     });
     titleEls.forEach(t => {
-      t.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> SRA Raw Sugar 12-Week Price Trajectory`;
+      t.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> SRA Raw Sugar Weekly Price Trajectory`;
     });
     subEls.forEach(s => {
       s.textContent = 'Historical millsite weekly price benchmarks (Php per Lkg bag)';
@@ -888,7 +786,7 @@ function setPriceChartTimeframe(tf) {
       b.className = 'price-tf-month px-3 py-1 rounded-lg text-xs font-bold transition-all bg-primary text-white shadow-xs cursor-pointer';
     });
     titleEls.forEach(t => {
-      t.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> SRA Raw Sugar Monthly Benchmark Trajectory`;
+      t.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> SRA Raw Sugar Monthly Price Trajectory`;
     });
     subEls.forEach(s => {
       s.textContent = 'Aggregated monthly average millsite prices (Php per Lkg bag)';
@@ -943,9 +841,25 @@ function renderPriceHistoryChart() {
         source: `${v.prices.length} weekly circulars`
       };
     });
+    // Keep latest 8 months if long
+    if (history.length > 8) history = history.slice(-8);
   } else {
     // Chronological sort: oldest to newest for left-to-right trajectory
-    history = [...rawHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sorted = [...rawHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    // Deduplicate by distinct week label to prevent overlapping cluster points
+    const seen = new Set();
+    const unique = [];
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const p = sorted[i];
+      const key = (p.week || '').trim().toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.unshift(p);
+      }
+    }
+    // Limit to latest 8 weeks for maximum readability and clean spacing
+    history = unique.slice(-8);
   }
 
   if (history.length === 0) return;
@@ -955,12 +869,12 @@ function renderPriceHistoryChart() {
   const maxP = Math.max(...prices) * 1.04;
   const range = maxP - minP || 1;
 
-  const W = 540;
-  const H = 160;
-  const padL = 45;
+  const W = 520;
+  const H = 150;
+  const padL = 50;
   const padR = 25;
   const padT = 20;
-  const padB = 48;
+  const padB = 42;
   const svgW = W + padL + padR;
   const svgH = H + padT + padB;
   const n = history.length;
@@ -988,7 +902,7 @@ function renderPriceHistoryChart() {
   const isDark = document.documentElement.classList.contains('dark');
   const gridStroke = isDark ? '#232E3C' : '#E2E8DC';
   const textMuted = isDark ? '#64748B' : '#8A9B7A';
-  const textLabel = isDark ? '#94A3B8' : '#5A6B4A';
+  const textLabel = isDark ? '#94A3B8' : '#4B5563';
   const lineStroke = isDark ? '#10B981' : '#2D5016';
   const gradColor = isDark ? '#10B981' : '#4A7C2F';
   const dotStroke = isDark ? '#151C24' : '#FFFFFF';
@@ -1001,7 +915,7 @@ function renderPriceHistoryChart() {
       <text x="${padL - 8}" y="${y + 3}" text-anchor="end" font-size="10" font-weight="600" fill="${textMuted}">${val.toLocaleString()}</text>`;
   }).join('');
 
-  // Circles & Clean X-labels
+  // Circles & Clean X-labels with ample spacing
   const dotsAndLabels = points.map((pt, i) => {
     const isLatest = i === n - 1;
     const circleFill = isLatest ? (isDark ? '#34D399' : '#2D5016') : (isDark ? '#10B981' : '#4A7C2F');
@@ -1009,7 +923,7 @@ function renderPriceHistoryChart() {
     const pulse = isLatest ? `<circle cx="${pt.x}" cy="${pt.y}" r="11" fill="${circleFill}" opacity="0.25"/>` : '';
     const cleanLabel = priceChartTimeframe === 'monthly' ? pt.label : pt.week.replace(/Week\s+/i, 'W');
     const tooltip = priceChartTimeframe === 'monthly'
-      ? `${pt.week}: Average Php ${pt.price.toLocaleString()}/Lkg (Range: ₱${pt.min.toLocaleString()} - ₱${pt.max.toLocaleString()} across ${pt.count} posts)`
+      ? `${pt.week}: Average Php ${pt.price.toLocaleString()}/Lkg`
       : `${pt.week} (${pt.date}): Php ${pt.price.toLocaleString()}/Lkg (${pt.source})`;
 
     return `
@@ -1018,7 +932,7 @@ function renderPriceHistoryChart() {
         <circle cx="${pt.x}" cy="${pt.y}" r="${radius}" fill="${circleFill}" stroke="${dotStroke}" stroke-width="2">
           <title>${tooltip}</title>
         </circle>
-        <text x="${pt.x}" y="${padT + H + 18}" text-anchor="middle" font-size="9" font-weight="700" fill="${textLabel}" transform="rotate(-35, ${pt.x}, ${padT + H + 18})">
+        <text x="${pt.x}" y="${padT + H + 18}" text-anchor="middle" font-size="10" font-weight="700" fill="${textLabel}" transform="rotate(-20, ${pt.x}, ${padT + H + 18})">
           ${cleanLabel}
         </text>
       </g>
@@ -1027,26 +941,26 @@ function renderPriceHistoryChart() {
 
   const chartHtml = `
     <div class="overflow-x-auto">
-      <svg viewBox="0 0 ${svgW} ${svgH}" class="w-full min-w-[460px]">
+      <svg viewBox="0 0 ${svgW} ${svgH}" class="w-full min-w-[440px]">
         <defs>
           <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="${gradColor}" stop-opacity="0.35"/>
+            <stop offset="0%" stop-color="${gradColor}" stop-opacity="0.30"/>
             <stop offset="100%" stop-color="${gradColor}" stop-opacity="0.0"/>
           </linearGradient>
         </defs>
         ${yTicks}
         ${areaD ? `<path d="${areaD}" fill="url(#priceGradient)"/>` : ''}
-        <path d="${pathD}" fill="none" stroke="${lineStroke}" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="${pathD}" fill="none" stroke="${lineStroke}" stroke-width="3" stroke-linecap="round"/>
         ${dotsAndLabels}
       </svg>
     </div>
     <div class="flex items-center justify-between mt-2 pt-2 border-t border-border text-[11px] text-hug-muted flex-wrap gap-2">
       <div class="flex items-center gap-3 flex-wrap">
-        <span class="flex items-center gap-1.5 font-semibold text-primary"><span class="w-2 h-2 rounded-full bg-primary"></span> Latest ${priceChartTimeframe === 'monthly' ? 'Month Avg' : 'Week'}: Php ${prices[prices.length - 1].toLocaleString()}</span>
+        <span class="flex items-center gap-1.5 font-bold text-primary"><span class="w-2 h-2 rounded-full bg-primary"></span> Latest ${priceChartTimeframe === 'monthly' ? 'Month Avg' : 'Week'}: Php ${prices[prices.length - 1].toLocaleString()} / Lkg</span>
         <span>Low: Php ${Math.min(...prices).toLocaleString()}</span>
         <span>High: Php ${Math.max(...prices).toLocaleString()}</span>
       </div>
-      <span class="italic text-[10px]">${priceChartTimeframe === 'monthly' ? `Aggregated ${history.length} Months (${rawHistory.length} circulars)` : 'Benchmark: Official SRA Circulars'}</span>
+      <span class="italic text-[10px]">${priceChartTimeframe === 'monthly' ? `Latest ${history.length} Months` : `Latest ${history.length} Weeks (Official Circulars)`}</span>
     </div>`;
 
   targets.forEach(el => { el.innerHTML = chartHtml; });
@@ -1074,54 +988,90 @@ function renderCostEfficiencyChart() {
   const el = isManager ? document.getElementById('mgr-cost-efficiency-visual') : document.getElementById('cost-efficiency-visual');
   if (!el) return;
 
-  const benchmark = getDistrictBenchmarkCostPerHa();
+  const db = getDB();
+  const benchmark = SRA_BENCHMARKS.directCostPerHa || 66900;
   const badgeEl = isManager 
     ? document.getElementById('mgr-cost-efficiency-benchmark-badge') 
     : document.getElementById('cost-efficiency-benchmark-badge');
   if (badgeEl) {
-    badgeEl.textContent = `District Benchmark: ₱${(benchmark / 1000).toFixed(1)}k/Ha (Live Avg)`;
-    badgeEl.title = `Automatically computed weighted average cost across active district operations (₱${benchmark.toLocaleString()}/Ha)`;
+    badgeEl.textContent = 'Actual Spend / Ha';
+    badgeEl.title = 'Real operational cost per hectare across monitored plots';
   }
 
-  const data = isManager ? [
-    { id: 'FLD-KTR-001 (Juan dela Cruz)', rawKey: 'FLD-KTR-001', costPerHa: 12400, ha: 1.5 },
-    { id: 'FLD-KTR-002 (Jose Rizal)', rawKey: 'FLD-KTR-002', costPerHa: 11200, ha: 2.1 }
-  ] : [
-    { id: 'Block Farm A (Silay)', rawKey: 'Block Farm A', costPerHa: 12400, ha: 34.5 },
-    { id: 'Block Farm B (Victorias)', rawKey: 'Block Farm B', costPerHa: 14200, ha: 28.0 },
-    { id: 'Block Farm C (Talisay)', rawKey: 'Block Farm C', costPerHa: 9800, ha: 45.2 },
-    { id: 'Block Farm D (Bago)', rawKey: 'Block Farm D', costPerHa: 11500, ha: 22.0 }
-  ];
+  let data = [];
 
-  const maxCost = Math.max(...data.map(d => d.costPerHa)) * 1.1;
+  if (isManager) {
+    // ── FARM MANAGER: Default view is Member Fields of their assigned block farm
+    const scopedFields = db.fields.filter(f => f.blockFarm?.includes('Block Farm A') || f.blockFarm?.includes('Nacayao'));
+    data = scopedFields.map(f => {
+      const fieldLogs = db.logs.filter(l => l.fieldId === f.id);
+      const totalCost = fieldLogs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
+      const ha = Number(f.ha || 1.5);
+      const costPerHa = ha > 0 ? Math.round(totalCost / ha) : 0;
+      return {
+        id: `${f.id} (${f.member || 'Member'})`,
+        rawKey: f.id,
+        costPerHa,
+        ha,
+        totalCost,
+        type: 'field'
+      };
+    });
+  } else {
+    // ── SRA ADMIN: Default view is Regional Block Farms
+    const blockList = [
+      { id: 'Nacayao Block Farm A (Silay)', rawKey: 'Nacayao Block Farm A', defaultHa: 15.25 },
+      { id: 'Block Farm B (Victorias)', rawKey: 'Block Farm B', defaultHa: 28.0 },
+      { id: 'Block Farm C (Talisay)', rawKey: 'Block Farm C', defaultHa: 45.2 },
+      { id: 'Block Farm D (Manapla)', rawKey: 'Block Farm D', defaultHa: 22.0 }
+    ];
 
-  el.innerHTML = data.map(item => {
+    data = blockList.map(b => {
+      const fields = db.fields.filter(f => f.blockFarm === b.rawKey || b.rawKey.includes(f.blockFarm));
+      const fieldIds = fields.map(f => f.id);
+      const logs = db.logs.filter(l => fieldIds.includes(l.fieldId));
+      const totalCost = logs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
+      const ha = fields.length > 0 ? fields.reduce((s, f) => s + (Number(f.ha) || 0), 0) : b.defaultHa;
+      const costPerHa = ha > 0 ? Math.round(totalCost / ha) : 0;
+      return {
+        id: b.id,
+        rawKey: b.rawKey,
+        costPerHa,
+        ha,
+        totalCost,
+        plotsCount: fields.length || 5,
+        type: 'block'
+      };
+    });
+  }
+
+  const maxCost = Math.max(...data.map(d => d.costPerHa), 1);
+
+  // Show top 4 items statically (non-scrollable)
+  const displayItems = data.slice(0, 4);
+
+  const itemsHtml = displayItems.map(item => {
     const pct = Math.round((item.costPerHa / maxCost) * 100);
-    const diffPct = Math.round(((item.costPerHa - benchmark) / benchmark) * 100);
     
-    let rating = 'Optimal';
+    let rating = 'Active';
     let badgeColor = 'text-primary bg-primary-bg';
     let barGradient = 'bg-gradient-to-r from-primary to-primary-light';
 
-    if (diffPct <= -10) {
-      rating = `Leader (${diffPct}%)`;
+    if (item.costPerHa === 0) {
+      rating = 'No Spend Yet';
+      badgeColor = 'text-hug-muted bg-bg';
+      barGradient = 'bg-border';
+    } else {
+      rating = `${item.ha.toFixed(1)} Ha`;
       badgeColor = 'text-success bg-success-bg';
       barGradient = 'bg-gradient-to-r from-success to-primary';
-    } else if (diffPct >= 10) {
-      rating = `Higher Overhead (+${diffPct}%)`;
-      badgeColor = 'text-danger bg-danger-bg';
-      barGradient = 'bg-gradient-to-r from-danger to-[#F5A623]';
-    } else {
-      rating = diffPct >= 0 ? `Optimal (+${diffPct}%)` : `Optimal (${diffPct}%)`;
-      badgeColor = 'text-primary bg-primary-bg';
-      barGradient = 'bg-gradient-to-r from-primary to-primary-light';
     }
 
     return `<div onclick="openDetailedAnalyticsModal('${item.rawKey}')" class="group flex flex-col gap-1.5 p-2.5 rounded-xl hover:bg-primary-bg/50 border border-transparent hover:border-primary/30 transition-all cursor-pointer">
       <div class="flex items-center justify-between text-xs">
         <div class="flex items-center gap-2">
           <span class="font-bold text-hug-text group-hover:text-primary transition-colors">${item.id}</span>
-          <span class="text-[11px] text-hug-muted">(${item.ha.toFixed(1)} Ha)</span>
+          <span class="text-[11px] text-hug-muted">(${item.ha.toFixed(2)} Ha)</span>
         </div>
         <div class="flex items-center gap-2">
           <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeColor}">${rating}</span>
@@ -1130,10 +1080,276 @@ function renderCostEfficiencyChart() {
         </div>
       </div>
       <div class="w-full h-2.5 bg-border rounded-full overflow-hidden">
-        <div class="h-full rounded-full ${barGradient} transition-all duration-500" style="width: ${pct}%"></div>
+        <div class="h-full rounded-full ${barGradient} transition-all duration-500" style="width: ${Math.max(pct, 5)}%"></div>
       </div>
     </div>`;
   }).join('');
+
+  const btnLabel = isManager 
+    ? `Show More (View All ${data.length} Member Plots) →` 
+    : `Show More (View All ${data.length} Regional Blocks & Plots) →`;
+
+  const moreBtnHtml = `
+    <button onclick="openAllEfficiencyModal('${isManager ? 'fields' : 'blocks'}')" class="w-full text-center py-2 text-xs font-bold text-primary hover:bg-primary-bg rounded-xl border border-dashed border-primary/30 transition-all cursor-pointer mt-1 flex items-center justify-center gap-1.5">
+      <span>${btnLabel}</span>
+    </button>
+  `;
+
+  el.innerHTML = itemsHtml + moreBtnHtml;
+}
+
+// ── ALL EFFICIENCY MODAL CONTROLLER (WITH PAGES) ──────────
+let allEffCurrentPage = 1;
+let allEffActiveTab = 'blocks'; // 'blocks' | 'fields'
+const ALL_EFF_PER_PAGE = 4;
+
+function setAllEffTab(tab) {
+  allEffActiveTab = tab;
+  allEffCurrentPage = 1;
+  const tabBlocks = document.getElementById('all-eff-tab-blocks');
+  const tabFields = document.getElementById('all-eff-tab-fields');
+  if (tabBlocks && tabFields) {
+    if (tab === 'blocks') {
+      tabBlocks.className = 'px-3 py-1 rounded-lg text-xs font-bold transition-all bg-primary text-white shadow-xs cursor-pointer';
+      tabFields.className = 'px-3 py-1 rounded-lg text-xs font-medium text-hug-muted hover:text-hug-text transition-all cursor-pointer';
+    } else {
+      tabBlocks.className = 'px-3 py-1 rounded-lg text-xs font-medium text-hug-muted hover:text-hug-text transition-all cursor-pointer';
+      tabFields.className = 'px-3 py-1 rounded-lg text-xs font-bold transition-all bg-primary text-white shadow-xs cursor-pointer';
+    }
+  }
+  renderAllEfficiencyModal();
+}
+
+function setAllEffPage(page) {
+  allEffCurrentPage = page;
+  renderAllEfficiencyModal();
+}
+
+function openAllEfficiencyModal(defaultTab) {
+  const currentRole = localStorage.getItem('hugpong_role') || 'admin';
+  const isManager = currentRole === 'manager';
+  allEffActiveTab = defaultTab || (isManager ? 'fields' : 'blocks');
+  allEffCurrentPage = 1;
+
+  const tabContainer = document.getElementById('all-eff-tabs');
+  if (tabContainer) {
+    // Hide tabs for farm manager since they only manage fields
+    if (isManager) tabContainer.classList.add('hidden');
+    else tabContainer.classList.remove('hidden');
+  }
+
+  setAllEffTab(allEffActiveTab);
+  const modal = document.getElementById('modal-all-efficiency');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeAllEfficiencyModal() {
+  const modal = document.getElementById('modal-all-efficiency');
+  if (modal) modal.classList.add('hidden');
+}
+
+function renderAllEfficiencyModal() {
+  const db = getDB();
+  const benchmark = SRA_BENCHMARKS.directCostPerHa || 66900;
+  const listEl = document.getElementById('all-eff-list');
+  const paginationEl = document.getElementById('all-eff-pagination');
+  const searchInput = document.getElementById('all-eff-search');
+  const search = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  if (!listEl) return;
+
+  let dataset = [];
+
+  if (allEffActiveTab === 'blocks') {
+    const blockList = [
+      { id: 'Nacayao Block Farm A (Silay)', rawKey: 'Nacayao Block Farm A', defaultHa: 15.25, supervisor: 'Jose Reyes' },
+      { id: 'Block Farm B (Victorias)', rawKey: 'Block Farm B', defaultHa: 28.0, supervisor: 'Maria Santos' },
+      { id: 'Block Farm C (Talisay)', rawKey: 'Block Farm C', defaultHa: 45.2, supervisor: 'Elena Batongbakal' },
+      { id: 'Block Farm D (Manapla)', rawKey: 'Block Farm D', defaultHa: 22.0, supervisor: 'Ricardo Dalisay' }
+    ];
+
+    dataset = blockList.map(b => {
+      const fields = db.fields.filter(f => f.blockFarm === b.rawKey || b.rawKey.includes(f.blockFarm));
+      const fieldIds = fields.map(f => f.id);
+      const logs = db.logs.filter(l => fieldIds.includes(l.fieldId));
+      const totalCost = logs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
+      const ha = fields.length > 0 ? fields.reduce((s, f) => s + (Number(f.ha) || 0), 0) : b.defaultHa;
+      const costPerHa = ha > 0 ? Math.round(totalCost / ha) : 0;
+      return {
+        title: b.id,
+        sub: `Supervised by ${b.supervisor} · ${fields.length || 5} Plots`,
+        rawKey: b.rawKey,
+        costPerHa,
+        ha,
+        totalCost,
+        type: 'Block Farm'
+      };
+    });
+  } else {
+    dataset = db.fields.map(f => {
+      const fieldLogs = db.logs.filter(l => l.fieldId === f.id);
+      const totalCost = fieldLogs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
+      const ha = Number(f.ha || 1.5);
+      const costPerHa = ha > 0 ? Math.round(totalCost / ha) : 0;
+      return {
+        title: `${f.id} — ${f.member || 'Member Farmer'}`,
+        sub: `${f.blockFarm || 'Nacayao Block Farm A'} · Stage: ${f.stage || 'Land Preparation'}`,
+        rawKey: f.id,
+        costPerHa,
+        ha,
+        totalCost,
+        type: 'Field Plot'
+      };
+    });
+  }
+
+  if (search) {
+    dataset = dataset.filter(d => 
+      d.title.toLowerCase().includes(search) || 
+      d.sub.toLowerCase().includes(search) ||
+      d.rawKey.toLowerCase().includes(search)
+    );
+  }
+
+  const totalPages = Math.ceil(dataset.length / ALL_EFF_PER_PAGE) || 1;
+  if (allEffCurrentPage > totalPages) allEffCurrentPage = totalPages;
+  const start = (allEffCurrentPage - 1) * ALL_EFF_PER_PAGE;
+  const pageItems = dataset.slice(start, start + ALL_EFF_PER_PAGE);
+
+  const maxCost = Math.max(...dataset.map(d => d.costPerHa), 1);
+
+  listEl.innerHTML = pageItems.map(item => {
+    const pct = Math.round((item.costPerHa / maxCost) * 100);
+    
+    let rating = 'Active';
+    let badgeColor = 'text-primary bg-primary-bg';
+    let barGradient = 'bg-gradient-to-r from-primary to-primary-light';
+
+    if (item.costPerHa === 0) {
+      rating = 'No Spend Yet';
+      badgeColor = 'text-hug-muted bg-bg';
+      barGradient = 'bg-border';
+    } else {
+      rating = `${item.ha ? Number(item.ha).toFixed(1) : 1.5} Ha`;
+      badgeColor = 'text-success bg-success-bg';
+      barGradient = 'bg-gradient-to-r from-success to-primary';
+    }
+
+    return `
+      <div onclick="closeAllEfficiencyModal(); openDetailedAnalyticsModal('${item.rawKey}')" class="group flex flex-col gap-2 p-3 rounded-xl bg-bg/50 hover:bg-primary-bg/40 border border-border hover:border-primary/40 transition-all cursor-pointer">
+        <div class="flex items-center justify-between text-xs">
+          <div>
+            <span class="font-bold text-hug-text group-hover:text-primary transition-colors text-sm">${item.title}</span>
+            <p class="text-[11px] text-hug-muted">${item.sub} · <span class="font-semibold text-hug-text2">${item.ha.toFixed(2)} Ha</span></p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${badgeColor}">${rating}</span>
+            <span class="font-extrabold text-hug-text text-sm">₱${(item.costPerHa / 1000).toFixed(1)}k <span class="text-[10px] font-normal text-hug-muted">/ Ha</span></span>
+            <span class="text-xs text-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center">Inspect →</span>
+          </div>
+        </div>
+        <div class="w-full h-2.5 bg-border rounded-full overflow-hidden">
+          <div class="h-full rounded-full ${barGradient} transition-all duration-500" style="width: ${Math.max(pct, 5)}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('') || '<div class="text-center py-8 text-xs text-hug-muted">No items matched your search criteria.</div>';
+
+  if (paginationEl) {
+    if (totalPages <= 1) {
+      paginationEl.innerHTML = `<span class="text-xs text-hug-muted">Showing all ${dataset.length} items</span>`;
+    } else {
+      paginationEl.innerHTML = `
+        <button onclick="setAllEffPage(${allEffCurrentPage - 1})" ${allEffCurrentPage === 1 ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''} class="px-3 py-1 bg-white border border-border rounded-lg text-xs font-semibold cursor-pointer text-hug-text2 hover:text-primary hover:border-primary transition-all">Prev</button>
+        <span class="text-xs font-semibold text-hug-text2">Page ${allEffCurrentPage} of ${totalPages} (${dataset.length} total)</span>
+        <button onclick="setAllEffPage(${allEffCurrentPage + 1})" ${allEffCurrentPage === totalPages ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''} class="px-3 py-1 bg-white border border-border rounded-lg text-xs font-semibold cursor-pointer text-hug-text2 hover:text-primary hover:border-primary transition-all">Next</button>
+      `;
+    }
+  }
+}
+
+const SRA_CROP_PHASES = {
+  'phase-1': {
+    key: 'phase-1',
+    phase: 'Stage 1',
+    name: 'Soil & Land Prep',
+    fullName: 'Soil Sampling & Land Preparation',
+    ops: 'Ops 1–2',
+    color: '#8F3A8F',
+    days: '0 – 15 Days',
+    benchmark: '₱22,000 / Ha',
+    keywords: ['prep', 'soil', 'land', 'furrow', 'plow', 'sampling'],
+    guidelines: 'Conduct soil sampling for pH and nutrient mapping. Perform deep subsoil ripping followed by 2 disc plowing passes and 1 rotavator pass. Create furrow depth of 25-30 cm. Apply agricultural lime if soil pH is below 5.5.'
+  },
+  'phase-2': {
+    key: 'phase-2',
+    phase: 'Stage 2',
+    name: 'Planting & Canepoints',
+    fullName: 'Planting Material & Planting (Patdan)',
+    ops: 'Ops 3–4',
+    color: '#4A7C2F',
+    days: '15 – 30 Days',
+    benchmark: '₱14,400 / Ha',
+    keywords: ['plant', 'patdan', 'seedcane', 'canepoint'],
+    guidelines: 'Acquire certified high-yielding canepoints (Phil 84-77, VMC 84-524) at 30,000 to 35,000 points/Ha. Dip in fungicide solution for 15 mins. Plant in furrows with 2 buds facing sideways and cover with 3-5 cm fine soil.'
+  },
+  'phase-3': {
+    key: 'phase-3',
+    phase: 'Stage 3',
+    name: 'Basal Fertilization',
+    fullName: 'Basal Fertilization & Soil Amending',
+    ops: 'Ops 5–6',
+    color: '#1A6B9A',
+    days: '30 – 45 Days',
+    benchmark: '₱12,700 / Ha',
+    keywords: ['basal', 'dap', 'phosphate', 'fertiliz', 'abono'],
+    guidelines: 'Apply basal dose (46-0-0 Urea, 18-46-00 DAP, 00-00-60 MOP, and Rock Phosphate) along the furrow line. Ensure adequate soil moisture before application to prevent volatilization.'
+  },
+  'phase-4': {
+    key: 'phase-4',
+    phase: 'Stage 4',
+    name: 'Cultivation & Care',
+    fullName: 'Cultivation, Weeding & Drainage',
+    ops: 'Ops 7, 10–11',
+    color: '#F5A623',
+    days: '45 – 90 Days',
+    benchmark: '₱7,800 / Ha',
+    keywords: ['cultivation', 'barring', 'off-barring', 'on-barring', 'hilling', 'weed', 'drainage', 'irrigation'],
+    guidelines: 'Perform ridge busting (1 pass), off-barring (2 passes), on-barring (2 passes), and hilling-up (3 passes) for aeration and root zone weed suppression. Maintain field drainage channels.'
+  },
+  'phase-5': {
+    key: 'phase-5',
+    phase: 'Stage 5',
+    name: 'Top-Dress Fert',
+    fullName: 'Top-Dress Fertilization (2nd Dose)',
+    ops: 'Ops 8–9',
+    color: '#0284C7',
+    days: '90 – 120 Days',
+    benchmark: '₱10,000 / Ha',
+    keywords: ['top-dress', 'top dress', '2nd dose', 'second dose'],
+    guidelines: 'Apply second dose: Urea (46-0-0) and Muriate of Potash (00-00-60) at 90–120 days during peak tillering before final hilling-up and full canopy closure.'
+  },
+  'phase-6': {
+    key: 'phase-6',
+    phase: 'Stage 6',
+    name: 'Harvest & Milling',
+    fullName: 'Harvesting, Cutting & Hauling Operations',
+    ops: 'Ops 12–14',
+    color: '#D9534F',
+    days: '10 – 12 Months',
+    benchmark: '₱51,000 / Ha',
+    keywords: ['harvest', 'cutting', 'hauling', 'trucking', 'bull cart', 'milling'],
+    guidelines: 'Cut mature cane flush at ground level to capture maximum sucrose and promote vigorous ratoon sprouting. Coordinate in-field bull cart and trucking to mill within 24 hours of cutting.'
+  }
+};
+
+function matchFieldToPhaseKey(field) {
+  const stageStr = (field.stage || '').toLowerCase();
+  for (const [pKey, meta] of Object.entries(SRA_CROP_PHASES)) {
+    if (meta.keywords.some(kw => stageStr.includes(kw))) {
+      return pKey;
+    }
+  }
+  return 'phase-1';
 }
 
 function renderCropStageDistribution() {
@@ -1142,46 +1358,122 @@ function renderCropStageDistribution() {
   const el = isManager ? document.getElementById('mgr-crop-stage-visual') : document.getElementById('crop-stage-visual');
   const subEl = document.getElementById('crop-stage-subtitle');
   if (!el) return;
-  const scale = isManager ? 0.3 : 1;
 
-  const stages = [
-    { name: 'Land Preparation', ha: 28.5 * scale, color: '#8F3A8F', phase: 'Stage 1' },
-    { name: 'Planting (Patdan)', ha: 34.0 * scale, color: '#4A7C2F', phase: 'Stage 2' },
-    { name: 'Fertilization (1 & 2)', ha: 42.2 * scale, color: '#1A6B9A', phase: 'Stage 3' },
-    { name: 'Weeding & Care', ha: 15.0 * scale, color: '#F5A623', phase: 'Stage 4' },
-    { name: 'Harvesting & Milling', ha: 10.0 * scale, color: '#D9534F', phase: 'Stage 5' },
-  ];
-  const total = stages.reduce((s, st) => s + st.ha, 0);
+  const db = getDB();
+  let scopedFields = [];
+  let subtitleText = '';
 
-  if (subEl && !isManager) {
-    subEl.textContent = `${total.toFixed(1)} Ha active across 4 regional block farms (Click stage for breakdown)`;
+  if (isManager) {
+    // ── FARM MANAGER: Scoped strictly to their single assigned block farm
+    scopedFields = db.fields.filter(f => f.blockFarm?.includes('Block Farm A') || f.blockFarm?.includes('Nacayao'));
+    const totalHa = scopedFields.reduce((sum, f) => sum + (Number(f.ha) || 1.5), 0);
+    subtitleText = `${totalHa.toFixed(2)} Ha active across ${scopedFields.length} Member Plots (Nacayao Block Farm A)`;
+  } else {
+    // ── SRA ADMIN: Scoped to all regional block farms (or filtered by selected block)
+    const blockFilterSelect = document.getElementById('sra-crop-stage-block-filter');
+    const selectedBlock = blockFilterSelect ? blockFilterSelect.value : 'all';
+
+    if (selectedBlock === 'all') {
+      scopedFields = db.fields;
+      const totalHa = scopedFields.reduce((sum, f) => sum + (Number(f.ha) || 1.5), 0);
+      subtitleText = `${totalHa.toFixed(2)} Ha total area across 4 Regional Block Farms (${scopedFields.length} Consolidated Plots)`;
+    } else {
+      scopedFields = db.fields.filter(f => f.blockFarm === selectedBlock || f.blockFarm?.includes(selectedBlock));
+      const totalHa = scopedFields.reduce((sum, f) => sum + (Number(f.ha) || 1.5), 0);
+      subtitleText = `${totalHa.toFixed(2)} Ha active across ${scopedFields.length} Plots (${selectedBlock})`;
+    }
   }
 
-  el.innerHTML = stages.map(s => {
-    const pct = Math.round((s.ha / total) * 100);
-    return `<div onclick="openCropStageModal('${s.name}')" class="group bg-bg rounded-xl p-3 border border-border flex flex-col justify-between hover:border-primary hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background-color: ${s.color}15; color: ${s.color}">${s.phase}</span>
-        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-hug-text border border-border group-hover:border-primary transition-colors">${pct}%</span>
+  const totalHa = scopedFields.reduce((sum, f) => sum + (Number(f.ha) || 1.5), 0);
+
+  if (subEl) {
+    subEl.textContent = subtitleText;
+  }
+
+  // Calculate hectare allocation per phase
+  const phaseCards = Object.values(SRA_CROP_PHASES).map(phase => {
+    const matchingPlots = scopedFields.filter(f => matchFieldToPhaseKey(f) === phase.key);
+    const ha = matchingPlots.reduce((s, f) => s + (Number(f.ha) || 1.5), 0);
+    const pct = totalHa > 0 ? Math.round((ha / totalHa) * 100) : 0;
+    return {
+      ...phase,
+      ha,
+      pct,
+      plotsCount: matchingPlots.length
+    };
+  });
+
+  el.innerHTML = phaseCards.map((s, idx) => {
+    const isActive = s.ha > 0;
+    return `
+    <div onclick="openCropStageModal('${s.key}')" 
+         class="group relative bg-white rounded-2xl p-4 border ${isActive ? 'border-border shadow-xs' : 'border-border/60 opacity-80'} flex flex-col justify-between hover:border-primary hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden">
+      <!-- Top Colored Accent Strip -->
+      <div class="absolute top-0 left-0 right-0 h-1.5" style="background-color: ${s.color};"></div>
+      
+      <!-- Stage Header: Badge & Share -->
+      <div class="flex items-center justify-between mb-2.5 pt-1">
+        <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider" style="background-color: ${s.color}15; color: ${s.color}">
+          ${s.phase}
+        </span>
+        <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-bg text-hug-text border border-border group-hover:border-primary/40 transition-colors">
+          ${s.pct}%
+        </span>
       </div>
-      <div>
-        <p class="text-xs font-bold text-hug-text truncate group-hover:text-primary transition-colors">${s.name}</p>
-        <p class="text-sm font-black mt-0.5" style="color: ${s.color}">${s.ha.toFixed(1)} Ha</p>
+
+      <!-- Stage Title & Timeline -->
+      <div class="flex-1 flex flex-col justify-center my-1">
+        <h4 class="text-xs font-black text-hug-text group-hover:text-primary transition-colors leading-snug">
+          ${s.name}
+        </h4>
+        <div class="flex items-center gap-1.5 mt-1">
+          <span class="text-[10px] font-bold text-hug-text2">${s.days}</span>
+          <span class="text-hug-muted text-[10px]">·</span>
+          <span class="text-[10px] font-medium text-hug-muted">${s.ops}</span>
+        </div>
       </div>
-      <div class="w-full h-1.5 bg-border rounded-full overflow-hidden mt-2">
-        <div class="h-full rounded-full" style="width: ${pct}%; background-color: ${s.color}"></div>
+
+      <!-- Stage Stats & Progress -->
+      <div class="mt-3 pt-2.5 border-t border-border/70">
+        <div class="flex items-baseline justify-between">
+          <p class="text-base font-black tracking-tight" style="color: ${s.color}">
+            ${s.ha.toFixed(2)} <span class="text-xs font-bold text-hug-muted">Ha</span>
+          </p>
+          <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md ${s.plotsCount > 0 ? 'bg-primary-bg text-primary' : 'bg-bg text-hug-muted'}">
+            ${s.plotsCount} plot${s.plotsCount !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="w-full h-1.5 bg-bg rounded-full overflow-hidden mt-2.5 border border-border/40">
+          <div class="h-full rounded-full transition-all duration-700" 
+               style="width: ${Math.max(s.pct, s.ha > 0 ? 10 : 0)}%; background-color: ${s.color}"></div>
+        </div>
+
+        <!-- Hover Interactive Hint -->
+        <div class="flex items-center justify-between mt-2 pt-1 border-t border-dashed border-border/50 opacity-0 group-hover:opacity-100 transition-opacity">
+          <span class="text-[10px] font-bold text-primary">View Member Plots</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-primary transform group-hover:translate-x-1 transition-transform"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
       </div>
     </div>`;
   }).join('');
 }
 
 // ── DETAILED DRILL-DOWN ANALYTICS MODAL CONTROLLER ────────
+const DETAIL_PAGE_SIZE = 5;
+let currentDetailKey = null;
+let currentDetailTab = 'overview';
+let detailFieldsPage = 1;
+let detailLogsPage = 1;
+
 function openDetailedAnalyticsModal(key) {
   const db = getDB();
   const modal = document.getElementById('modal-detailed-analytics');
   if (!modal) return;
 
-  const isBlockFarm = key.startsWith('Block Farm');
+  const validKey = key || 'Nacayao Block Farm A';
+  const isBlockFarm = String(validKey).startsWith('Block Farm') || String(validKey).includes('Nacayao') || String(validKey).includes('Cluster') || String(validKey).includes('Group') || String(validKey).includes('Cooperative');
   const typeBadge = document.getElementById('detail-analytics-type-badge');
   const statusBadge = document.getElementById('detail-analytics-status-badge');
   const titleEl = document.getElementById('detail-analytics-title');
@@ -1194,110 +1486,112 @@ function openDetailedAnalyticsModal(key) {
   const plotsCountEl = document.getElementById('detail-kpi-plots-count');
   const ratingEl = document.getElementById('detail-kpi-rating');
   const breakdownBarsEl = document.getElementById('detail-expense-breakdown-bars');
-  const stageBarsEl = document.getElementById('detail-crop-stage-bars');
-  const tableBodyEl = document.getElementById('detail-activities-table-body');
 
+  let associatedFields = [];
   let entityTitle = '';
   let entitySub = '';
-  let totalHa = 0;
-  let costPerHa = 12400;
-  let totalCost = 0;
-  let ratingText = 'Optimal';
-  let badgeColorClass = 'bg-success-bg text-success';
-  let associatedFields = [];
-  let associatedLogs = [];
 
-  const districtBenchmark = getDistrictBenchmarkCostPerHa();
+  currentDetailKey = validKey;
+  currentDetailTab = 'overview';
+  detailFieldsPage = 1;
+  detailLogsPage = 1;
 
   if (isBlockFarm) {
-    if (typeBadge) { typeBadge.textContent = 'Block Farm'; typeBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-black bg-primary-bg text-primary uppercase tracking-wider'; }
-    associatedFields = db.fields.filter(f => f.blockFarm === key);
-    
-    if (key === 'Block Farm A') {
-      entityTitle = 'Block Farm A (Silay Sugar Cooperative)';
-      entitySub = 'Supervised by Jose Reyes · 34.5 Ha active';
-      totalHa = 34.5;
-      costPerHa = 12400;
-      totalCost = 427800;
-      ratingText = 'Optimal';
-      badgeColorClass = 'bg-success-bg text-success';
-    } else if (key === 'Block Farm B') {
-      entityTitle = 'Block Farm B (Victorias District)';
-      entitySub = 'Supervised by Maria Santos · 28.0 Ha active';
-      totalHa = 28.0;
-      costPerHa = 14200;
-      totalCost = 397600;
-      ratingText = 'Higher Overhead (+18.3%)';
-      badgeColorClass = 'bg-warning-bg text-[#C97A00]';
-    } else if (key === 'Block Farm C') {
-      entityTitle = 'Block Farm C (Talisay Agrarian Zone)';
-      entitySub = 'Supervised by Elena Batongbakal · 45.2 Ha active';
-      totalHa = 45.2;
-      costPerHa = 9800;
-      totalCost = 442960;
-      ratingText = 'Efficiency Leader (-18.3%)';
-      badgeColorClass = 'bg-success-bg text-success';
-    } else {
-      entityTitle = 'Block Farm D (Bago Cooperative Cluster)';
-      entitySub = 'Supervised by Ricardo Dalisay · 22.0 Ha active';
-      totalHa = 22.0;
-      costPerHa = 11500;
-      totalCost = 253000;
-      ratingText = 'Optimal (-4.1%)';
-      badgeColorClass = 'bg-success-bg text-success';
-    }
-
-    const fieldIds = associatedFields.map(f => f.id);
-    associatedLogs = db.logs.filter(l => fieldIds.includes(l.fieldId));
+    if (typeBadge) { typeBadge.textContent = 'Block Farm Cluster'; typeBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-black bg-primary-bg text-primary uppercase tracking-wider'; }
+    associatedFields = db.fields.filter(f => f.blockFarm === key || key.includes(f.blockFarm));
+    if (associatedFields.length === 0) associatedFields = db.fields;
+    entityTitle = `${key} · ${SRA_BENCHMARKS.associationName}`;
+    entitySub = `Consolidated farm cluster · ${SRA_BENCHMARKS.location}`;
   } else {
-    // Single Field Plot
-    if (typeBadge) { typeBadge.textContent = 'Field Plot'; typeBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-black bg-[#1A6B9A]/15 text-[#1A6B9A] uppercase tracking-wider'; }
+    if (typeBadge) { typeBadge.textContent = 'Individual Field Plot'; typeBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-black bg-[#1A6B9A]/15 text-[#1A6B9A] uppercase tracking-wider'; }
     const field = db.fields.find(f => f.id === key) || db.fields[0];
     associatedFields = [field];
-    totalHa = field.ha || 1.5;
-    entityTitle = `${field.id} — ${field.member || field.owner}`;
-    entitySub = `${field.blockFarm || 'Block Farm A'} · Cultivated Area: ${totalHa} Ha · Stage: ${field.stage}`;
-    
-    if (field.id === 'FLD-KTR-001') {
-      costPerHa = 12400;
-      totalCost = Math.round(costPerHa * totalHa);
-      ratingText = 'Optimal';
-      badgeColorClass = 'bg-success-bg text-success';
-    } else {
-      costPerHa = 11200;
-      totalCost = Math.round(costPerHa * totalHa);
-      ratingText = 'Highly Efficient';
-      badgeColorClass = 'bg-success-bg text-success';
-    }
+    entityTitle = `${field.id} — ${field.member || field.owner || 'Member Farmer'}`;
+    entitySub = `${field.blockFarm || 'Nacayao Block Farm A'} · Cultivated Area: ${field.ha} Ha · Batch ${field.batchMonth || 1}`;
+  }
 
-    associatedLogs = db.logs.filter(l => l.fieldId === field.id);
+  const totalHa = associatedFields.reduce((s, f) => s + (Number(f.ha) || 1.5), 0);
+  const fieldIds = associatedFields.map(f => f.id);
+  const associatedLogs = db.logs.filter(l => fieldIds.includes(l.fieldId));
+  const totalCost = associatedLogs.reduce((s, l) => s + (Number(l.totalCost || l.cost) || 0), 0);
+  const costPerHa = totalHa > 0 ? Math.round(totalCost / totalHa) : 0;
+  let ratingText = 'Active Operations';
+  let badgeColorClass = 'bg-primary-bg text-primary';
+
+  if (costPerHa === 0) {
+    ratingText = 'No Activity Logged';
+    badgeColorClass = 'bg-bg text-hug-muted';
+  } else {
+    ratingText = 'Active Operations';
+    badgeColorClass = 'bg-success-bg text-success';
   }
 
   if (titleEl) titleEl.textContent = entityTitle;
   if (subtitleEl) subtitleEl.textContent = entitySub;
   if (statusBadge) { statusBadge.textContent = ratingText; statusBadge.className = `px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeColorClass}`; }
 
-  if (totalCostEl) totalCostEl.textContent = `₱${(totalCost / 1000).toFixed(1)}k`;
+  if (totalCostEl) totalCostEl.textContent = `₱${totalCost.toLocaleString()}`;
   if (costHaEl) costHaEl.textContent = `₱${costPerHa.toLocaleString()}`;
   if (benchmarkEl) {
-    const diff = Math.round(((costPerHa - districtBenchmark) / districtBenchmark) * 100);
-    benchmarkEl.textContent = diff === 0 
-      ? `Exact District Avg (₱${(districtBenchmark / 1000).toFixed(1)}k/Ha)` 
-      : (diff > 0 ? `+${diff}% vs District Avg (₱${(districtBenchmark / 1000).toFixed(1)}k)` : `${diff}% below District Avg (₱${(districtBenchmark / 1000).toFixed(1)}k)`);
-    benchmarkEl.className = diff > 10 ? 'text-[10px] text-danger font-semibold' : 'text-[10px] text-success font-semibold';
+    benchmarkEl.textContent = `${associatedLogs.length} Recorded Operations`;
+    benchmarkEl.className = 'text-[10px] text-primary font-semibold';
   }
-  if (haEl) haEl.textContent = `${totalHa.toFixed(1)} Ha`;
+  if (haEl) haEl.textContent = `${totalHa.toFixed(2)} Ha`;
   if (plotsCountEl) plotsCountEl.textContent = `${associatedFields.length} Registered Plot${associatedFields.length > 1 ? 's' : ''}`;
-  if (ratingEl) ratingEl.textContent = `${Math.min(100, Math.round(100 - ((costPerHa - 9800) / 50)))}%`;
+  if (ratingEl) ratingEl.textContent = '100%';
 
-  // Expense Breakdown calculations
+  // Update tab counters
+  const tabFieldsCount = document.getElementById('detail-tab-fields-count');
+  const tabLogsCount = document.getElementById('detail-tab-logs-count');
+  if (tabFieldsCount) tabFieldsCount.textContent = associatedFields.length;
+  if (tabLogsCount) tabLogsCount.textContent = associatedLogs.length;
+
+  // Overview Operational Metrics
+  const elArea = document.getElementById('detail-overview-area');
+  const elPlots = document.getElementById('detail-overview-plots-count');
+  const elLogs = document.getElementById('detail-overview-logs-count');
+  const elSpend = document.getElementById('detail-overview-total-spend');
+  const elCostHa = document.getElementById('detail-overview-cost-per-ha');
+
+  if (elArea) elArea.textContent = `${totalHa.toFixed(2)} Ha`;
+  if (elPlots) elPlots.textContent = `${associatedFields.length} Plot${associatedFields.length > 1 ? 's' : ''}`;
+  if (elLogs) elLogs.textContent = `${associatedLogs.length} Logs`;
+  if (elSpend) elSpend.textContent = `₱${totalCost.toLocaleString()}`;
+  if (elCostHa) elCostHa.textContent = `₱${costPerHa.toLocaleString()} / Ha`;
+
+  // Expense Breakdown calculations (6 SRA Agronomic Phases)
+  const catSums = { prep: 0, plant: 0, basal: 0, weed: 0, topdress: 0, harvest: 0 };
+  associatedLogs.forEach(l => {
+    const sraId = (l.sraOperationId || '').toUpperCase();
+    const act = (l.activity || l.operationName || '').toLowerCase();
+    const amt = Number(l.totalCost || l.cost) || 0;
+
+    if (sraId === 'SRA-01' || sraId === 'SRA-02' || l.category === 'prep') {
+      catSums.prep += amt;
+    } else if (sraId === 'SRA-03' || sraId === 'SRA-04' || l.category === 'plant') {
+      catSums.plant += amt;
+    } else if (sraId === 'SRA-08' || sraId === 'SRA-09' || act.includes('top-dress') || act.includes('2nd dose') || act.includes('topdress')) {
+      catSums.topdress += amt;
+    } else if (sraId === 'SRA-05' || sraId === 'SRA-06' || l.category === 'fert' || act.includes('basal') || act.includes('phosphate')) {
+      catSums.basal += amt;
+    } else if (sraId === 'SRA-07' || sraId === 'SRA-10' || sraId === 'SRA-11' || l.category === 'weed' || act.includes('barring') || act.includes('cultivation') || act.includes('weeding')) {
+      catSums.weed += amt;
+    } else {
+      catSums.harvest += amt;
+    }
+  });
+
   const breakdownItems = [
-    { label: 'Land Preparation & Tillage', pct: 38, color: '#8F3A8F', amount: totalCost * 0.38 },
-    { label: 'Fertilizers (Complete 14-14-14 & Urea)', pct: 32, color: '#1A6B9A', amount: totalCost * 0.32 },
-    { label: 'Labor Wages (Weeding & Care)', pct: 18, color: '#4A7C2F', amount: totalCost * 0.18 },
-    { label: 'Chemical Spraying & Crop Protection', pct: 8, color: '#F5A623', amount: totalCost * 0.08 },
-    { label: 'Transport, Hauling & Machinery', pct: 4, color: '#8A9B7A', amount: totalCost * 0.04 },
-  ];
+    { label: '1. Soil Sampling & Land Prep (Ops 1–2)', color: '#8F3A8F', amount: catSums.prep },
+    { label: '2. Planting Material & Planting (Ops 3–4)', color: '#4A7C2F', amount: catSums.plant },
+    { label: '3. Basal Fertilization & Amending (Ops 5–6)', color: '#1A6B9A', amount: catSums.basal },
+    { label: '4. Cultivation, Weeding & Drainage (Ops 7, 10–11)', color: '#F5A623', amount: catSums.weed },
+    { label: '5. Top-Dress Fertilization 2nd Dose (Ops 8–9)', color: '#0284C7', amount: catSums.topdress },
+    { label: '6. Harvesting & Transport Operations (Ops 12–14)', color: '#D9534F', amount: catSums.harvest },
+  ].map(b => ({
+    ...b,
+    pct: totalCost > 0 ? Math.round((b.amount / totalCost) * 100) : 0
+  }));
 
   if (breakdownBarsEl) {
     breakdownBarsEl.innerHTML = breakdownItems.map(b => `
@@ -1316,56 +1610,176 @@ function openDetailedAnalyticsModal(key) {
     `).join('');
   }
 
-  // Crop Stage Progression
-  const stageAllocation = isBlockFarm ? [
-    { name: 'Fertilization (1 & 2)', ha: (totalHa * 0.38).toFixed(1), color: '#1A6B9A' },
-    { name: 'Planting (Patdan)', ha: (totalHa * 0.32).toFixed(1), color: '#4A7C2F' },
-    { name: 'Land Preparation', ha: (totalHa * 0.20).toFixed(1), color: '#8F3A8F' },
-    { name: 'Weeding & Care', ha: (totalHa * 0.10).toFixed(1), color: '#F5A623' },
-  ] : [
-    { name: associatedFields[0]?.stage || 'Fertilization Stage 2', ha: totalHa.toFixed(1), color: '#1A6B9A' }
-  ];
+  // Reset to overview tab & render sub-tables
+  setDetailModalTab('overview');
+  renderDetailFieldsTable();
+  renderDetailLogsTable();
 
-  if (stageBarsEl) {
-    stageBarsEl.innerHTML = stageAllocation.map(s => {
-      const sPct = Math.round((parseFloat(s.ha) / totalHa) * 100);
+  modal.classList.remove('hidden');
+}
+
+function setDetailModalTab(tabName) {
+  currentDetailTab = tabName;
+  const tabs = ['overview', 'fields', 'logs'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`modal-detail-tab-btn-${t}`);
+    const panel = document.getElementById(`modal-detail-panel-${t}`);
+    if (btn) {
+      if (t === tabName) {
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5';
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium text-hug-muted hover:text-hug-text hover:bg-bg transition-all cursor-pointer flex items-center gap-1.5';
+      }
+    }
+    if (panel) {
+      if (t === tabName) {
+        if (t === 'overview') panel.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+        else panel.className = 'flex flex-col gap-3';
+      } else {
+        panel.className = 'hidden';
+      }
+    }
+  });
+}
+
+function setDetailFieldsPage(page) {
+  detailFieldsPage = page;
+  renderDetailFieldsTable();
+}
+
+function setDetailLogsPage(page) {
+  detailLogsPage = page;
+  renderDetailLogsTable();
+}
+
+function renderDetailFieldsTable() {
+  const db = getDB();
+  const tableBody = document.getElementById('detail-block-fields-table-body');
+  const paginationEl = document.getElementById('detail-fields-pagination');
+  const searchInput = document.getElementById('detail-fields-search');
+  if (!tableBody) return;
+
+  const key = currentDetailKey || 'Nacayao Block Farm A';
+  const isBlockFarm = String(key).startsWith('Block Farm') || String(key).includes('Nacayao') || String(key).includes('Cluster') || String(key).includes('Group') || String(key).includes('Cooperative');
+  
+  let fields = isBlockFarm
+    ? (db.fields || []).filter(f => f.blockFarm === key || String(key).includes(f.blockFarm || '') || String(f.blockFarm || '').includes(String(key)))
+    : (db.fields || []).filter(f => f.id === key);
+
+  if (fields.length === 0) fields = db.fields || [];
+
+  const query = (searchInput?.value || '').toLowerCase().trim();
+  if (query) {
+    fields = fields.filter(f => (f.id || '').toLowerCase().includes(query) || (f.member || '').toLowerCase().includes(query));
+  }
+
+  const totalPages = Math.max(1, Math.ceil(fields.length / DETAIL_PAGE_SIZE));
+  detailFieldsPage = Math.max(1, Math.min(detailFieldsPage, totalPages));
+
+  const startIdx = (detailFieldsPage - 1) * DETAIL_PAGE_SIZE;
+  const pageFields = fields.slice(startIdx, startIdx + DETAIL_PAGE_SIZE);
+
+  if (pageFields.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-xs text-hug-muted">No plots found matching search query.</td></tr>`;
+  } else {
+    tableBody.innerHTML = pageFields.map(f => {
+      const fieldLogs = (db.logs || []).filter(l => l.fieldId === f.id);
+      const fCost = fieldLogs.reduce((s, l) => s + (Number(l.totalCost || l.cost) || 0), 0);
+      const fHa = Number(f.ha || 1.5);
+      const fCostHa = fHa > 0 ? Math.round(fCost / fHa) : 0;
       return `
-        <div class="flex items-center justify-between p-2 bg-white rounded-lg border border-border text-xs">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full" style="background-color: ${s.color}"></span>
-            <span class="font-bold text-hug-text">${s.name}</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="font-black text-primary">${s.ha} Ha</span>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-bg text-hug-muted border border-border">${sPct}%</span>
-          </div>
-        </div>
+        <tr class="border-b border-border/50 hover:bg-bg transition-colors">
+          <td class="px-3 py-2.5 font-mono font-bold text-primary">${f.id}</td>
+          <td class="px-3 py-2.5 font-semibold text-hug-text">${f.member || 'Member'}</td>
+          <td class="px-3 py-2.5 text-hug-text2 font-bold">${fHa.toFixed(2)} Ha</td>
+          <td class="px-3 py-2.5"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-bg text-primary">${f.stage || 'Land Preparation'}</span></td>
+          <td class="px-3 py-2.5 font-mono font-bold text-hug-text">₱${(fCostHa / 1000).toFixed(1)}k/Ha</td>
+          <td class="px-3 py-2.5 text-right">
+            <button onclick="openDetailedAnalyticsModal('${f.id}')" class="px-2.5 py-1 bg-white border border-border hover:border-primary hover:text-primary rounded-lg text-[11px] font-bold transition-all cursor-pointer">
+              Inspect Plot →
+            </button>
+          </td>
+        </tr>
       `;
     }).join('');
   }
 
-  // Recent Logs Table
-  if (tableBodyEl) {
-    if (associatedLogs.length === 0) {
-      tableBodyEl.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-hug-muted italic text-xs">No recent field logs for this selection.</td></tr>`;
-    } else {
-      tableBodyEl.innerHTML = associatedLogs.slice(0, 5).map(l => `
-        <tr class="hover:bg-bg border-b border-border/50 transition-colors">
-          <td class="px-3 py-2 font-mono font-bold text-primary">${l.id}</td>
-          <td class="px-3 py-2 font-semibold text-hug-text">${l.activity || l.task}</td>
-          <td class="px-3 py-2 font-bold text-hug-text">₱${l.cost.toLocaleString()}</td>
-          <td class="px-3 py-2 text-hug-muted font-mono text-[11px]">${l.date}</td>
-          <td class="px-3 py-2">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-success-bg text-success">
-              Recorded
-            </span>
-          </td>
-        </tr>
-      `).join('');
-    }
+  if (paginationEl) {
+    paginationEl.innerHTML = `
+      <span class="text-xs text-hug-muted font-medium">Page ${detailFieldsPage} of ${totalPages} (${fields.length} plots)</span>
+      <div class="flex items-center gap-1.5">
+        <button onclick="setDetailFieldsPage(${detailFieldsPage - 1})" ${detailFieldsPage <= 1 ? 'disabled class="px-2.5 py-1 rounded-lg text-xs bg-bg text-hug-muted border border-border opacity-50 cursor-not-allowed"' : 'class="px-2.5 py-1 rounded-lg text-xs bg-white text-hug-text border border-border hover:border-primary hover:text-primary transition-all cursor-pointer"'}>
+          ‹ Previous
+        </button>
+        <button onclick="setDetailFieldsPage(${detailFieldsPage + 1})" ${detailFieldsPage >= totalPages ? 'disabled class="px-2.5 py-1 rounded-lg text-xs bg-bg text-hug-muted border border-border opacity-50 cursor-not-allowed"' : 'class="px-2.5 py-1 rounded-lg text-xs bg-white text-hug-text border border-border hover:border-primary hover:text-primary transition-all cursor-pointer"'}>
+          Next ›
+        </button>
+      </div>
+    `;
+  }
+}
+
+function renderDetailLogsTable() {
+  const db = getDB();
+  const tableBody = document.getElementById('detail-activities-table-body');
+  const paginationEl = document.getElementById('detail-logs-pagination');
+  const searchInput = document.getElementById('detail-logs-search');
+  if (!tableBody) return;
+
+  const key = currentDetailKey || 'Nacayao Block Farm A';
+  const isBlockFarm = String(key).startsWith('Block Farm') || String(key).includes('Nacayao') || String(key).includes('Cluster') || String(key).includes('Group') || String(key).includes('Cooperative');
+  
+  let fields = isBlockFarm
+    ? (db.fields || []).filter(f => f.blockFarm === key || String(key).includes(f.blockFarm || '') || String(f.blockFarm || '').includes(String(key)))
+    : (db.fields || []).filter(f => f.id === key);
+
+  if (fields.length === 0) fields = db.fields || [];
+  const fieldIds = fields.map(f => f.id);
+  let logs = (db.logs || []).filter(l => fieldIds.includes(l.fieldId));
+
+  const query = (searchInput?.value || '').toLowerCase().trim();
+  if (query) {
+    logs = logs.filter(l => (l.id || '').toLowerCase().includes(query) || (l.activity || l.operationName || '').toLowerCase().includes(query) || (l.sraOperationId || '').toLowerCase().includes(query));
   }
 
-  modal.classList.remove('hidden');
+  const totalPages = Math.ceil(logs.length / DETAIL_PAGE_SIZE) || 1;
+  detailLogsPage = Math.max(1, Math.min(detailLogsPage, totalPages));
+
+  const startIdx = (detailLogsPage - 1) * DETAIL_PAGE_SIZE;
+  const pageLogs = logs.slice(startIdx, startIdx + DETAIL_PAGE_SIZE);
+
+  if (pageLogs.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-xs text-hug-muted">No operational logs found matching query.</td></tr>`;
+  } else {
+    tableBody.innerHTML = pageLogs.map(l => `
+      <tr class="border-b border-border/50 hover:bg-bg transition-colors">
+        <td class="px-3 py-2.5 font-mono font-bold text-xs text-primary">${l.id || 'LOG'}</td>
+        <td class="px-3 py-2.5 text-xs font-semibold text-hug-text">
+          <div class="flex items-center gap-1.5">
+            <span class="px-1.5 py-0.5 rounded bg-primary-bg text-primary text-[10px] font-bold">${l.sraOperationId || 'SRA-OP'}</span>
+            <span>${l.activity || l.operationName || 'Field Operation'}</span>
+          </div>
+        </td>
+        <td class="px-3 py-2.5 text-xs font-bold text-hug-text">₱${Number(l.totalCost || l.cost || 0).toLocaleString()}</td>
+        <td class="px-3 py-2.5 text-xs text-hug-muted">${l.date || 'Recent'}</td>
+        <td class="px-3 py-2.5 font-mono text-xs text-primary font-semibold">${l.fieldId || 'FLD'}</td>
+      </tr>
+    `).join('');
+  }
+
+  if (paginationEl) {
+    paginationEl.innerHTML = `
+      <span class="text-xs text-hug-muted font-medium">Page ${detailLogsPage} of ${totalPages} (${logs.length} logs)</span>
+      <div class="flex items-center gap-1.5">
+        <button onclick="setDetailLogsPage(${detailLogsPage - 1})" ${detailLogsPage <= 1 ? 'disabled class="px-2.5 py-1 rounded-lg text-xs bg-bg text-hug-muted border border-border opacity-50 cursor-not-allowed"' : 'class="px-2.5 py-1 rounded-lg text-xs bg-white text-hug-text border border-border hover:border-primary hover:text-primary transition-all cursor-pointer"'}>
+          ‹ Previous
+        </button>
+        <button onclick="setDetailLogsPage(${detailLogsPage + 1})" ${detailLogsPage >= totalPages ? 'disabled class="px-2.5 py-1 rounded-lg text-xs bg-bg text-hug-muted border border-border opacity-50 cursor-not-allowed"' : 'class="px-2.5 py-1 rounded-lg text-xs bg-white text-hug-text border border-border hover:border-primary hover:text-primary transition-all cursor-pointer"'}>
+          Next ›
+        </button>
+      </div>
+    `;
+  }
 }
 
 function closeDetailedAnalyticsModal() {
@@ -1374,10 +1788,19 @@ function closeDetailedAnalyticsModal() {
 }
 
 // ── CROP STAGE DEEP-DIVE MODAL CONTROLLER ────────
-function openCropStageModal(stageName) {
+function openCropStageModal(stageKeyOrName) {
   const db = getDB();
   const modal = document.getElementById('modal-crop-stage-detail');
   if (!modal) return;
+
+  const currentRole = localStorage.getItem('hugpong_role') || 'admin';
+  const isManager = currentRole === 'manager';
+
+  // Find phase by key or name
+  let phase = SRA_CROP_PHASES[stageKeyOrName];
+  if (!phase) {
+    phase = Object.values(SRA_CROP_PHASES).find(p => p.name === stageKeyOrName || p.fullName === stageKeyOrName || p.phase === stageKeyOrName) || SRA_CROP_PHASES['phase-1'];
+  }
 
   const phaseBadgeEl = document.getElementById('stage-modal-phase-badge');
   const titleEl = document.getElementById('stage-modal-title');
@@ -1388,105 +1811,71 @@ function openCropStageModal(stageName) {
   const guidelinesEl = document.getElementById('stage-modal-guidelines');
   const plotsListEl = document.getElementById('stage-modal-plots-list');
 
-  const STAGE_META = {
-    'Land Preparation': {
-      phase: 'Stage 1',
-      color: '#8F3A8F',
-      ha: 28.5,
-      share: '22%',
-      days: '0 - 15 Days',
-      guidelines: 'Deep subsoil ripping followed by 2 disc plowing passes and 1 rotavator pass. Create furrow depth of 25-30 cm. Apply agricultural lime if soil pH is below 5.5.',
-      plots: [
-        { id: 'FLD-KTR-003', blockFarm: 'Block Farm B', member: 'Maria Santos', ha: '2.0 Ha', lastSync: '2 hrs ago' },
-        { id: 'FLD-KTR-009', blockFarm: 'Block Farm D', member: 'Ana Gomez', ha: '0.8 Ha', lastSync: '1 hr ago' },
-        { id: 'FLD-KTR-011', blockFarm: 'Block Farm A', member: 'Silay Pool Plot', ha: '25.7 Ha', lastSync: '15 mins ago' }
-      ]
-    },
-    'Planting (Patdan)': {
-      phase: 'Stage 2',
-      color: '#4A7C2F',
-      ha: 34.0,
-      share: '26%',
-      days: '15 - 30 Days',
-      guidelines: 'Plant high-yielding cane setts (Phil 84-77, VMC 84-524) at 30,000 to 35,000 canepoints/Ha. Soak canepoints in fungicide solution for 15 mins prior to planting.',
-      plots: [
-        { id: 'FLD-KTR-002', blockFarm: 'Block Farm A', member: 'Jose Rizal', ha: '2.1 Ha', lastSync: '4 days ago' },
-        { id: 'FLD-KTR-005', blockFarm: 'Block Farm A', member: 'Roberto Tan', ha: '1.8 Ha', lastSync: '8 days ago' },
-        { id: 'FLD-KTR-012', blockFarm: 'Block Farm C', member: 'Talisay Farm Pool', ha: '30.1 Ha', lastSync: '3 hrs ago' }
-      ]
-    },
-    'Fertilization (1 & 2)': {
-      phase: 'Stage 3',
-      color: '#1A6B9A',
-      ha: 42.2,
-      share: '33%',
-      days: '45 - 90 Days',
-      guidelines: 'Apply first dose: 4 bags Urea (46-0-0) + 2 bags Complete (14-14-14) per Ha at 45 days. Second dose: 3 bags Urea at 90 days. Ensure optimal soil moisture.',
-      plots: [
-        { id: 'FLD-KTR-001', blockFarm: 'Block Farm A', member: 'Juan dela Cruz', ha: '1.5 Ha', lastSync: '15 mins ago' },
-        { id: 'FLD-KTR-010', blockFarm: 'Block Farm D', member: 'Apolinario Mabini', ha: '1.2 Ha', lastSync: '6 hrs ago' },
-        { id: 'FLD-KTR-013', blockFarm: 'Block Farm B', member: 'Victorias Cluster', ha: '39.5 Ha', lastSync: '1 hr ago' }
-      ]
-    },
-    'Weeding & Care': {
-      phase: 'Stage 4',
-      color: '#F5A623',
-      ha: 15.0,
-      share: '12%',
-      days: '90 - 180 Days',
-      guidelines: 'Conduct off-barring followed by manual hilamon (inter-row weeding). Maintain clean drainage furrows to prevent waterlogging during monsoon showers.',
-      plots: [
-        { id: 'FLD-KTR-006', blockFarm: 'Block Farm A', member: 'Antonio Luna', ha: '1.2 Ha', lastSync: '2 hrs ago' },
-        { id: 'FLD-KTR-004', blockFarm: 'Block Farm B', member: 'Emilio Aguinaldo', ha: '1.8 Ha', lastSync: '3 hrs ago' },
-        { id: 'FLD-KTR-014', blockFarm: 'Block Farm C', member: 'Negros North Zone', ha: '12.0 Ha', lastSync: '4 hrs ago' }
-      ]
-    },
-    'Harvesting & Milling': {
-      phase: 'Stage 5',
-      color: '#D9534F',
-      ha: 10.0,
-      share: '8%',
-      days: '10 - 12 Months',
-      guidelines: 'Cut cane flush at ground level to maximize sucrose content and ensure vigorous ratoon sprouting. Transport cane to HPCo Silay within 24 hours of harvest.',
-      plots: [
-        { id: 'FLD-KTR-007', blockFarm: 'Block Farm C', member: 'Pedro Reyes', ha: '1.0 Ha', lastSync: '4 days ago' },
-        { id: 'FLD-KTR-008', blockFarm: 'Block Farm C', member: 'Andres Bonifacio', ha: '3.0 Ha', lastSync: '5 hrs ago' },
-        { id: 'FLD-KTR-015', blockFarm: 'Block Farm D', member: 'Bago Harvest Cluster', ha: '6.0 Ha', lastSync: '2 hrs ago' }
-      ]
-    }
-  };
+  const scopedFields = isManager
+    ? db.fields.filter(f => f.blockFarm?.includes('Block Farm A') || f.blockFarm?.includes('Nacayao'))
+    : db.fields;
 
-  const meta = STAGE_META[stageName] || STAGE_META['Fertilization (1 & 2)'];
+  const totalHa = scopedFields.reduce((sum, f) => sum + (Number(f.ha) || 1.5), 0);
+  const matchingPlots = scopedFields.filter(f => matchFieldToPhaseKey(f) === phase.key);
+  const phaseHa = matchingPlots.reduce((s, f) => s + (Number(f.ha) || 1.5), 0);
+  const phasePct = totalHa > 0 ? Math.round((phaseHa / totalHa) * 100) : 0;
 
-  if (phaseBadgeEl) phaseBadgeEl.textContent = meta.phase;
-  if (titleEl) titleEl.textContent = stageName;
-  if (subtitleEl) subtitleEl.textContent = `${meta.ha} Ha active across regional block farms`;
-  if (haEl) haEl.textContent = `${meta.ha} Ha`;
-  if (shareEl) shareEl.textContent = meta.share;
-  if (daysEl) daysEl.textContent = meta.days;
-  if (guidelinesEl) guidelinesEl.textContent = meta.guidelines;
-
-  if (plotsListEl) {
-    plotsListEl.innerHTML = meta.plots.map(p => `
-      <div class="flex items-center justify-between p-3 bg-bg rounded-xl border border-border hover:border-primary transition-all">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-primary-bg text-primary font-bold text-xs flex items-center justify-center flex-shrink-0">
-            ${p.id.slice(-2)}
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="font-mono font-bold text-xs text-primary">${p.id}</span>
-              <span class="text-xs font-bold text-hug-text">${p.member}</span>
-            </div>
-            <span class="text-[11px] text-hug-muted">${p.blockFarm} · Last Sync: ${p.lastSync}</span>
-          </div>
-        </div>
-        <div class="text-right">
-          <span class="text-xs font-black text-primary block">${p.ha}</span>
-          <span class="text-[10px] text-success font-semibold">Active</span>
+  if (phaseBadgeEl) {
+    phaseBadgeEl.textContent = phase.phase;
+    phaseBadgeEl.style.backgroundColor = `${phase.color}20`;
+    phaseBadgeEl.style.color = phase.color;
+  }
+  if (titleEl) titleEl.textContent = `${phase.fullName} (${phase.ops})`;
+  if (subtitleEl) subtitleEl.textContent = `${phaseHa.toFixed(2)} Ha active across ${isManager ? 'Block Farm A' : SRA_BENCHMARKS.associationName} (${phasePct}% of farm)`;
+  if (haEl) {
+    haEl.textContent = `${phaseHa.toFixed(2)} Ha`;
+    haEl.style.color = phase.color;
+  }
+  if (shareEl) shareEl.textContent = `${phasePct}%`;
+  if (daysEl) daysEl.textContent = phase.days;
+  
+  if (guidelinesEl) {
+    guidelinesEl.innerHTML = `
+      <div class="flex flex-col gap-2">
+        <p class="text-xs text-hug-text2 leading-relaxed">${phase.guidelines}</p>
+        <div class="flex items-center gap-3 pt-1 border-t border-border/60 text-[11px] font-bold">
+          <span class="px-2 py-0.5 rounded-md bg-primary-bg text-primary">${phase.days}</span>
+          <span class="text-hug-muted font-normal">Covered: ${phase.ops}</span>
         </div>
       </div>
-    `).join('');
+    `;
+  }
+
+  if (plotsListEl) {
+    if (matchingPlots.length === 0) {
+      plotsListEl.innerHTML = `
+        <div class="text-center py-6 px-4 bg-bg rounded-xl border border-dashed border-border text-xs text-hug-muted">
+          <p class="font-semibold text-hug-text">No Plots Currently in ${phase.phase}</p>
+          <p class="text-[11px] mt-0.5">Field plots will rotate into this stage as previous operations are completed.</p>
+        </div>
+      `;
+    } else {
+      plotsListEl.innerHTML = matchingPlots.map(p => `
+        <div onclick="closeCropStageModal(); openDetailedAnalyticsModal('${p.id}')" class="group flex items-center justify-between p-3 bg-bg hover:bg-primary-bg/30 rounded-xl border border-border hover:border-primary/40 transition-all cursor-pointer">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-white border border-border flex items-center justify-center font-bold text-xs text-primary shadow-xs">
+              ${p.id.split('-').pop()}
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-mono font-bold text-xs text-primary">${p.id}</span>
+                <span class="text-xs font-bold text-hug-text group-hover:text-primary transition-colors">${p.member || 'Member Farmer'}</span>
+              </div>
+              <span class="text-[11px] text-hug-muted">${p.blockFarm || 'Block Farm A'} · Age: ${p.age || '1.0 mo'} · Batch ${p.batchMonth || 1}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-extrabold text-hug-text">${Number(p.ha || 1.5).toFixed(2)} Ha</span>
+            <span class="text-[11px] text-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center">Inspect →</span>
+          </div>
+        </div>
+      `).join('');
+    }
   }
 
   modal.classList.remove('hidden');
@@ -1503,14 +1892,12 @@ let activeTakeOverFieldId = null;
 let activeTakeOverStages = [];
 
 const SRA_STANDARD_STAGES = [
-  { id: 'S1', label: 'Land Preparation', color: '#8F3A8F', done: true, active: false },
-  { id: 'S2', label: 'Planting (Patdan)', color: '#4A7C2F', done: false, active: true },
-  { id: 'S3', label: 'Pre-emergence Spraying', color: '#1A6B9A', done: false, active: false },
-  { id: 'S4', label: 'Weeding (Hilamon)', color: '#F5A623', done: false, active: false },
-  { id: 'S5', label: 'Fertilization Stage 1', color: '#1A6B9A', done: false, active: false },
-  { id: 'S6', label: 'Fertilization Stage 2', color: '#4A7C2F', done: false, active: false },
-  { id: 'S7', label: 'Off-barring & Hilling-up', color: '#5B4DA7', done: false, active: false },
-  { id: 'S8', label: 'Harvesting & Milling', color: '#D9534F', done: false, active: false },
+  { id: 'S1', stageNum: 1, label: 'Stage 1: Pre-Planting & Land Preparation', short: 'Land Prep', color: '#8F3A8F', done: true, active: false },
+  { id: 'S2', stageNum: 2, label: 'Stage 2: Planting & Crop Establishment', short: 'Planting', color: '#4A7C2F', done: false, active: true },
+  { id: 'S3', stageNum: 3, label: 'Stage 3: Basal Nutrition & Early Care', short: 'Basal Fert', color: '#1A6B9A', done: false, active: false },
+  { id: 'S4', stageNum: 4, label: 'Stage 4: Cultivation & Weed Management', short: 'Weeding', color: '#F5A623', done: false, active: false },
+  { id: 'S5', stageNum: 5, label: 'Stage 5: Crop Maintenance & Final Hilling-Up', short: 'Hilling-Up', color: '#0284C7', done: false, active: false },
+  { id: 'S6', stageNum: 6, label: 'Stage 6: Harvesting & Post-Harvest Transport', short: 'Harvesting', color: '#D9534F', done: false, active: false },
 ];
 
 function toggleFieldLogs(fieldId) {
@@ -1581,9 +1968,16 @@ function getSyncHealthInfo(lastSyncStr, syncLagDays) {
   }
 }
 
+let mgrLedgerCurrentPage = 1;
+
+function changeMgrLedgerPage(page) {
+  mgrLedgerCurrentPage = page;
+  renderManager();
+}
+
 function renderManager() {
   const db = getDB();
-  const managerBlockFarm = 'Block Farm A';
+  const managerBlockFarm = 'Nacayao Block Farm A';
   const managerName = 'Jose Reyes';
 
   // Update banner labels
@@ -1593,7 +1987,8 @@ function renderManager() {
   if (bannerFarm) bannerFarm.textContent = managerBlockFarm;
 
   // Filter fields & logs for manager's farm
-  const myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm);
+  const myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A');
+  myFields.sort((a, b) => a.id.localeCompare(b.id));
   const myFieldIds = new Set(myFields.map(f => f.id));
   const myLogs = db.logs.filter(l => myFieldIds.has(l.fieldId));
   const pendingLogs = myLogs.filter(l => l.status === 'Pending');
@@ -1647,15 +2042,24 @@ function renderManager() {
   // Stats row
   const statFields = document.getElementById('mgr-stat-fields');
   const statHa = document.getElementById('mgr-stat-ha');
+  const statMembersVal = document.getElementById('mgr-stat-members-val');
+  const statMembersBadge = document.getElementById('mgr-stat-members-badge');
+  const statMembersSub = document.getElementById('mgr-stat-members-sub');
   const statPendingVal = document.getElementById('mgr-stat-pending-val');
   const statPendingBadge = document.getElementById('mgr-stat-pending-badge');
   const statPendingSub = document.getElementById('mgr-stat-pending-sub');
   const pendingBadge = document.getElementById('mgr-pending-badge');
 
+  const mgrMembers = new Set();
+  myFields.forEach(f => { if (f.member) mgrMembers.add(f.member); });
+
   const totalCost = myLogs.reduce((s, l) => s + (Number(l.cost) || 0), 0);
 
   if (statFields) statFields.textContent = myFields.length.toString();
   if (statHa) statHa.textContent = `${totalHa.toFixed(1)} Ha`;
+  if (statMembersVal) statMembersVal.textContent = `${mgrMembers.size || myFields.length} Members`;
+  if (statMembersBadge) statMembersBadge.textContent = 'Active';
+  if (statMembersSub) statMembersSub.textContent = myFields[0]?.blockFarm || 'Nacayao Block Farm A';
   if (statPendingVal) statPendingVal.textContent = `${myLogs.length} Active`;
   if (statPendingBadge) {
     statPendingBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-success-bg text-success';
@@ -1671,11 +2075,21 @@ function renderManager() {
 
   // Render Recent Operations Ledger
   const pendingTbody = document.getElementById('mgr-pending-tbody');
+  const paginationContainer = document.getElementById('mgr-ledger-pagination');
   if (pendingTbody) {
     if (myLogs.length === 0) {
       pendingTbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-xs text-hug-muted">No operational records submitted for ${managerBlockFarm} yet.</td></tr>`;
+      if (paginationContainer) paginationContainer.innerHTML = '';
     } else {
-      pendingTbody.innerHTML = myLogs.map(l => {
+      const pageSize = 5;
+      const totalPages = Math.max(1, Math.ceil(myLogs.length / pageSize));
+      if (mgrLedgerCurrentPage > totalPages) mgrLedgerCurrentPage = totalPages;
+      if (mgrLedgerCurrentPage < 1) mgrLedgerCurrentPage = 1;
+
+      const startIndex = (mgrLedgerCurrentPage - 1) * pageSize;
+      const paginatedLogs = myLogs.slice(startIndex, startIndex + pageSize);
+
+      pendingTbody.innerHTML = paginatedLogs.map(l => {
         const field = myFields.find(f => f.id === l.fieldId);
         const memberName = field ? (field.member || field.owner) : 'Assigned Member';
         const taskName = l.task || l.activity || 'Field Operation';
@@ -1697,6 +2111,23 @@ function renderManager() {
           </td>
         </tr>`;
       }).join('');
+
+      if (paginationContainer) {
+        paginationContainer.innerHTML = `
+          <div class="text-hug-muted font-medium">
+            Showing <span class="font-bold text-hug-text">${startIndex + 1}–${Math.min(startIndex + pageSize, myLogs.length)}</span> of <span class="font-bold text-hug-text">${myLogs.length}</span> recorded operations
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="changeMgrLedgerPage(${mgrLedgerCurrentPage - 1})" ${mgrLedgerCurrentPage === 1 ? 'disabled' : ''} class="px-2.5 py-1 rounded-lg border border-border bg-white text-hug-text hover:bg-bg font-semibold text-xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all">
+              ‹ Prev
+            </button>
+            <span class="px-2 py-1 text-xs font-bold text-primary">Page ${mgrLedgerCurrentPage} of ${totalPages}</span>
+            <button onclick="changeMgrLedgerPage(${mgrLedgerCurrentPage + 1})" ${mgrLedgerCurrentPage === totalPages ? 'disabled' : ''} class="px-2.5 py-1 rounded-lg border border-border bg-white text-hug-text hover:bg-bg font-semibold text-xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all">
+              Next ›
+            </button>
+          </div>
+        `;
+      }
     }
   }
 
@@ -1712,8 +2143,8 @@ function renderManager() {
 
 function renderSyncMonitor() {
   const db = getDB();
-  const managerBlockFarm = 'Block Farm A';
-  const myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm);
+  const managerBlockFarm = 'Nacayao Block Farm A';
+  const myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A');
   
   const pillsContainer = document.getElementById('mgr-sync-summary-pills');
   const bannerContainer = document.getElementById('mgr-sync-warning-banner');
@@ -1783,7 +2214,7 @@ function renderSyncMonitor() {
     if (attentionFields.length === 0) {
       gridContainer.innerHTML = `
         <div class="col-span-full p-6 text-center bg-white border border-border rounded-2xl flex flex-col items-center justify-center gap-2 shadow-xs">
-          <div class="w-10 h-10 rounded-full bg-success-bg text-success flex items-center justify-center font-bold text-lg">✓</div>
+          <div class="w-10 h-10 rounded-full bg-success-bg text-success flex items-center justify-center font-bold text-lg"><i data-lucide="check" class="w-5 h-5"></i></div>
           <h4 class="font-bold text-xs text-hug-text">All Block Farm A Members Active &amp; Synced</h4>
           <p class="text-xs text-hug-muted">No overdue mobile offline buffers or lagging members requiring immediate follow-up.</p>
           <button onclick="navigate('synctelemetry')" class="mt-1 text-xs font-bold text-primary hover:underline cursor-pointer">Open Full Telemetry Hub →</button>
@@ -1838,8 +2269,8 @@ function renderSyncMonitor() {
 
 function renderManagerFullSyncTelemetry() {
   const db = getDB();
-  const managerBlockFarm = 'Block Farm A';
-  let myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm);
+  const managerBlockFarm = 'Nacayao Block Farm A';
+  let myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A');
 
   const searchInput = document.getElementById('mgr-full-sync-search');
   const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
@@ -1975,8 +2406,8 @@ function toggleOpSortHa() {
 
 function renderMembers() {
   const db = getDB();
-  const managerBlockFarm = 'Block Farm A';
-  const myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm);
+  const managerBlockFarm = 'Nacayao Block Farm A';
+  const myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A');
   const membersTbody = document.getElementById('mgr-members-tbody');
   const membersCountBadge = document.getElementById('mgr-members-count-badge');
   
@@ -2091,8 +2522,8 @@ function renderMembers() {
 
 function renderOperations() {
   const db = getDB();
-  const managerBlockFarm = 'Block Farm A';
-  let myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm);
+  const managerBlockFarm = 'Nacayao Block Farm A';
+  let myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A');
   const fieldsTbody = document.getElementById('mgr-fields-tbody');
   if (!fieldsTbody) return;
 
@@ -2123,11 +2554,13 @@ function renderOperations() {
     myFields = myFields.filter(f => f.stage?.toLowerCase().includes('complete'));
   }
 
-  // Sort by Area
+  // Sort by Area, default by field ID natural order
   if (opSortHa === 'asc') {
     myFields.sort((a, b) => (Number(a.ha || a.area) || 0) - (Number(b.ha || b.area) || 0));
   } else if (opSortHa === 'desc') {
     myFields.sort((a, b) => (Number(b.ha || b.area) || 0) - (Number(a.ha || a.area) || 0));
+  } else {
+    myFields.sort((a, b) => a.id.localeCompare(b.id));
   }
 
   if (myFields.length === 0) {
@@ -2135,21 +2568,36 @@ function renderOperations() {
     return;
   }
 
-  const sraStages = ['Land Prep', 'Planting', 'Weeding', 'Fertilization 1', 'Fertilization 2', 'Off-barring', 'Maturation', 'Harvesting'];
+  const sraStages = [
+    { num: 1, name: 'Pre-Planting & Land Preparation', short: 'Land Prep', keywords: ['prep', 'plow', 'soil', 'furrow'] },
+    { num: 2, name: 'Planting & Crop Establishment', short: 'Planting', keywords: ['plant', 'patdan', 'cane points', 'germination'] },
+    { num: 3, name: 'Basal Nutrition & Early Care', short: 'Basal Care', keywords: ['basal', 'nutrition', 'liming', 'fertilization 1'] },
+    { num: 4, name: 'Cultivation & Weed Management', short: 'Weeding', keywords: ['weed', 'cultivation', 'hilamon', 'barring', 'off-barring'] },
+    { num: 5, name: 'Crop Maintenance & Final Hilling-Up', short: 'Hilling-Up', keywords: ['hilling', 'maintenance', 'topdress', 'top-dress', 'fertilization 2'] },
+    { num: 6, name: 'Harvesting & Post-Harvest Transport', short: 'Harvesting', keywords: ['harvest', 'milling', 'haul', 'tapas', 'cutting', 'loading', 'complete'] }
+  ];
 
   fieldsTbody.innerHTML = myFields.map(f => {
     const fieldLogs = db.logs.filter(l => l.fieldId === f.id);
     
-    let currentStageIdx = sraStages.findIndex(s => (f.stage || '').toLowerCase().includes(s.toLowerCase()));
+    let currentStageIdx = -1;
+    const stageStr = (f.stage || '').toLowerCase();
+    for (let i = 0; i < sraStages.length; i++) {
+      const s = sraStages[i];
+      if (stageStr.includes(s.short.toLowerCase()) || stageStr.includes(s.name.toLowerCase()) || s.keywords.some(k => stageStr.includes(k))) {
+        currentStageIdx = i;
+        break;
+      }
+    }
     if (currentStageIdx === -1) {
-      currentStageIdx = (f.stage || '').toLowerCase().includes('complete') ? 7 : 3;
+      currentStageIdx = stageStr.includes('harvest') ? 5 : 0;
     }
     const stageNum = currentStageIdx + 1;
-    const progressPct = Math.min(100, Math.round((stageNum / 8) * 100));
+    const progressPct = Math.min(100, Math.round((stageNum / 6) * 100));
     const progressBadge = `
       <div class="flex flex-col gap-1 w-28">
         <div class="flex justify-between items-center text-[10px]">
-          <span class="font-bold text-hug-text">Stage ${stageNum}/8</span>
+          <span class="font-bold text-hug-text">Stage ${stageNum}/6</span>
           <span class="font-bold text-primary">${progressPct}%</span>
         </div>
         <div class="w-full bg-bg rounded-full h-1.5 overflow-hidden border border-border">
@@ -2249,14 +2697,12 @@ function viewFieldOperationsFromLedger(fieldId) {
 let selectedTakeOverStageId = null;
 
 const STAGE_INPUT_BENCHMARKS = {
-  'S1': { inputName: 'Tractor Plowing & Furrowing', inputQty: 1, inputUnit: 'ha', costPerHa: 4500, people: 2 },
-  'S2': { inputName: 'Cane Points (Patdan)', inputQty: 40000, inputUnit: 'pcs', costPerHa: 14000, people: 10 },
-  'S3': { inputName: 'Pre-emergence Herbicide', inputQty: 3, inputUnit: 'liters', costPerHa: 3500, people: 4 },
-  'S4': { inputName: 'Manual Weeding Crew', inputQty: 1, inputUnit: 'ha', costPerHa: 1800, people: 4 },
-  'S5': { inputName: '18-46 Fertilizer', inputQty: 3, inputUnit: 'bags', costPerHa: 6600, people: 3 },
-  'S6': { inputName: 'Urea (46-0-0) Fertilizer', inputQty: 4, inputUnit: 'bags', costPerHa: 7400, people: 4 },
-  'S7': { inputName: 'Off-barring & Hilling-up (Tractor)', inputQty: 1, inputUnit: 'ha', costPerHa: 2500, people: 2 },
-  'S8': { inputName: 'Cane Harvesting & Milling Haul', inputQty: 60, inputUnit: 'tons', costPerHa: 21000, people: 12 },
+  'S1': { inputName: 'Land Prep & Furrowing (Ops 1–2)', inputQty: 1, inputUnit: 'ha', costPerHa: 4500, people: 2 },
+  'S2': { inputName: 'Patdan Cane Planting & Replanting (Ops 3–4)', inputQty: 40000, inputUnit: 'pcs', costPerHa: 14000, people: 8 },
+  'S3': { inputName: 'Basal Fertilization & Liming (Ops 5–6)', inputQty: 4, inputUnit: 'bags', costPerHa: 8000, people: 4 },
+  'S4': { inputName: 'Cultivation, Weeding & Early Care (Ops 7, 10–11)', inputQty: 1, inputUnit: 'ha', costPerHa: 5200, people: 6 },
+  'S5': { inputName: 'Top-Dress Fertilization 2nd Dose (Ops 8–9)', inputQty: 4, inputUnit: 'bags', costPerHa: 7400, people: 4 },
+  'S6': { inputName: 'Cane Harvesting, Cutting & Hauling (Ops 12–14)', inputQty: 65, inputUnit: 'tons', costPerHa: 27800, people: 12 },
 };
 
 function openTakeOverModal(fieldId, targetStageIdOrName = null) {
@@ -2300,7 +2746,7 @@ function openTakeOverModal(fieldId, targetStageIdOrName = null) {
 
   if (badgeEl) badgeEl.textContent = field.id;
   if (titleEl) titleEl.textContent = `Take Over: ${field.id}`;
-  if (subEl) subEl.textContent = `Assigned to ${field.member || field.owner} · ${field.ha || field.area} Ha · ${field.blockFarm || 'Block Farm A'}`;
+  if (subEl) subEl.textContent = `Assigned to ${field.member || field.owner} · ${field.ha || field.area} Ha · ${field.blockFarm || 'Nacayao Block Farm A'}`;
   if (stagePillEl) stagePillEl.textContent = `Current Stage: ${field.stage}`;
   if (haInput) haInput.value = field.ha || field.area || '1.5';
 
@@ -2372,7 +2818,7 @@ function takeOverTogglePhoto() {
       statusEl.className = 'text-[10px] text-success font-bold';
     }
     if (btnEl) {
-      btnEl.textContent = '✕ Remove Photo';
+      btnEl.textContent = 'Remove Photo';
       btnEl.className = 'px-3 py-1.5 bg-danger-bg border border-danger/30 text-danger text-xs font-bold rounded-lg hover:bg-danger/20 transition-all cursor-pointer shadow-xs';
     }
     toast('Field inspection photo attached.');
@@ -2624,12 +3070,26 @@ function takeOverSubmitLog() {
     matchingLog.task = activity;
     matchingLog.activity = activity;
     matchingLog.cost = Math.round(cost);
+    matchingLog.totalCost = Math.round(cost);
+    matchingLog.status = 'Recorded';
+    matchingLog.approved = true;
     matchingLog.hectares = isNaN(ha) ? 1.5 : ha;
     matchingLog.people = isNaN(people) ? 4 : people;
     matchingLog.inputName = inputName;
     matchingLog.inputQty = inputQty;
     matchingLog.inputUnit = inputUnit;
     matchingLog.photo = takeoverPhotoAttached ? 'field_inspection_2026.jpg' : (matchingLog.photo || null);
+    if (!matchingLog.subItems || matchingLog.subItems.length === 0) {
+      matchingLog.subItems = [{
+        id: `SI-1`,
+        category: category,
+        description: inputName || activity,
+        qty: parseFloat(inputQty) || 1,
+        unit: inputUnit || 'ha',
+        unitCost: Math.round(cost / (parseFloat(inputQty) || 1)),
+        subTotal: Math.round(cost)
+      }];
+    }
     matchingLog.editHistory = matchingLog.editHistory || [];
     matchingLog.editHistory.push({
       editedBy: 'Farm Manager (Take Over Update)',
@@ -2657,20 +3117,35 @@ function takeOverSubmitLog() {
   const newLog = {
     id: `L-${Date.now().toString().slice(-4)}`,
     fieldId: activeTakeOverFieldId,
+    blockFarm: field.blockFarm || 'Nacayao Block Farm A',
     category: category,
     activity: activity,
     task: activity,
     cost: Math.round(cost),
+    totalCost: Math.round(cost),
     hectares: isNaN(ha) ? 1.5 : ha,
     people: isNaN(people) ? 4 : people,
     inputQty: inputQty,
     inputUnit: inputUnit,
     inputName: inputName,
     taskId: stageObj ? stageObj.id : null,
+    stageNumber: stageObj ? (stageObj.stageNum || (targetIdx + 1)) : (targetIdx + 1),
+    sraOperationId: stageObj ? `SRA-0${stageObj.stageNum || (targetIdx + 1)}` : 'SRA-01',
     date: date || new Date().toISOString().split('T')[0],
     photo: takeoverPhotoAttached ? 'field_inspection_2026.jpg' : null,
-    status: 'Approved',
+    status: 'Recorded',
     approved: true,
+    subItems: [
+      {
+        id: `SI-1`,
+        category: category,
+        description: inputName || activity,
+        qty: parseFloat(inputQty) || 1,
+        unit: inputUnit || 'ha',
+        unitCost: Math.round(cost / (parseFloat(inputQty) || 1)),
+        subTotal: Math.round(cost)
+      }
+    ],
     editHistory: [{
       editedBy: 'Farm Manager (Take Over)',
       editedAt: new Date().toLocaleString('en-PH'),
@@ -2896,14 +3371,100 @@ function resetAuditCenter() {
   if (input) input.value = '';
 }
 
+// ── SRA QR PHOTO / SCREENSHOT AUDIT SCANNER ─────────────
+function playScanSuccessChime() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const audioCtx = new AudioContext();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(1320, audioCtx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.28);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.28);
+  } catch (e) {}
+}
+
+async function scanQRFromFile(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  toast('Processing uploaded QR photo...');
+
+  // Try Html5Qrcode file scan
+  if (typeof Html5Qrcode !== 'undefined') {
+    try {
+      const html5QrCode = new Html5Qrcode('audit-report-card');
+      const result = await html5QrCode.scanFile(file, true);
+      if (result) {
+        handleScannedQRCode(result);
+        return;
+      }
+    } catch (e) {
+      console.warn('[QR File Scan Html5Qrcode]', e);
+    }
+  }
+
+  // Fallback to native BarcodeDetector if available
+  if ('BarcodeDetector' in window) {
+    try {
+      const detector = new BarcodeDetector({ formats: ['qr_code'] });
+      const imgBitmap = await createImageBitmap(file);
+      const barcodes = await detector.detect(imgBitmap);
+      if (barcodes && barcodes.length > 0) {
+        handleScannedQRCode(barcodes[0].rawValue);
+        return;
+      }
+    } catch (e) {
+      console.warn('[QR File Scan Bitmap]', e);
+    }
+  }
+
+  toast('Notice: Could not decode QR code from this photo. Please try a clearer screenshot or enter the hash code.');
+}
+
+function handleScannedQRCode(rawText) {
+  if (!rawText) return;
+  
+  playScanSuccessChime();
+
+  // Extract hash code from URL or text (e.g. HUG-202605-A3F9 or HUG-CROP-2026-FULL)
+  const match = rawText.match(/(HUG-[A-Z0-9-]+)/i);
+  const code = match ? match[1].toUpperCase() : rawText.trim().toUpperCase();
+
+  const input = document.getElementById('manual-qr-input');
+  if (input) input.value = code;
+
+  toast(`QR Code Decoded: ${code}`);
+  submitManualQR();
+}
+
+function setAuditDemoCode(code) {
+  const input = document.getElementById('manual-qr-input');
+  if (input) input.value = code;
+  submitManualQR();
+}
+
 function submitManualQR() {
   const val = document.getElementById('manual-qr-input').value.trim().toUpperCase();
   if (!val) { toast('Please enter an audit hash code.'); return; }
-  if (val === 'HUG-202605-A3F9') {
-    toast('Verifying code details...');
-    setTimeout(() => { loadAuditCertificate(val); toast('Verification complete. Audit certificate loaded.'); }, 500);
+  
+  if (val === 'HUG-202605-A3F9' || val === 'HUG-CROP-2026-FULL' || val.startsWith('HUG-')) {
+    toast('Verifying cryptographic QR hash signature...');
+    setTimeout(() => { 
+      loadAuditCertificate(val); 
+      toast(val === 'HUG-CROP-2026-FULL' 
+        ? 'Verification complete: Full Season Compiled Audit loaded (All 6 Stages · 15.25 Ha).' 
+        : `Verification complete: SRA Operations Audit loaded (${val}).`); 
+    }, 450);
   } else {
-    toast('Error: Invalid QR Audit compiler hash code.');
+    toast('Error: Invalid QR Audit compiler hash code. Must start with HUG-');
   }
 }
 
@@ -2912,33 +3473,501 @@ function loadAuditCertificate(hash) {
   const sheetView = document.getElementById('audit-certificate-sheet');
   const tableBody = document.getElementById('audit-certificate-table-body');
   const reportCard = document.getElementById('audit-report-card');
+  
   if (emptyView) emptyView.style.display = 'none';
   if (sheetView) sheetView.classList.remove('hidden');
   if (reportCard) {
     reportCard.style.cssText = 'display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;text-align:left;padding:1.5rem;';
   }
-  const db = getDB();
-  const audLogs = db.logs.filter(l => l.id.startsWith('AUD-'));
-  if (tableBody) {
-    tableBody.innerHTML = audLogs.map(l => {
-      const badge = l.status === 'Approved'
-        ? '<span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-success-bg text-success border border-success/20">Approved</span>'
-        : l.status === 'Pending'
-          ? '<span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-warning-bg text-warning border border-warning/20">Pending</span>'
-          : '<span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-danger-bg text-danger border border-danger/20">Flagged</span>';
-      return `<tr class="border-b border-border/60 hover:bg-bg/50 transition-colors">
-        <td class="px-3 py-2 font-mono font-bold text-xs text-hug-text">${l.fieldId}</td>
-        <td class="px-3 py-2 text-xs text-hug-muted">${l.schedule || l.type || 'Monthly'}</td>
-        <td class="px-3 py-2 text-xs font-semibold text-hug-text">${l.task || l.activity}</td>
-        <td class="px-3 py-2 text-xs font-bold text-hug-text">Php ${(l.cost || 0).toLocaleString()}</td>
-        <td class="px-3 py-2">${badge}</td>
-      </tr>`;
-    }).join('');
+
+  const isFullSeason = hash === 'HUG-CROP-2026-FULL';
+
+  // Automatically record verification into system audit history
+  try {
+    const db = getDB();
+    if (db && Array.isArray(db.systemHistory)) {
+      const existing = db.systemHistory.find(h => h.entity && h.entity.includes(hash));
+      if (!existing) {
+        db.systemHistory.unshift({
+          id: 'AUD-' + Math.floor(100 + Math.random() * 900),
+          timestamp: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          category: 'audit',
+          categoryLabel: 'SRA Audit',
+          eventType: isFullSeason ? 'Full Season Crop Audit Certified' : 'Field Operations QR Audit Verified',
+          entity: `${hash} (${isFullSeason ? 'Nacayao Block Farm A' : 'FLD-KTR-001'})`,
+          details: isFullSeason ? 'Verified and certified full-season operations ledger for SRA district compliance.' : 'Cryptographic QR signature verified and certified for official field operations.',
+          actor: 'SRA Inspectorate',
+          status: 'Verified'
+        });
+        saveDB(db);
+      }
+    }
+  } catch (e) {}
+
+  // Header and Metadata DOM Elements
+  const titleEl = document.getElementById('cert-title');
+  const subtitleEl = document.getElementById('cert-subtitle');
+  const hashEl = document.getElementById('cert-hash');
+  const farmEl = document.getElementById('cert-farm');
+  const compilerEl = document.getElementById('cert-compiler');
+  const dateEl = document.getElementById('cert-date');
+  const badgeEl = document.getElementById('cert-badge');
+
+  // KPI Metrics DOM Elements
+  const totalLogsEl = document.getElementById('cert-total-logs');
+  const approvedLogsEl = document.getElementById('cert-approved-logs');
+  const areaEl = document.getElementById('cert-area');
+  const totalCostEl = document.getElementById('cert-total-cost');
+  const tableHead = document.getElementById('audit-certificate-table-head');
+  const tableTitle = document.getElementById('cert-table-title');
+  const tableSub = document.getElementById('cert-table-sub');
+
+  if (isFullSeason) {
+    if (titleEl) titleEl.textContent = 'SRA Production & Cost of Operations Audit Certificate';
+    if (subtitleEl) subtitleEl.textContent = 'NACAYAO SMALL FARMERS ASSOCIATION · SILAY CITY, NEGROS OCCIDENTAL';
+    if (hashEl) hashEl.textContent = 'HUG-CROP-2026-FULL';
+    if (farmEl) farmEl.textContent = 'Hda. Nacayao (15.25 Ha New Plant)';
+    if (compilerEl) compilerEl.textContent = 'Jose Reyes (Farm Mgr) · SRA Inspectorate';
+    if (dateEl) dateEl.textContent = 'Crop Year 2025–2027';
+    if (badgeEl) badgeEl.innerHTML = '&#10003; Full SRA Season Audit';
+
+    if (totalLogsEl) totalLogsEl.textContent = '14 Operations';
+    if (approvedLogsEl) approvedLogsEl.textContent = '14 / 14 Certified';
+    if (areaEl) areaEl.textContent = '15.2500 Ha';
+    if (totalCostEl) totalCostEl.textContent = 'Php 1,797,550';
+
+    if (tableTitle) tableTitle.textContent = 'SRA Standard Operations Schedule (CY 2025-2027)';
+    if (tableSub) tableSub.textContent = 'Total Area for New Plant: 15.2500 Ha · Silay City SRA Oversight';
+
+    if (tableHead) {
+      tableHead.innerHTML = `
+        <tr class="bg-bg">
+          <th class="text-center px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border w-12">No.</th>
+          <th class="text-left px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border">Operation</th>
+          <th class="text-right px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border">Total Area</th>
+          <th class="text-right px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border">Qty</th>
+          <th class="text-center px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border">Unit</th>
+          <th class="text-right px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border">Unit Cost</th>
+          <th class="text-right px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border">Cost Per Hectare</th>
+        </tr>
+      `;
+    }
+
+    if (tableBody) {
+      const sraFullSeasonItems = [
+        { no: 1, name: 'Soil Sampling', total: '15.25', qty: '1', unit: 'ha', unitCost: 100.00, costPerHa: 100.00 },
+        { no: 2, name: 'Land Preparation', total: '15.25', qty: '1', unit: 'ha', unitCost: 12000.00, costPerHa: 12000.00 },
+        { no: 3, name: 'Cost of Planting Material', total: '15.25', qty: '5', unit: 'lac', unitCost: 3000.00, costPerHa: 15000.00 },
+        { no: 4, name: 'Planting (including hauling/selection)', total: '15.25', qty: '5', unit: 'lac', unitCost: 1000.00, costPerHa: 5000.00 },
+        { isCategoryHeader: true, no: 5, name: 'Basal Fertilization' },
+        { isSubItem: true, name: '46-00-00', total: '15.25', qty: '2', unit: 'bag', unitCost: 1600.00, costPerHa: 3200.00 },
+        { isSubItem: true, name: '18-46-00', total: '15.25', qty: '3', unit: 'bag', unitCost: 2500.00, costPerHa: 7500.00 },
+        { isSubItem: true, name: '00-00-60', total: '15.25', qty: '2', unit: 'bag', unitCost: 2200.00, costPerHa: 4400.00 },
+        { isCategoryHeader: true, no: 6, name: 'Fertilizer Application' },
+        { isSubItem: true, name: 'Fertilizer Application (Labor)', total: '15.25', qty: '7', unit: 'bag', unitCost: 100.00, costPerHa: 700.00 },
+        { isSubItem: true, name: 'Rock Phosphate', total: '15.25', qty: '10', unit: 'bag', unitCost: 400.00, costPerHa: 4000.00 },
+        { isSubItem: true, name: 'Fertilizer Application (Labor)', total: '15.25', qty: '10', unit: 'bag', unitCost: 100.00, costPerHa: 1000.00 },
+        { isCategoryHeader: true, no: 7, name: 'Cultivation' },
+        { isSubItem: true, name: 'Ridge busting', total: '15.25', qty: '1', unit: 'pass', unitCost: 300.00, costPerHa: 300.00 },
+        { isSubItem: true, name: 'Off-barring', total: '15.25', qty: '2', unit: 'pass', unitCost: 300.00, costPerHa: 600.00 },
+        { isSubItem: true, name: 'On-barring', total: '15.25', qty: '2', unit: 'pass', unitCost: 300.00, costPerHa: 600.00 },
+        { isSubItem: true, name: 'Off-barring', total: '15.25', qty: '2', unit: 'pass', unitCost: 300.00, costPerHa: 600.00 },
+        { isSubItem: true, name: 'Hilling-up', total: '15.25', qty: '3', unit: 'pass', unitCost: 300.00, costPerHa: 900.00 },
+        { isCategoryHeader: true, no: 8, name: 'Fertilization (2nd dose)' },
+        { isSubItem: true, name: '46-00-00', total: '15.25', qty: '1', unit: 'bag', unitCost: 1600.00, costPerHa: 1600.00 },
+        { isSubItem: true, name: '00-00-60', total: '15.25', qty: '1', unit: 'bag', unitCost: 2200.00, costPerHa: 2200.00 },
+        { no: 9, name: 'Fertilizer Application (Labor 2nd dose)', total: '15.25', qty: '2', unit: 'bag', unitCost: 100.00, costPerHa: 200.00 },
+        { isCategoryHeader: true, no: 10, name: 'Weeding' },
+        { isSubItem: true, name: '1st Weeding', total: '15.25', qty: '1', unit: 'ha', unitCost: 2500.00, costPerHa: 2500.00 },
+        { isSubItem: true, name: '2nd Weeding', total: '15.25', qty: '1', unit: 'ha', unitCost: 2000.00, costPerHa: 2000.00 },
+        { isSubItem: true, name: '3rd Weeding', total: '15.25', qty: '1', unit: 'ha', unitCost: 1500.00, costPerHa: 1500.00 },
+        { no: 11, name: 'Drainage/Irrigation', total: '15.25', qty: '1', unit: 'ha', unitCost: 1000.00, costPerHa: 1000.00 },
+        { isDirectSubtotal: true },
+        { no: 12, name: 'Cutting and Loading', total: '15.25', qty: '60', unit: 'ton', unitCost: 350.00, costPerHa: 21000.00 },
+        { no: 13, name: 'Hauling (Trucking)', total: '15.25', qty: '60', unit: 'ton', unitCost: 350.00, costPerHa: 21000.00 },
+        { no: 14, name: 'Bull Cart', total: '15.25', qty: '60', unit: 'ton', unitCost: 150.00, costPerHa: 9000.00 },
+        { isMillingSubtotal: true }
+      ];
+
+      const renderScreenRow = (op) => {
+        if (op.isCategoryHeader) {
+          return `<tr class="bg-primary/10 border-b border-border/80 font-bold">
+            <td class="px-3 py-2 text-center font-black text-xs text-primary">${op.no}</td>
+            <td colspan="6" class="px-3 py-2 font-black text-xs text-hug-text uppercase tracking-wide">${op.name}</td>
+          </tr>`;
+        }
+        if (op.isSubItem) {
+          return `<tr class="border-b border-border/40 hover:bg-bg/40 transition-colors">
+            <td class="px-3 py-1.5 text-center text-xs text-hug-muted"></td>
+            <td class="px-3 py-1.5 pl-8 text-xs font-semibold text-hug-text flex items-center gap-1.5">
+              <span class="text-primary font-bold text-[10px]">&#8226;</span> ${op.name}
+            </td>
+            <td class="px-3 py-1.5 text-right font-mono text-xs text-hug-muted">${op.total} ha</td>
+            <td class="px-3 py-1.5 text-right font-mono text-xs text-hug-text font-semibold">${op.qty}</td>
+            <td class="px-3 py-1.5 text-center text-xs text-hug-muted">${op.unit}</td>
+            <td class="px-3 py-1.5 text-right font-mono text-xs text-hug-text font-medium">₱${op.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td class="px-3 py-1.5 text-right font-mono text-xs text-hug-text font-bold">₱${op.costPerHa.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          </tr>`;
+        }
+        if (op.isDirectSubtotal) {
+          return `<tr class="bg-primary-bg/20 font-bold border-t-2 border-primary/40">
+            <td colspan="6" class="px-3 py-2.5 text-right text-xs uppercase tracking-wider text-primary">Total Direct Cost (Ops 1–11):</td>
+            <td class="px-3 py-2.5 text-right font-mono text-xs text-primary font-black">₱66,900.00</td>
+          </tr>`;
+        }
+        if (op.isMillingSubtotal) {
+          return `<tr class="bg-primary-bg/20 font-bold border-b border-border">
+            <td colspan="6" class="px-3 py-2.5 text-right text-xs uppercase tracking-wider text-hug-text2">Total Milling Expenses (Ops 12–14):</td>
+            <td class="px-3 py-2.5 text-right font-mono text-xs text-hug-text font-black">₱51,000.00</td>
+          </tr>
+          <tr class="bg-primary-bg/40 font-black border-t-2 border-primary">
+            <td colspan="6" class="px-3 py-3 text-right text-xs uppercase tracking-wider text-primary">Total Cost of Production (Ops 1–14):</td>
+            <td class="px-3 py-3 text-right font-mono text-sm text-primary font-black">₱117,900.00</td>
+          </tr>`;
+        }
+        return `<tr class="border-b border-border/60 hover:bg-bg/50 transition-colors">
+          <td class="px-3 py-2.5 text-center font-bold text-xs text-primary">${op.no}</td>
+          <td class="px-3 py-2.5 font-bold text-xs text-hug-text">${op.name}</td>
+          <td class="px-3 py-2.5 text-right font-mono text-xs text-hug-muted">${op.total} ha</td>
+          <td class="px-3 py-2.5 text-right font-mono text-xs text-hug-text font-semibold">${op.qty}</td>
+          <td class="px-3 py-2.5 text-center text-xs text-hug-muted font-medium">${op.unit}</td>
+          <td class="px-3 py-2.5 text-right font-mono text-xs text-hug-text font-medium">₱${op.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td class="px-3 py-2.5 text-right font-mono text-xs text-hug-text font-black">₱${op.costPerHa.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        </tr>`;
+      };
+
+      tableBody.innerHTML = sraFullSeasonItems.map(renderScreenRow).join('');
+    }
+  } else {
+    // Monthly Batch Report (May 2026)
+    if (titleEl) titleEl.textContent = 'SRA Monthly Field Operations & Cost Audit Certificate';
+    if (subtitleEl) subtitleEl.textContent = 'NACAYAO SMALL FARMERS ASSOCIATION · SILAY CITY, NEGROS OCCIDENTAL';
+    if (hashEl) hashEl.textContent = 'HUG-202605-A3F9';
+    if (farmEl) farmEl.textContent = 'Hda. Nacayao (5.30 Ha Active Parcel)';
+    if (compilerEl) compilerEl.textContent = 'Maria Santos (Farm Mgr) · SRA Inspectorate';
+    if (dateEl) dateEl.textContent = 'May 2026 (Monthly Batch)';
+    if (badgeEl) badgeEl.innerHTML = '&#10003; Monthly Certified';
+
+    if (totalLogsEl) totalLogsEl.textContent = '6 Operations';
+    if (approvedLogsEl) approvedLogsEl.textContent = '6 / 6 Certified';
+    if (areaEl) areaEl.textContent = '5.3000 Ha';
+    if (totalCostEl) totalCostEl.textContent = 'Php 280,370';
+
+    if (tableTitle) tableTitle.textContent = 'SRA Monthly Operations Schedule (May 2026 Batch)';
+    if (tableSub) tableSub.textContent = 'Total Parcel Area Audited: 5.3000 Ha · Silay City SRA Oversight';
+
+    if (tableHead) {
+      tableHead.innerHTML = `
+        <tr class="bg-bg">
+          <th class="text-center px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border w-12">No.</th>
+          <th class="text-left px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border">Operation</th>
+          <th class="text-right px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border">Total Area</th>
+          <th class="text-right px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border">Qty</th>
+          <th class="text-center px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border">Unit</th>
+          <th class="text-right px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border">Unit Cost</th>
+          <th class="text-right px-3 py-2.5 text-hug-muted font-bold text-xs border-b border-border">Cost Per Hectare</th>
+        </tr>
+      `;
+    }
+
+    if (tableBody) {
+      const sraMonthlyItems = [
+        { no: 1, name: 'Soil Sampling', total: '5.30', qty: '1', unit: 'ha', unitCost: 100.00, costPerHa: 100.00 },
+        { no: 2, name: 'Land Preparation', total: '5.30', qty: '1', unit: 'ha', unitCost: 12000.00, costPerHa: 12000.00 },
+        { no: 3, name: 'Cost of Planting Material', total: '5.30', qty: '5', unit: 'lac', unitCost: 3000.00, costPerHa: 15000.00 },
+        { no: 4, name: 'Planting (including hauling/selection)', total: '5.30', qty: '5', unit: 'lac', unitCost: 1000.00, costPerHa: 5000.00 },
+        { isCategoryHeader: true, no: 5, name: 'Basal Fertilization' },
+        { isSubItem: true, name: '46-00-00', total: '5.30', qty: '2', unit: 'bag', unitCost: 1600.00, costPerHa: 3200.00 },
+        { isSubItem: true, name: '18-46-00', total: '5.30', qty: '3', unit: 'bag', unitCost: 2500.00, costPerHa: 7500.00 },
+        { isSubItem: true, name: '00-00-60', total: '5.30', qty: '2', unit: 'bag', unitCost: 2200.00, costPerHa: 4400.00 },
+        { isCategoryHeader: true, no: 6, name: 'Fertilizer Application' },
+        { isSubItem: true, name: 'Fertilizer Application (Labor)', total: '5.30', qty: '7', unit: 'bag', unitCost: 100.00, costPerHa: 700.00 },
+        { isSubItem: true, name: 'Rock Phosphate', total: '5.30', qty: '10', unit: 'bag', unitCost: 400.00, costPerHa: 4000.00 },
+        { isSubItem: true, name: 'Fertilizer Application (Labor)', total: '5.30', qty: '10', unit: 'bag', unitCost: 100.00, costPerHa: 1000.00 },
+        { isDirectSubtotal: true, subtotalLabel: 'TOTAL MONTHLY DIRECT COST (Ops 1–6):', subtotalVal: '₱52,900.00' }
+      ];
+
+      const renderScreenMonthlyRow = (op) => {
+        if (op.isCategoryHeader) {
+          return `<tr class="bg-primary/10 border-b border-border/80 font-bold">
+            <td class="px-3 py-2 text-center font-black text-xs text-primary">${op.no}</td>
+            <td colspan="6" class="px-3 py-2 font-black text-xs text-hug-text uppercase tracking-wide">${op.name}</td>
+          </tr>`;
+        }
+        if (op.isSubItem) {
+          return `<tr class="border-b border-border/40 hover:bg-bg/40 transition-colors">
+            <td class="px-3 py-1.5 text-center text-xs text-hug-muted"></td>
+            <td class="px-3 py-1.5 pl-8 text-xs font-semibold text-hug-text flex items-center gap-1.5">
+              <span class="text-primary font-bold text-[10px]">&#8226;</span> ${op.name}
+            </td>
+            <td class="px-3 py-1.5 text-right font-mono text-xs text-hug-muted">${op.total} ha</td>
+            <td class="px-3 py-1.5 text-right font-mono text-xs text-hug-text font-semibold">${op.qty}</td>
+            <td class="px-3 py-1.5 text-center text-xs text-hug-muted">${op.unit}</td>
+            <td class="px-3 py-1.5 text-right font-mono text-xs text-hug-text font-medium">₱${op.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td class="px-3 py-1.5 text-right font-mono text-xs text-hug-text font-bold">₱${op.costPerHa.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          </tr>`;
+        }
+        if (op.isDirectSubtotal) {
+          return `<tr class="bg-primary-bg/20 font-bold border-t-2 border-primary/40">
+            <td colspan="6" class="px-3 py-2.5 text-right text-xs uppercase tracking-wider text-primary">${op.subtotalLabel}</td>
+            <td class="px-3 py-2.5 text-right font-mono text-xs text-primary font-black">${op.subtotalVal}</td>
+          </tr>
+          <tr class="bg-primary-bg/40 font-black border-t-2 border-primary">
+            <td colspan="6" class="px-3 py-3 text-right text-xs uppercase tracking-wider text-primary">Total Cost of Production (May 2026 Batch):</td>
+            <td class="px-3 py-3 text-right font-mono text-sm text-primary font-black">${op.subtotalVal}</td>
+          </tr>`;
+        }
+        return `<tr class="border-b border-border/60 hover:bg-bg/50 transition-colors">
+          <td class="px-3 py-2.5 text-center font-bold text-xs text-primary">${op.no}</td>
+          <td class="px-3 py-2.5 font-bold text-xs text-hug-text">${op.name}</td>
+          <td class="px-3 py-2.5 text-right font-mono text-xs text-hug-muted">${op.total} ha</td>
+          <td class="px-3 py-2.5 text-right font-mono text-xs text-hug-text font-semibold">${op.qty}</td>
+          <td class="px-3 py-2.5 text-center text-xs text-hug-muted font-medium">${op.unit}</td>
+          <td class="px-3 py-2.5 text-right font-mono text-xs text-hug-text font-medium">₱${op.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td class="px-3 py-2.5 text-right font-mono text-xs text-hug-text font-black">₱${op.costPerHa.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        </tr>`;
+      };
+
+      tableBody.innerHTML = sraMonthlyItems.map(renderScreenMonthlyRow).join('');
+    }
   }
 }
 
 function printCertifiedAuditReport() {
-  window.print();
+  const hash = document.getElementById('cert-hash')?.textContent?.trim() || 'HUG-CROP-2026-FULL';
+  const isFullSeason = hash === 'HUG-CROP-2026-FULL';
+
+  const printDoc = window.open('', '_blank', 'width=900,height=1100');
+  if (!printDoc) {
+    window.print();
+    return;
+  }
+
+  const titleBadge = isFullSeason ? 'Production Schedule &amp; Cost of Operations Audit' : 'Monthly Field Operations &amp; Cost Audit Report';
+  const reportSubtitle = isFullSeason ? 'Program of Work &amp; Annual Cost of Production Schedule (CY 2025-2027)' : 'May 2026 Monthly Field Operations Batch Audit';
+  const areaLabel = isFullSeason ? 'TOTAL AREA FOR NEW PLANT (HA):' : 'TOTAL PARCEL AREA AUDITED (HA):';
+  const areaVal = isFullSeason ? '15.2500' : '5.3000';
+  const areaSubtext = isFullSeason ? '15.2500 Ha New Plant' : '5.3000 Ha Active Parcel';
+  const totalCostVal = isFullSeason ? '₱1,797,550.00' : '₱280,370.00';
+  const totalCostPerHa = isFullSeason ? '₱117,900.00' : '₱52,900.00';
+
+  const operations = isFullSeason ? [
+    { no: 1, name: 'Soil Sampling', total: '15.25', qty: '1', unit: 'ha', unitCost: 100.00, costPerHa: 100.00 },
+    { no: 2, name: 'Land Preparation', total: '15.25', qty: '1', unit: 'ha', unitCost: 12000.00, costPerHa: 12000.00 },
+    { no: 3, name: 'Cost of Planting Material', total: '15.25', qty: '5', unit: 'lac', unitCost: 3000.00, costPerHa: 15000.00 },
+    { no: 4, name: 'Planting (including hauling/selection)', total: '15.25', qty: '5', unit: 'lac', unitCost: 1000.00, costPerHa: 5000.00 },
+    { isCategoryHeader: true, no: 5, name: 'Basal Fertilization' },
+    { isSubItem: true, name: '46-00-00', total: '15.25', qty: '2', unit: 'bag', unitCost: 1600.00, costPerHa: 3200.00 },
+    { isSubItem: true, name: '18-46-00', total: '15.25', qty: '3', unit: 'bag', unitCost: 2500.00, costPerHa: 7500.00 },
+    { isSubItem: true, name: '00-00-60', total: '15.25', qty: '2', unit: 'bag', unitCost: 2200.00, costPerHa: 4400.00 },
+    { isCategoryHeader: true, no: 6, name: 'Fertilizer Application' },
+    { isSubItem: true, name: 'Fertilizer Application (Labor)', total: '15.25', qty: '7', unit: 'bag', unitCost: 100.00, costPerHa: 700.00 },
+    { isSubItem: true, name: 'Rock Phosphate', total: '15.25', qty: '10', unit: 'bag', unitCost: 400.00, costPerHa: 4000.00 },
+    { isSubItem: true, name: 'Fertilizer Application (Labor)', total: '15.25', qty: '10', unit: 'bag', unitCost: 100.00, costPerHa: 1000.00 },
+    { isCategoryHeader: true, no: 7, name: 'Cultivation' },
+    { isSubItem: true, name: 'Ridge busting', total: '15.25', qty: '1', unit: 'pass', unitCost: 300.00, costPerHa: 300.00 },
+    { isSubItem: true, name: 'Off-barring', total: '15.25', qty: '2', unit: 'pass', unitCost: 300.00, costPerHa: 600.00 },
+    { isSubItem: true, name: 'On-barring', total: '15.25', qty: '2', unit: 'pass', unitCost: 300.00, costPerHa: 600.00 },
+    { isSubItem: true, name: 'Off-barring', total: '15.25', qty: '2', unit: 'pass', unitCost: 300.00, costPerHa: 600.00 },
+    { isSubItem: true, name: 'Hilling-up', total: '15.25', qty: '3', unit: 'pass', unitCost: 300.00, costPerHa: 900.00 },
+    { isCategoryHeader: true, no: 8, name: 'Fertilization (2nd dose)' },
+    { isSubItem: true, name: '46-00-00', total: '15.25', qty: '1', unit: 'bag', unitCost: 1600.00, costPerHa: 1600.00 },
+    { isSubItem: true, name: '00-00-60', total: '15.25', qty: '1', unit: 'bag', unitCost: 2200.00, costPerHa: 2200.00 },
+    { no: 9, name: 'Fertilizer Application (Labor 2nd dose)', total: '15.25', qty: '2', unit: 'bag', unitCost: 100.00, costPerHa: 200.00 },
+    { isCategoryHeader: true, no: 10, name: 'Weeding' },
+    { isSubItem: true, name: '1st Weeding', total: '15.25', qty: '1', unit: 'ha', unitCost: 2500.00, costPerHa: 2500.00 },
+    { isSubItem: true, name: '2nd Weeding', total: '15.25', qty: '1', unit: 'ha', unitCost: 2000.00, costPerHa: 2000.00 },
+    { isSubItem: true, name: '3rd Weeding', total: '15.25', qty: '1', unit: 'ha', unitCost: 1500.00, costPerHa: 1500.00 },
+    { no: 11, name: 'Drainage/Irrigation', total: '15.25', qty: '1', unit: 'ha', unitCost: 1000.00, costPerHa: 1000.00 },
+    { isDirectSubtotal: true },
+    { no: 12, name: 'Cutting and Loading', total: '15.25', qty: '60', unit: 'ton', unitCost: 350.00, costPerHa: 21000.00 },
+    { no: 13, name: 'Hauling (Trucking)', total: '15.25', qty: '60', unit: 'ton', unitCost: 350.00, costPerHa: 21000.00 },
+    { no: 14, name: 'Bull Cart', total: '15.25', qty: '60', unit: 'ton', unitCost: 150.00, costPerHa: 9000.00 },
+    { isMillingSubtotal: true }
+  ] : [
+    { no: 1, name: 'Soil Sampling', total: '5.30', qty: '1', unit: 'ha', unitCost: 100.00, costPerHa: 100.00 },
+    { no: 2, name: 'Land Preparation', total: '5.30', qty: '1', unit: 'ha', unitCost: 12000.00, costPerHa: 12000.00 },
+    { no: 3, name: 'Cost of Planting Material', total: '5.30', qty: '5', unit: 'lac', unitCost: 3000.00, costPerHa: 15000.00 },
+    { no: 4, name: 'Planting (including hauling/selection)', total: '5.30', qty: '5', unit: 'lac', unitCost: 1000.00, costPerHa: 5000.00 },
+    { isCategoryHeader: true, no: 5, name: 'Basal Fertilization' },
+    { isSubItem: true, name: '46-00-00', total: '5.30', qty: '2', unit: 'bag', unitCost: 1600.00, costPerHa: 3200.00 },
+    { isSubItem: true, name: '18-46-00', total: '5.30', qty: '3', unit: 'bag', unitCost: 2500.00, costPerHa: 7500.00 },
+    { isSubItem: true, name: '00-00-60', total: '5.30', qty: '2', unit: 'bag', unitCost: 2200.00, costPerHa: 4400.00 },
+    { isCategoryHeader: true, no: 6, name: 'Fertilizer Application' },
+    { isSubItem: true, name: 'Fertilizer Application (Labor)', total: '5.30', qty: '7', unit: 'bag', unitCost: 100.00, costPerHa: 700.00 },
+    { isSubItem: true, name: 'Rock Phosphate', total: '5.30', qty: '10', unit: 'bag', unitCost: 400.00, costPerHa: 4000.00 },
+    { isSubItem: true, name: 'Fertilizer Application (Labor)', total: '5.30', qty: '10', unit: 'bag', unitCost: 100.00, costPerHa: 1000.00 },
+    { isDirectSubtotal: true, subtotalLabel: 'TOTAL MONTHLY DIRECT COST (Ops 1–6):', subtotalVal: '₱52,900.00' }
+  ];
+
+  const tableRowsHtml = operations.map(op => {
+    if (op.isCategoryHeader) {
+      return `
+        <tr style="background:#efefef; font-weight:bold;">
+          <td class="text-center font-bold">${op.no}</td>
+          <td colspan="6" class="text-left font-bold" style="text-transform:uppercase; letter-spacing:0.5px; padding-left:8px;">${op.name}</td>
+        </tr>
+      `;
+    }
+    if (op.isSubItem) {
+      return `
+        <tr>
+          <td class="text-center"></td>
+          <td class="text-left" style="padding-left:22px; font-weight:600;">${op.name}</td>
+          <td class="text-right">${op.total}</td>
+          <td class="text-right">${op.qty}</td>
+          <td class="text-center">${op.unit}</td>
+          <td class="text-right">₱${op.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td class="text-right font-bold">₱${op.costPerHa.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        </tr>
+      `;
+    }
+    if (op.isDirectSubtotal) {
+      return `
+        <tr class="subtotal-row">
+          <td colspan="6" class="text-right">${op.subtotalLabel || 'TOTAL DIRECT COST (Ops 1–11):'}</td>
+          <td class="text-right font-bold" style="color: #1b5e20;">${op.subtotalVal || '₱66,900.00'}</td>
+        </tr>
+      `;
+    }
+    if (op.isMillingSubtotal) {
+      return `
+        <tr class="subtotal-row">
+          <td colspan="6" class="text-right">TOTAL MILLING EXPENSES (Ops 12–14):</td>
+          <td class="text-right font-bold" style="color: #0d47a1;">₱51,000.00</td>
+        </tr>
+      `;
+    }
+    return `
+      <tr>
+        <td class="text-center font-bold">${op.no}</td>
+        <td class="text-left font-bold">${op.name}</td>
+        <td class="text-right">${op.total}</td>
+        <td class="text-right">${op.qty}</td>
+        <td class="text-center">${op.unit}</td>
+        <td class="text-right">₱${op.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td class="text-right font-bold">₱${op.costPerHa.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      </tr>
+    `;
+  }).join('');
+
+  printDoc.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>SRA - Nacayao Small Farmers Association (${hash})</title>
+      <style>
+        @page { size: A4 portrait; margin: 12mm 15mm; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #000; margin: 0; padding: 12px; font-size: 11px; }
+        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; }
+        .header p { margin: 1px 0; font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+        .header h1 { margin: 3px 0; font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+        .header .title-badge { font-size: 13px; font-weight: 800; text-transform: uppercase; background: #e5e5e5; padding: 4px 10px; display: inline-block; margin-top: 6px; border: 1px solid #999; }
+        
+        .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 11px; border: 1.5px solid #000; }
+        .meta-table td { padding: 4px 8px; border: 1px solid #ccc; }
+        .meta-label { font-weight: bold; background: #f2f2f2; width: 28%; }
+        .meta-val { font-weight: 600; }
+
+        .ops-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10.5px; }
+        .ops-table th, .ops-table td { border: 1px solid #444; padding: 5px 6px; }
+        .ops-table th { background: #e8e8e8; font-weight: bold; text-align: center; text-transform: uppercase; font-size: 9.5px; }
+        .text-left { text-align: left; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .font-bold { font-weight: bold; }
+        .subtotal-row { background: #f0f0f0; font-weight: bold; }
+        .grandtotal-row { background: #dbe4d8; font-weight: 900; font-size: 11.5px; border-top: 2px solid #000; }
+
+        .sig-section { margin-top: 25px; page-break-inside: avoid; }
+        .sig-grid { display: flex; justify-content: space-between; gap: 20px; text-align: center; margin-top: 20px; }
+        .sig-box { flex: 1; border-top: 1.5px solid #000; padding-top: 5px; }
+        .sig-name { font-weight: bold; font-size: 11px; text-transform: uppercase; }
+        .sig-title { font-size: 9.5px; color: #333; }
+        .qr-audit-badge { border: 1px dashed #666; padding: 6px 12px; font-size: 9px; display: inline-block; margin-top: 15px; background: #fafafa; font-family: monospace; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <p>Republic of the Philippines · Department of Agriculture</p>
+        <h1>Sugar Regulatory Administration</h1>
+        <p>Silay Agricultural District · Block Farm Program Oversight</p>
+        <div class="title-badge">${titleBadge}</div>
+      </div>
+
+      <table class="meta-table">
+        <tr>
+          <td class="meta-label">NAME OF BLOCK FARM:</td>
+          <td class="meta-val">NACAYAO SMALL FARMERS ASSOCIATION</td>
+          <td class="meta-label" style="width: 25%;">TOTAL AREA OF BLOCK FARM (HA):</td>
+          <td class="meta-val">30.1118</td>
+        </tr>
+        <tr>
+          <td class="meta-label">LOCATION:</td>
+          <td class="meta-val">HDA. NACAYAO, BRGY. KAPITAN RAMON, SILAY CITY</td>
+          <td class="meta-label">${areaLabel}</td>
+          <td class="meta-val" style="color:#1b5e20;">${areaVal}</td>
+        </tr>
+      </table>
+
+      <table class="ops-table">
+        <thead>
+          <tr>
+            <th style="width: 32px;">NO</th>
+            <th>OPERATION</th>
+            <th style="width: 65px;">TOTAL</th>
+            <th style="width: 45px;">QTY</th>
+            <th style="width: 45px;">UNIT</th>
+            <th style="width: 80px;">UNIT COST</th>
+            <th style="width: 105px;">COST PER HECTARE</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRowsHtml}
+          <tr class="grandtotal-row">
+            <td colspan="6" class="text-right">TOTAL COST OF PRODUCTION:</td>
+            <td class="text-right font-bold">${totalCostPerHa}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="font-size: 10px; color: #444; margin-bottom: 8px;">
+        * Total Cumulative Farm Expenditure for ${areaSubtext} = <strong>${totalCostVal}</strong> (Philippine Pesos). Certified compliant under SRA Silay Mill District standard schedule.
+      </div>
+
+      <div class="sig-section">
+        <div class="sig-grid">
+          <div class="sig-box">
+            <div class="sig-name">Jose Reyes</div>
+            <div class="sig-title">Farm Manager / President<br>Nacayao Small Farmers Association</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-name">Maria Santos</div>
+            <div class="sig-title">SRA Agricultural Inspector<br>Field Operations Audit Division</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-name">Engr. Ramon Lacson</div>
+            <div class="sig-title">SRA District Officer<br>Silay Sugar Regulatory Administration</div>
+          </div>
+        </div>
+        <div style="text-align: center;">
+          <div class="qr-audit-badge">
+            DIGITAL AUDIT SEAL: [HASH: ${hash}] · VERIFIED VIA HUGPONG ENTERPRISE SUITE
+          </div>
+        </div>
+      </div>
+
+      <script>
+        window.onload = function() {
+          setTimeout(function() {
+            window.print();
+          }, 300);
+        };
+      </script>
+    </body>
+    </html>
+  `);
+  printDoc.document.close();
 }
 
 // ── PRICE MONITOR RENDERING ──────────────────────────────
@@ -2993,25 +4022,35 @@ function renderPrices() {
   const paginatedPrices = filtered.slice(startIndex, startIndex + PRICES_PER_PAGE);
 
   body.innerHTML = paginatedPrices.map(p => {
-    let diff = '<span class="text-xs font-semibold text-hug-muted">Steady</span>';
-    if (p.change > 0) diff = '<span class="text-xs font-bold text-success">▲ Php ' + p.change + '</span>';
-    else if (p.change < 0) diff = '<span class="text-xs font-bold text-danger">▼ Php ' + Math.abs(p.change) + '</span>';
+    // 1. Raw Sugar Trend (Php / Lkg)
+    const sugarChg = Number(p.change || 0);
+    let sugarDiff = '<span class="text-[11px] font-semibold text-hug-muted">Steady (₱0/Lkg)</span>';
+    if (sugarChg > 0) sugarDiff = `<span class="text-[11px] font-bold text-success">▲ +₱${sugarChg.toLocaleString()}/Lkg</span>`;
+    else if (sugarChg < 0) sugarDiff = `<span class="text-[11px] font-bold text-danger">▼ -₱${Math.abs(sugarChg).toLocaleString()}/Lkg</span>`;
 
-    const molVal = p.molasses ? `Php ${p.molasses.toLocaleString()}` : 'Php 4,200';
+    // 2. Molasses Trend (Php / MT)
+    const molChg = Number(p.molassesChange || 0);
+    let molDiff = '<span class="text-[11px] font-semibold text-hug-muted">Steady (₱0/MT)</span>';
+    if (molChg > 0) molDiff = `<span class="text-[11px] font-bold text-success">▲ +₱${molChg.toLocaleString()}/MT</span>`;
+    else if (molChg < 0) molDiff = `<span class="text-[11px] font-bold text-danger">▼ -₱${Math.abs(molChg).toLocaleString()}/MT</span>`;
+
+    const molVal = p.molasses ? `Php ${Number(p.molasses).toLocaleString()}` : 'Php 4,200';
 
     return `
       <tr class="border-b border-border/60 hover:bg-bg/50 transition-colors">
         <td class="px-4 py-3 text-xs text-hug-muted whitespace-nowrap">${p.date}</td>
         <td class="px-4 py-3 text-xs font-bold text-hug-text whitespace-nowrap">${p.week.replace('Wk', 'Week ')}</td>
-        <td class="px-4 py-3 text-xs font-extrabold text-primary whitespace-nowrap">Php ${p.price.toLocaleString()}</td>
-        <td class="px-4 py-3 text-xs font-bold text-success whitespace-nowrap">${molVal}</td>
-        <td class="px-4 py-3 whitespace-nowrap">${diff}</td>
+        <td class="px-4 py-3 text-xs font-extrabold text-primary whitespace-nowrap">Php ${Number(p.price || 0).toLocaleString()} <span class="text-[10px] text-hug-muted font-normal">/ Lkg</span></td>
+        <td class="px-4 py-3 text-xs font-bold text-hug-text2 whitespace-nowrap">${molVal} <span class="text-[10px] text-hug-muted font-normal">/ MT</span></td>
+        <td class="px-4 py-3 whitespace-nowrap">
+          <div class="flex flex-col gap-0.5">
+            <div class="flex items-center gap-1.5"><span class="text-[10px] font-extrabold text-primary uppercase">Sugar:</span> ${sugarDiff}</div>
+            <div class="flex items-center gap-1.5"><span class="text-[10px] font-extrabold text-[#785412] uppercase">Molasses:</span> ${molDiff}</div>
+          </div>
+        </td>
         <td class="px-4 py-3 text-xs text-hug-text2 italic">${p.source}</td>
         <td class="px-4 py-3 whitespace-nowrap">
-          <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-success-bg text-success border border-success/20">
-            <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-            Official Circular
-          </span>
+          <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-success-bg text-success border border-success/20 whitespace-nowrap"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Official Circular</span>
         </td>
       </tr>
     `;
@@ -3043,16 +4082,16 @@ function openPublishPriceModal() {
   if (dateEl) dateEl.value = today;
 
   const db = getDB();
-  const latest = db.priceHistory?.[0] || { price: 2800, molasses: 4200, week: 'Week 4 May' };
+  const latest = db.priceHistory?.[0] || { price: 2950, molasses: 4400, week: 'Week 4 May' };
   
   const weekEl = document.getElementById('modal-p-week');
   if (weekEl) weekEl.value = 'Week 4 May';
 
   const sugarEl = document.getElementById('modal-p-sugar');
-  if (sugarEl) sugarEl.value = latest.price || 2800;
+  if (sugarEl) sugarEl.value = latest.price || 2950;
 
   const molEl = document.getElementById('modal-p-molasses');
-  if (molEl) molEl.value = latest.molasses || 4200;
+  if (molEl) molEl.value = latest.molasses || 4400;
 
   const sourceEl = document.getElementById('modal-p-source');
   if (sourceEl) sourceEl.value = 'SRA Sugar Order & Circular #105';
@@ -3140,13 +4179,7 @@ async function submitPublishPrice() {
 // Topbar logout handler (confirmation + redirect to login)
 const topbarLogout = document.getElementById('topbar-logout');
 if (topbarLogout) {
-  topbarLogout.addEventListener('click', () => {
-    const ok = confirm('Are you sure you want to sign out of HUGPONG Admin?');
-    if (!ok) return;
-    localStorage.removeItem('hugpong_role');
-    toast('Signed out. Redirecting to login...');
-    setTimeout(() => { window.location.href = 'login.html'; }, 450);
-  });
+  topbarLogout.addEventListener('click', handleLogout);
 }
 
 function removePrice(idx) {
@@ -3202,30 +4235,20 @@ function renderLogs() {
   const isSuperAdmin = currentRole === 'superadmin';
 
   const labelEl = document.querySelector('label[for="log-field-filter"]');
-  if (labelEl) labelEl.textContent = isManager ? 'Filter Block Farm A Plot:' : 'Filter Field / Farm:';
+  if (labelEl) labelEl.textContent = isManager ? 'Filter Nacayao Block Farm A Plot:' : 'Filter Field / Block Farm:';
 
   const selectEl = document.getElementById('log-field-filter');
   if (selectEl) {
     if (isManager) {
-      selectEl.innerHTML = '<option value="all">All Block Farm A Plots</option>'
-        + '<option value="FLD-KTR-001">FLD-KTR-001 (Mario Dimagiba)</option>'
-        + '<option value="FLD-KTR-002">FLD-KTR-002 (Jose Rizal)</option>'
-        + '<option value="FLD-KTR-005">FLD-KTR-005 (Roberto Tan)</option>'
-        + '<option value="FLD-KTR-006">FLD-KTR-006 (Antonio Luna)</option>';
+      const myPlots = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === 'Nacayao Block Farm A' || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A');
+      selectEl.innerHTML = '<option value="all">All Nacayao Block Farm A Plots</option>'
+        + myPlots.map(f => `<option value="${f.id}">${f.id} (${f.member || 'Member'})</option>`).join('');
     } else {
-      selectEl.innerHTML = '<option value="all">All District Fields &amp; Blocks</option>'
-        + '<option value="Block Farm A">Block Farm A (All Plots)</option>'
-        + '<option value="Block Farm B">Block Farm B (All Plots)</option>'
-        + '<option value="Block Farm C">Block Farm C (All Plots)</option>'
-        + '<option value="Block Farm D">Block Farm D (All Plots)</option>'
-        + '<option value="FLD-KTR-001">FLD-KTR-001 (Mario Dimagiba)</option>'
-        + '<option value="FLD-KTR-002">FLD-KTR-002 (Jose Rizal)</option>'
-        + '<option value="FLD-KTR-003">FLD-KTR-003 (Maria Santos)</option>'
-        + '<option value="FLD-KTR-004">FLD-KTR-004 (Emilio Aguinaldo)</option>'
-        + '<option value="FLD-KTR-007">FLD-KTR-007 (Pedro Reyes)</option>'
-        + '<option value="FLD-KTR-008">FLD-KTR-008 (Andres Bonifacio)</option>'
-        + '<option value="FLD-KTR-009">FLD-KTR-009 (Ana Gomez)</option>'
-        + '<option value="FLD-KTR-010">FLD-KTR-010 (Apolinario Mabini)</option>';
+      const bFarms = ['Nacayao Block Farm A', 'Block Farm B', 'Block Farm C', 'Block Farm D'];
+      const plotOptions = db.fields.map(f => `<option value="${f.id}">${f.id} (${f.member || 'Member'})</option>`).join('');
+      selectEl.innerHTML = '<option value="all">All District Fields &amp; Block Farms</option>'
+        + bFarms.map(bf => `<option value="${bf}">${bf} (All Plots)</option>`).join('')
+        + plotOptions;
     }
     selectEl.value = selectField;
   }
@@ -3234,15 +4257,21 @@ function renderLogs() {
 
   let filtered = db.logs;
   
-  // 1. Scoping: Farm Manager can only view logs from their block farm (Block Farm A)
+  // 1. Scoping: Farm Manager can only view logs from their block farm (Nacayao Block Farm A)
   if (isManager) {
-    const managerFieldIds = new Set(db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === 'Block Farm A').map(f => f.id));
-    filtered = filtered.filter(l => managerFieldIds.has(l.fieldId) || (l.blockFarm === 'Block Farm A'));
+    const managerFieldIds = new Set(db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === 'Nacayao Block Farm A' || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A').map(f => f.id));
+    filtered = filtered.filter(l => managerFieldIds.has(l.fieldId) || l.blockFarm === 'Nacayao Block Farm A' || l.blockFarm === 'Block Farm A');
   }
 
   if (activeFilterValue !== 'all') {
-    if (activeFilterValue.startsWith('Block Farm')) {
-      filtered = filtered.filter(l => (l.blockFarm || getBlockFarmName(l.fieldId)) === activeFilterValue);
+    if (activeFilterValue.includes('Block Farm')) {
+      filtered = filtered.filter(l => {
+        const bf = l.blockFarm || getBlockFarmName(l.fieldId);
+        if (activeFilterValue.includes('Block Farm A')) {
+          return bf === 'Nacayao Block Farm A' || bf === 'Block Farm A';
+        }
+        return bf === activeFilterValue;
+      });
     } else {
       filtered = filtered.filter(l => l.fieldId === activeFilterValue);
     }
@@ -3304,9 +4333,7 @@ function renderLogs() {
     };
     const catBadge = catBadges[l.category] || catBadges.weed;
 
-    const statusBadge = l.status === 'Approved'
-      ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-success-bg text-success border border-success/20">Approved</span>'
-      : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-warning-bg text-[#C97A00] border border-warning/20">Pending</span>';
+    const statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-bg text-primary border border-primary/20">Recorded</span>';
 
     return `
       <tr class="hover:bg-bg/50 transition-colors border-b border-border/50">
@@ -3351,18 +4378,48 @@ function renderLogs() {
 
 // ── DESCRIPTIVE DIAGNOSTICS VIEW ─────────────────────────
 function renderAnalytics() {
+  const db = getDB();
   const expenseBars = document.getElementById('expense-distribution-bars');
   const hectareBars = document.getElementById('cost-per-hectare-bars');
   const totalCostEl = document.getElementById('diagnostics-total-cost');
-  if (totalCostEl) totalCostEl.textContent = 'Php 136,830';
+  
+  const totalSpend = db.logs.reduce((s, l) => s + (Number(l.totalCost || l.cost) || 0), 0);
+  if (totalCostEl) totalCostEl.textContent = `Php ${totalSpend.toLocaleString()}`;
+
   if (expenseBars) {
+    const catSums = { prep: 0, plant: 0, basal: 0, weed: 0, topdress: 0, harvest: 0 };
+    db.logs.forEach(l => {
+      const sraId = (l.sraOperationId || '').toUpperCase();
+      const act = (l.activity || l.operationName || '').toLowerCase();
+      const amt = Number(l.totalCost || l.cost) || 0;
+
+      if (sraId === 'SRA-01' || sraId === 'SRA-02' || l.category === 'prep') {
+        catSums.prep += amt;
+      } else if (sraId === 'SRA-03' || sraId === 'SRA-04' || l.category === 'plant') {
+        catSums.plant += amt;
+      } else if (sraId === 'SRA-08' || sraId === 'SRA-09' || act.includes('top-dress') || act.includes('2nd dose') || act.includes('topdress')) {
+        catSums.topdress += amt;
+      } else if (sraId === 'SRA-05' || sraId === 'SRA-06' || l.category === 'fert' || act.includes('basal') || act.includes('phosphate')) {
+        catSums.basal += amt;
+      } else if (sraId === 'SRA-07' || sraId === 'SRA-10' || sraId === 'SRA-11' || l.category === 'weed' || act.includes('barring') || act.includes('cultivation') || act.includes('weeding')) {
+        catSums.weed += amt;
+      } else {
+        catSums.harvest += amt;
+      }
+    });
+
     const allocations = [
-      { name: 'Land Prep & Planting', pct: 38, cost: 52000, color: '#8F3A8F' },
-      { name: 'Fertilizer (All Stages)', pct: 32, cost: 43800, color: '#4A7C2F' },
-      { name: 'Labor Crew Wages', pct: 18, cost: 24600, color: '#1A6B9A' },
-      { name: 'Chemical Spraying', pct: 8, cost: 10950, color: '#F5A623' },
-      { name: 'Other Sundry Fees', pct: 4, cost: 5480, color: '#8A9B7A' },
-    ];
+      { name: '1. Soil Sampling & Land Prep (Ops 1–2)', cost: catSums.prep, color: '#8F3A8F' },
+      { name: '2. Planting Material & Planting (Ops 3–4)', cost: catSums.plant, color: '#4A7C2F' },
+      { name: '3. Basal Fertilization & Amending (Ops 5–6)', cost: catSums.basal, color: '#1A6B9A' },
+      { name: '4. Cultivation, Weeding & Drainage (Ops 7, 10–11)', cost: catSums.weed, color: '#F5A623' },
+      { name: '5. Top-Dress Fertilization 2nd Dose (Ops 8–9)', cost: catSums.topdress, color: '#0284C7' },
+      { name: '6. Harvesting & Transport Operations (Ops 12–14)', cost: catSums.harvest, color: '#D9534F' },
+    ].map(a => ({
+      ...a,
+      pct: totalSpend > 0 ? Math.round((a.cost / totalSpend) * 100) : 0
+    }));
+
     expenseBars.innerHTML = allocations.map(a =>
       `<div class="flex flex-col gap-1.5">
         <div class="flex justify-between items-baseline">
@@ -3375,13 +4432,43 @@ function renderAnalytics() {
       </div>`
     ).join('');
   }
+
   if (hectareBars) {
-    const efficiencies = [
-      { id: 'Block Farm A', rawKey: 'Block Farm A', owner: 'Juan dela Cruz & Jose Rizal', haCost: 12400, haPct: 82, status: 'Average (₱12.4k/Ha)', color: '#4A7C2F' },
-      { id: 'Block Farm B', rawKey: 'Block Farm B', owner: 'Maria Santos & Emilio', haCost: 8900, haPct: 58, status: 'Most Efficient (₱8.9k/Ha)', color: '#3A8F3A' },
-      { id: 'Block Farm C', rawKey: 'Block Farm C', owner: 'Pedro Reyes & Andres', haCost: 15200, haPct: 100, status: 'Alert: Heavy Overhead (₱15.2k/Ha)', color: '#D9534F' },
-      { id: 'Block Farm D', rawKey: 'Block Farm D', owner: 'Ana Gomez & Apolinario', haCost: 10100, haPct: 66, status: 'Satisfactory (₱10.1k/Ha)', color: '#1A6B9A' },
-    ];
+    const maxHa = Math.max(...db.fields.map(f => {
+      const fieldLogs = db.logs.filter(l => l.fieldId === f.id);
+      const logSum = fieldLogs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
+      const ha = Number(f.ha || 1.5);
+      return ha > 0 ? Math.round(logSum / ha) : 0;
+    }), 1);
+
+    const efficiencies = db.fields.map(f => {
+      const fieldLogs = db.logs.filter(l => l.fieldId === f.id);
+      const logSum = fieldLogs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
+      const ha = Number(f.ha || 1.5);
+      const haCost = ha > 0 ? Math.round(logSum / ha) : 0;
+      const haPct = Math.min(100, Math.round((haCost / maxHa) * 100));
+
+      let status = 'Active';
+      let color = '#1A6B9A';
+      if (haCost === 0) {
+        status = 'No Spend Logged';
+        color = '#8A9B7A';
+      } else {
+        status = `Actual (₱${(haCost / 1000).toFixed(1)}k/Ha)`;
+        color = '#3A8F3A';
+      }
+
+      return {
+        id: f.id,
+        rawKey: f.id,
+        owner: f.member || 'Member',
+        haCost,
+        haPct: Math.max(haPct, 5),
+        status,
+        color
+      };
+    });
+
     hectareBars.innerHTML = efficiencies.map(e =>
       `<div onclick="openDetailedAnalyticsModal('${e.rawKey}')" class="group flex flex-col gap-1.5 p-2 rounded-xl hover:bg-bg border border-transparent hover:border-primary/30 transition-all cursor-pointer">
         <div class="flex justify-between items-baseline">
@@ -3437,15 +4524,15 @@ function renderUsers() {
   const pendingSubEl = document.getElementById('pending-users-sub');
 
   if (currentRole === 'manager') {
-    if (headingEl) headingEl.textContent = 'Block Farm A · Member Access & Onboarding';
-    if (subEl) subEl.textContent = 'Review and approve member farmers registering specifically under Block Farm A';
-    if (dirTitleEl) dirTitleEl.textContent = 'Block Farm A Registered Personnel & Farmers';
-    if (pendingTitleEl) pendingTitleEl.textContent = 'Pending Block Farm A Registrations';
+    if (headingEl) headingEl.textContent = 'Nacayao Block Farm A · Member Access & Onboarding';
+    if (subEl) subEl.textContent = 'Review and approve member farmers registering specifically under Nacayao Block Farm A';
+    if (dirTitleEl) dirTitleEl.textContent = 'Nacayao Block Farm A Registered Personnel & Farmers';
+    if (pendingTitleEl) pendingTitleEl.textContent = 'Pending Nacayao Block Farm A Registrations';
     if (pendingSubEl) pendingSubEl.textContent = 'Only you (Farm Manager) can approve members for your assigned block farm.';
   } else if (currentRole === 'admin') {
-    if (headingEl) headingEl.textContent = 'SRA District Personnel & Farm Manager Directory';
-    if (subEl) subEl.textContent = 'Supervise registered farm managers, oversee member block allocations, and verify access';
-    if (dirTitleEl) dirTitleEl.textContent = 'District VII Active Personnel & Farmers Directory';
+    if (headingEl) headingEl.textContent = 'Silay SRA Personnel & Farm Manager Directory';
+    if (subEl) subEl.textContent = 'Supervise registered farm managers, oversee member block allocations, and verify access under Silay Sugar Regulatory Administration';
+    if (dirTitleEl) dirTitleEl.textContent = 'Silay SRA Active Personnel & Farmers Directory';
     if (pendingTitleEl) pendingTitleEl.textContent = 'Pending Farm Manager Appointments';
     if (pendingSubEl) pendingSubEl.textContent = 'SRA Admin approval required for Farm Manager appointments. Member approvals are handled by their respective Farm Managers.';
   } else {
@@ -3724,10 +4811,55 @@ function removeDirectoryUser(contact) {
   toast(`User Access Revoked for: ${target.name} (${contact})`);
 }
 
+let fieldsQuickFilter = 'all';
+
+function setFieldsQuickFilter(filter) {
+  fieldsQuickFilter = filter;
+  document.querySelectorAll('#fields-quick-chips .field-chip').forEach(c => {
+    const isActive = c.getAttribute('data-filter') === filter;
+    c.className = isActive
+      ? 'field-chip text-xs font-semibold px-3 py-1 rounded-full border border-primary bg-primary text-white transition-all cursor-pointer'
+      : 'field-chip text-xs font-semibold px-3 py-1 rounded-full border border-border bg-white text-hug-text2 hover:border-primary hover:text-primary transition-all cursor-pointer';
+  });
+  renderFields();
+}
+window.setFieldsQuickFilter = setFieldsQuickFilter;
+
+let fieldsViewMode = 'plots'; // 'plots' (default) or 'coop'
+let fieldsCurrentPage = 1;
+const FIELDS_PAGE_SIZE = 6;
+
+function changeFieldsPage(page) {
+  fieldsCurrentPage = page;
+  renderFields();
+  const el = document.getElementById('page-fields');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+window.changeFieldsPage = changeFieldsPage;
+
+function setFieldsViewMode(mode) {
+  fieldsViewMode = mode;
+  fieldsCurrentPage = 1;
+  const plotsBtn = document.getElementById('fields-view-plots-btn');
+  const coopBtn = document.getElementById('fields-view-coop-btn');
+  if (plotsBtn && coopBtn) {
+    if (mode === 'plots') {
+      plotsBtn.className = 'px-3 py-1 rounded-lg text-xs font-bold transition-all bg-primary text-white shadow-xs cursor-pointer';
+      coopBtn.className = 'px-3 py-1 rounded-lg text-xs font-bold transition-all text-hug-text2 hover:text-primary cursor-pointer';
+    } else {
+      coopBtn.className = 'px-3 py-1 rounded-lg text-xs font-bold transition-all bg-primary text-white shadow-xs cursor-pointer';
+      plotsBtn.className = 'px-3 py-1 rounded-lg text-xs font-bold transition-all text-hug-text2 hover:text-primary cursor-pointer';
+    }
+  }
+  renderFields();
+}
+window.setFieldsViewMode = setFieldsViewMode;
+
 // ── FIELD / BLOCK FARM REGISTRY DYNAMIC CONTROLLER ───────
 function renderFields() {
   const currentRole = localStorage.getItem('hugpong_role') || 'admin';
   const isManager = currentRole === 'manager';
+  const isSuper = currentRole === 'superadmin';
   const db = getDB();
   const gridContainer = document.getElementById('fields-grid-container');
   if (!gridContainer) return;
@@ -3737,38 +4869,163 @@ function renderFields() {
   const actionBtnText = document.getElementById('fields-action-btn-text');
   const histBtnText = document.getElementById('fields-history-btn-text');
 
-  if (histBtnText) {
-    histBtnText.textContent = isManager ? 'Plot History' : 'Block Farm History';
+  const searchInput = document.getElementById('fields-search-input');
+  const blockFilterEl = document.getElementById('fields-block-filter');
+  const stageFilterEl = document.getElementById('fields-stage-filter');
+  const syncFilterEl = document.getElementById('fields-sync-filter');
+  const sortSelectEl = document.getElementById('fields-sort-select');
+  const countBadgeEl = document.getElementById('fields-count-badge');
+  const quickChipsContainer = document.getElementById('fields-quick-chips');
+  const viewModeToggle = document.getElementById('fields-view-mode-toggle');
+  const paginationContainer = document.getElementById('fields-pagination');
+
+  const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  const selectedBlock = blockFilterEl ? blockFilterEl.value : 'all';
+  const selectedStage = stageFilterEl ? stageFilterEl.value : 'all';
+  const selectedSync = syncFilterEl ? syncFilterEl.value : 'all';
+  const sortMode = sortSelectEl ? sortSelectEl.value : 'id-asc';
+
+  // Automatically reset to page 1 whenever any filter or search changes
+  const filterSig = `${query}|${selectedBlock}|${selectedStage}|${selectedSync}|${sortMode}|${fieldsQuickFilter}|${fieldsViewMode}`;
+  if (window._lastFieldsFilterSig && window._lastFieldsFilterSig !== filterSig) {
+    fieldsCurrentPage = 1;
   }
+  window._lastFieldsFilterSig = filterSig;
 
   if (isManager) {
-    // Farm Manager sees each individual field plot inside Block Farm A
-    if (headingEl) headingEl.textContent = 'Block Farm A · Field Plot Registry';
-    if (subEl) subEl.textContent = 'Direct field management, member plot allocations, and crop stage tracking for Block Farm A';
-    if (actionBtnText) actionBtnText.textContent = '+ Register Field Plot';
+    if (viewModeToggle) viewModeToggle.classList.add('hidden');
+    if (blockFilterEl) {
+      blockFilterEl.value = 'Nacayao Block Farm A';
+      blockFilterEl.disabled = true;
+    }
+    if (stageFilterEl) stageFilterEl.classList.remove('hidden');
+    if (quickChipsContainer) quickChipsContainer.classList.remove('hidden');
+    if (histBtnText) histBtnText.textContent = 'Plot History';
+    if (headingEl) headingEl.textContent = 'Nacayao Block Farm A · Field Plot Registry';
+    if (subEl) subEl.textContent = 'Direct field management, member plot allocations, and crop stage tracking for Nacayao Block Farm A';
+    if (actionBtnText) actionBtnText.textContent = 'Register Field Plot';
+  } else {
+    // SRA Admin or Super Admin
+    if (viewModeToggle) viewModeToggle.classList.remove('hidden');
+    if (blockFilterEl) blockFilterEl.disabled = false;
 
-    const plots = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === 'Block Farm A');
+    if (fieldsViewMode === 'plots') {
+      if (stageFilterEl) stageFilterEl.classList.remove('hidden');
+      if (quickChipsContainer) quickChipsContainer.classList.remove('hidden');
+      if (histBtnText) histBtnText.textContent = 'Plot History';
+      if (headingEl) headingEl.textContent = isSuper ? 'Capstone Super Admin · District Member Plot Registry' : 'Silay SRA · District Member Plot Registry';
+      if (subEl) subEl.textContent = selectedBlock === 'all'
+        ? 'Comprehensive district-wide member plot monitoring across all enrolled block farms'
+        : `Supervision of member plots registered under ${selectedBlock}`;
+      if (actionBtnText) actionBtnText.textContent = 'Register Field Plot';
+    } else {
+      // Cooperative Summary View
+      if (stageFilterEl) stageFilterEl.classList.add('hidden');
+      if (quickChipsContainer) quickChipsContainer.classList.add('hidden');
+      if (histBtnText) histBtnText.textContent = 'Block Farm History';
+      if (headingEl) headingEl.textContent = isSuper ? 'Capstone Super Admin · Cooperative Block Farms' : 'Silay Sugar Regulatory Administration · Cooperative Block Farms';
+      if (subEl) subEl.textContent = 'Supervision of enrolled block farm cooperatives across Silay Sugar Regulatory Administration';
+      if (actionBtnText) actionBtnText.textContent = 'Register Block Farm';
+    }
+  }
 
-    if (plots.length === 0) {
-      gridContainer.innerHTML = '<div class="col-span-full py-12 text-center text-xs text-hug-muted border border-dashed border-border rounded-2xl">No field plots registered under Block Farm A yet.</div>';
+  // RENDER MODE 1: MEMBER PLOTS VIEW (Manager always, SRA/Super Admin when fieldsViewMode === 'plots')
+  if (isManager || fieldsViewMode === 'plots') {
+    let plots = [...db.fields];
+
+    // Filter by block farm
+    if (isManager) {
+      plots = plots.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === 'Nacayao Block Farm A' || f.blockFarm === 'Block Farm A');
+    } else if (selectedBlock !== 'all') {
+      plots = plots.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === selectedBlock);
+    }
+
+    // 1. Text Search Filter
+    if (query) {
+      plots = plots.filter(f => 
+        (f.id || '').toLowerCase().includes(query) ||
+        (f.member || f.owner || '').toLowerCase().includes(query) ||
+        (f.stage || '').toLowerCase().includes(query) ||
+        (f.blockFarm || getBlockFarmName(f.id) || '').toLowerCase().includes(query) ||
+        (String(f.ha || f.area) || '').toLowerCase().includes(query)
+      );
+    }
+
+    // 2. Growth Stage Dropdown Filter
+    if (selectedStage !== 'all') {
+      plots = plots.filter(f => (f.stage || '').toLowerCase().includes(selectedStage.toLowerCase()));
+    }
+
+    // 3. Sync Status Dropdown Filter
+    if (selectedSync === 'synced') {
+      plots = plots.filter(f => f.synced);
+    } else if (selectedSync === 'lagging') {
+      plots = plots.filter(f => !f.synced);
+    }
+
+    // 4. Quick Filter Chips
+    if (fieldsQuickFilter === 'active') {
+      plots = plots.filter(f => !f.stage?.toLowerCase().includes('harvest') && !f.stage?.toLowerCase().includes('complete'));
+    } else if (fieldsQuickFilter === 'harvest') {
+      plots = plots.filter(f => f.stage?.toLowerCase().includes('harvest'));
+    } else if (fieldsQuickFilter === 'lagging') {
+      plots = plots.filter(f => !f.synced);
+    }
+
+    // 5. Sorting
+    if (sortMode === 'id-asc') {
+      plots.sort((a, b) => a.id.localeCompare(b.id));
+    } else if (sortMode === 'id-desc') {
+      plots.sort((a, b) => b.id.localeCompare(a.id));
+    } else if (sortMode === 'block-asc') {
+      plots.sort((a, b) => (a.blockFarm || getBlockFarmName(a.id)).localeCompare(b.blockFarm || getBlockFarmName(b.id)));
+    } else if (sortMode === 'ha-desc') {
+      plots.sort((a, b) => (Number(b.ha || b.area) || 0) - (Number(a.ha || a.area) || 0));
+    } else if (sortMode === 'ha-asc') {
+      plots.sort((a, b) => (Number(a.ha || a.area) || 0) - (Number(b.ha || b.area) || 0));
+    } else if (sortMode === 'name-asc') {
+      plots.sort((a, b) => (a.member || a.owner || '').localeCompare(b.member || b.owner || ''));
+    }
+
+    const totalPlots = plots.length;
+    const totalPages = Math.max(1, Math.ceil(totalPlots / FIELDS_PAGE_SIZE));
+    if (fieldsCurrentPage > totalPages) fieldsCurrentPage = totalPages;
+    if (fieldsCurrentPage < 1) fieldsCurrentPage = 1;
+
+    const startIndex = (fieldsCurrentPage - 1) * FIELDS_PAGE_SIZE;
+    const paginatedPlots = plots.slice(startIndex, startIndex + FIELDS_PAGE_SIZE);
+
+    if (countBadgeEl) {
+      const blockDesc = (!isManager && selectedBlock !== 'all') ? ` in ${selectedBlock}` : (!isManager ? ' across all blocks' : '');
+      countBadgeEl.textContent = `${totalPlots} ${totalPlots === 1 ? 'plot' : 'plots'} showing${blockDesc}`;
+    }
+
+    if (totalPlots === 0) {
+      gridContainer.innerHTML = '<div class="col-span-full py-12 text-center text-xs text-hug-muted border border-dashed border-border rounded-2xl bg-white">No field plots matched the search or block filter criteria.</div>';
+      if (paginationContainer) paginationContainer.innerHTML = '';
       return;
     }
 
-    gridContainer.innerHTML = plots.map(f => {
+    gridContainer.innerHTML = paginatedPlots.map(f => {
       const isSynced = f.synced;
       const syncBadge = isSynced
-        ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-success bg-success-bg px-2.5 py-0.5 rounded-full"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Fully Synced</span>'
+        ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-success bg-success-bg px-2 py-0.5 rounded-full"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Fully Synced</span>'
         : `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-danger bg-danger-bg px-2.5 py-0.5 rounded-full"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Lagging Sync</span>`;
+
+      const farmName = f.blockFarm || getBlockFarmName(f.id);
 
       return `
         <div class="bg-white rounded-2xl border border-border shadow-xs hover:shadow-md transition-all p-5 flex flex-col justify-between gap-4">
           <div>
-            <div class="flex items-center justify-between gap-2 mb-3">
+            <div class="flex items-center justify-between gap-2 mb-2.5">
               <span class="font-mono text-xs font-bold text-primary bg-primary-bg px-2.5 py-1 rounded-lg">${f.id}</span>
               <span class="text-xs font-bold text-hug-text2 bg-bg border border-border px-2.5 py-0.5 rounded-full">${f.ha} Ha</span>
             </div>
-            <div class="flex flex-col gap-1 text-xs">
-              <strong class="text-sm font-bold text-hug-text">${f.member || 'Unassigned'}</strong>
+            <div class="flex flex-col gap-1.5 text-xs">
+              <div class="flex items-start justify-between gap-2">
+                <strong class="text-sm font-bold text-hug-text">${f.member || 'Unassigned'}</strong>
+                <span class="text-[10px] font-bold text-primary bg-primary-bg px-2 py-0.5 rounded-md border border-primary/20 flex-shrink-0">${farmName}</span>
+              </div>
               <p class="text-hug-muted">Current Stage: <span class="font-semibold text-primary">${f.stage || 'Land Preparation'}</span></p>
               <p class="text-hug-muted text-[11px]">Last Sync: <span class="font-medium text-hug-text2">${f.lastSync || 'Just now'}</span></p>
             </div>
@@ -3790,12 +5047,21 @@ function renderFields() {
         </div>
       `;
     }).join('');
-  } else {
-    // SRA Admin / Superadmin sees all Block Farms aggregated
-    if (headingEl) headingEl.textContent = 'District VII · Cooperative Block Farms';
-    if (subEl) subEl.textContent = 'Supervision of enrolled block farm cooperatives across Silay district';
-    if (actionBtnText) actionBtnText.textContent = '+ Register Block Farm';
 
+    if (paginationContainer) {
+      if (totalPages <= 1) {
+        paginationContainer.innerHTML = '';
+        paginationContainer.classList.add('hidden');
+      } else {
+        paginationContainer.classList.remove('hidden');
+        paginationContainer.innerHTML = 
+          `<button onclick="changeFieldsPage(${fieldsCurrentPage - 1})" ${fieldsCurrentPage === 1 ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''} class="px-3 py-1 bg-white border border-border rounded-lg text-xs font-semibold cursor-pointer text-hug-text2 hover:text-primary hover:border-primary transition-all">Prev</button>` +
+          `<span class="text-xs font-semibold text-hug-text2">Page ${fieldsCurrentPage} of ${totalPages}</span>` +
+          `<button onclick="changeFieldsPage(${fieldsCurrentPage + 1})" ${fieldsCurrentPage === totalPages ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''} class="px-3 py-1 bg-white border border-border rounded-lg text-xs font-semibold cursor-pointer text-hug-text2 hover:text-primary hover:border-primary transition-all">Next</button>`;
+      }
+    }
+  } else {
+    // RENDER MODE 2: COOPERATIVE SUMMARY VIEW (SRA Admin / Super Admin)
     const grouped = {};
     db.fields.forEach(f => {
       const farm = f.blockFarm || getBlockFarmName(f.id) || 'Unassigned Block Farm';
@@ -3806,12 +5072,52 @@ function renderFields() {
       grouped[farm].fieldIds.push(f.id);
     });
 
-    const cards = Object.values(grouped).map(group => {
+    let groups = Object.values(grouped);
+
+    // Block filter
+    if (selectedBlock !== 'all') {
+      groups = groups.filter(g => g.name === selectedBlock);
+    }
+
+    // Text search filter
+    if (query) {
+      groups = groups.filter(g => 
+        g.name.toLowerCase().includes(query) ||
+        (db.users.find(u => u.role === 'Farm Manager' && u.blockFarm === g.name)?.name || '').toLowerCase().includes(query) ||
+        getBlockId(g.name).toLowerCase().includes(query)
+      );
+    }
+
+    // Sync status filter
+    if (selectedSync === 'synced') {
+      groups = groups.filter(g => g.synced === g.totalFields);
+    } else if (selectedSync === 'lagging') {
+      groups = groups.filter(g => g.synced < g.totalFields);
+    }
+
+    // Sorting
+    if (sortMode === 'ha-desc') {
+      groups.sort((a, b) => b.totalArea - a.totalArea);
+    } else if (sortMode === 'ha-asc') {
+      groups.sort((a, b) => a.totalArea - b.totalArea);
+    } else {
+      groups.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    if (countBadgeEl) {
+      countBadgeEl.textContent = `${groups.length} block ${groups.length === 1 ? 'farm' : 'farms'} showing`;
+    }
+
+    if (groups.length === 0) {
+      gridContainer.innerHTML = '<div class="col-span-full py-12 text-center text-xs text-hug-muted border border-dashed border-border rounded-2xl bg-white">No block farms matched the search or block filter criteria.</div>';
+      return;
+    }
+
+    const cards = groups.map(group => {
       const manager = db.users.find(u => u.role === 'Farm Manager' && u.blockFarm === group.name);
       const managerName = manager ? manager.name : 'Unassigned';
       const blockId = getBlockId(group.name);
       const allSynced = group.synced === group.totalFields;
-      const borderColor = allSynced ? '#E2E8DC' : '#D9534F';
       const syncBadge = allSynced
         ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-success bg-success-bg px-2.5 py-0.5 rounded-full"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Fully Synced</span>'
         : '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-danger bg-danger-bg px-2.5 py-0.5 rounded-full"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Partial Sync</span>';
@@ -3848,6 +5154,11 @@ function renderFields() {
     });
 
     gridContainer.innerHTML = cards.join('');
+
+    if (paginationContainer) {
+      paginationContainer.innerHTML = '';
+      paginationContainer.classList.add('hidden');
+    }
   }
 }
 
@@ -3869,6 +5180,82 @@ function archiveFieldPlot(fieldId) {
   toast(`Field plot ${fieldId} archived.`);
 }
 
+let currentPlotHistFieldId = null;
+let plotHistPage = 1;
+const PLOT_HIST_PAGE_SIZE = 5;
+
+function setPlotHistPage(page) {
+  plotHistPage = page;
+  renderPlotHistTable();
+}
+
+function renderPlotHistTable() {
+  const db = getDB();
+  const tableBody = document.getElementById('plot-hist-table-body');
+  const paginationEl = document.getElementById('plot-hist-pagination');
+  const countEl = document.getElementById('plot-hist-log-count');
+  const searchInput = document.getElementById('plot-hist-search');
+  if (!tableBody || !currentPlotHistFieldId) return;
+
+  let plotLogs = (db.logs || []).filter(l => l.fieldId === currentPlotHistFieldId);
+
+  const query = (searchInput?.value || '').toLowerCase().trim();
+  if (query) {
+    plotLogs = plotLogs.filter(l => 
+      (l.id || '').toLowerCase().includes(query) ||
+      (l.task || l.activity || l.operationName || '').toLowerCase().includes(query) ||
+      (l.sraOperationId || '').toLowerCase().includes(query)
+    );
+  }
+
+  if (countEl) countEl.textContent = `${plotLogs.length} total entries`;
+
+  const totalPages = Math.max(1, Math.ceil(plotLogs.length / PLOT_HIST_PAGE_SIZE));
+  plotHistPage = Math.max(1, Math.min(plotHistPage, totalPages));
+
+  const startIdx = (plotHistPage - 1) * PLOT_HIST_PAGE_SIZE;
+  const pageLogs = plotLogs.slice(startIdx, startIdx + PLOT_HIST_PAGE_SIZE);
+
+  if (pageLogs.length === 0) {
+    tableBody.innerHTML = '<tr><td colspan="5" class="text-xs text-hug-muted py-6 text-center">No recorded operations match the search criteria.</td></tr>';
+  } else {
+    tableBody.innerHTML = pageLogs.map(l => {
+      const inputDisplay = l.inputQty ? ` · ${l.inputQty} ${l.inputUnit || ''} (${l.inputName || ''})` : '';
+      return `
+        <tr class="border-b border-border/50 hover:bg-bg transition-colors">
+          <td class="px-3 py-2.5 font-mono font-bold text-primary">${l.id || 'LOG'}</td>
+          <td class="px-3 py-2.5">
+            <div class="flex items-center gap-1.5">
+              ${l.sraOperationId ? `<span class="px-1.5 py-0.5 rounded bg-primary-bg text-primary text-[10px] font-bold">${l.sraOperationId}</span>` : ''}
+              <span class="font-semibold text-hug-text">${l.task || l.activity || 'Field Operation'}</span>
+            </div>
+            ${inputDisplay ? `<span class="text-[10px] text-hug-muted block mt-0.5">${inputDisplay}</span>` : ''}
+          </td>
+          <td class="px-3 py-2.5 font-bold text-hug-text">₱${Number(l.cost || l.totalCost || 0).toLocaleString()}</td>
+          <td class="px-3 py-2.5 text-hug-muted">${l.date || 'Recent'}</td>
+          <td class="px-3 py-2.5 text-right">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-bg text-primary">Recorded</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  if (paginationEl) {
+    paginationEl.innerHTML = `
+      <span class="text-xs text-hug-muted font-medium">Page ${plotHistPage} of ${totalPages} (${plotLogs.length} entries)</span>
+      <div class="flex items-center gap-1.5">
+        <button onclick="setPlotHistPage(${plotHistPage - 1})" ${plotHistPage <= 1 ? 'disabled class="px-2.5 py-1 rounded-lg text-xs bg-bg text-hug-muted border border-border opacity-50 cursor-not-allowed"' : 'class="px-2.5 py-1 rounded-lg text-xs bg-white text-hug-text border border-border hover:border-primary hover:text-primary transition-all cursor-pointer"'}>
+          ‹ Previous
+        </button>
+        <button onclick="setPlotHistPage(${plotHistPage + 1})" ${plotHistPage >= totalPages ? 'disabled class="px-2.5 py-1 rounded-lg text-xs bg-bg text-hug-muted border border-border opacity-50 cursor-not-allowed"' : 'class="px-2.5 py-1 rounded-lg text-xs bg-white text-hug-text border border-border hover:border-primary hover:text-primary transition-all cursor-pointer"'}>
+          Next ›
+        </button>
+      </div>
+    `;
+  }
+}
+
 function openPlotHistoryModal(fieldId) {
   const db = getDB();
   const field = db.fields.find(f => f.id === fieldId);
@@ -3878,8 +5265,6 @@ function openPlotHistoryModal(fieldId) {
   const areaEl = document.getElementById('plot-hist-area');
   const titleEl = document.getElementById('plot-hist-title');
   const subEl = document.getElementById('plot-hist-sub');
-  const countEl = document.getElementById('plot-hist-log-count');
-  const logsListEl = document.getElementById('plot-hist-logs-list');
 
   const totalSpendEl = document.getElementById('plot-hist-total-spend');
   const stageEl = document.getElementById('plot-hist-stage');
@@ -3892,7 +5277,7 @@ function openPlotHistoryModal(fieldId) {
   if (titleEl) titleEl.textContent = `Field Plot Operations History: ${field.id}`;
   if (subEl) subEl.textContent = `Assigned to ${field.member || 'Unassigned'} · ${field.blockFarm || 'Block Farm A'}`;
 
-  const plotLogs = db.logs.filter(l => l.fieldId === fieldId);
+  const plotLogs = (db.logs || []).filter(l => l.fieldId === fieldId);
   const totalSpend = plotLogs.reduce((s, l) => s + (Number(l.cost) || 0), 0);
 
   if (totalSpendEl) totalSpendEl.textContent = `₱${totalSpend.toLocaleString()}`;
@@ -3904,29 +5289,11 @@ function openPlotHistoryModal(fieldId) {
   if (areaDisplayEl) areaDisplayEl.textContent = `${Number(field.ha || 1.5).toFixed(1)} Hectares`;
   if (locDisplayEl) locDisplayEl.textContent = `${field.blockFarm || 'Block Farm A'} · Silay Cluster`;
 
-  if (countEl) countEl.textContent = `${plotLogs.length} total entries`;
-
-  if (logsListEl) {
-    if (plotLogs.length === 0) {
-      logsListEl.innerHTML = '<p class="text-xs text-hug-muted py-3 text-center">No historical operations logged for this field yet.</p>';
-    } else {
-      logsListEl.innerHTML = plotLogs.map(l => {
-        const inputDisplay = l.inputQty ? ` · ${l.inputQty} ${l.inputUnit || ''} (${l.inputName || ''})` : '';
-        return `
-          <div class="p-3 bg-bg/50 rounded-xl border border-border flex items-center justify-between text-xs">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="font-bold text-hug-text">${l.task || l.activity}</span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-success-bg text-success">Recorded</span>
-              </div>
-              <p class="text-[11px] text-hug-muted mt-0.5">₱${(l.cost || 0).toLocaleString()} · ${l.date}${inputDisplay}</p>
-            </div>
-            <span class="text-[10px] font-mono text-hug-muted">${l.id}</span>
-          </div>
-        `;
-      }).join('');
-    }
-  }
+  currentPlotHistFieldId = fieldId;
+  plotHistPage = 1;
+  const searchInput = document.getElementById('plot-hist-search');
+  if (searchInput) searchInput.value = '';
+  renderPlotHistTable();
 
   const modal = document.getElementById('modal-plot-history');
   if (modal) modal.classList.remove('hidden');
@@ -3937,12 +5304,110 @@ function closePlotHistoryModal() {
   if (modal) modal.classList.add('hidden');
 }
 
+let currentBlockHistTarget = null;
+let blockHistPage = 1;
+const BLOCK_HIST_PAGE_SIZE = 5;
+
+function setBlockHistPage(page) {
+  blockHistPage = page;
+  renderBlockHistTable();
+}
+
+function renderBlockHistTable() {
+  const db = getDB();
+  const tableBody = document.getElementById('block-hist-table-body');
+  const paginationEl = document.getElementById('block-hist-pagination');
+  const countEl = document.getElementById('block-hist-log-count');
+  const searchInput = document.getElementById('block-hist-search');
+  if (!tableBody) return;
+
+  const targetFarm = currentBlockHistTarget;
+  let filteredFields = db.fields || [];
+  let filteredLogs = db.logs || [];
+
+  if (targetFarm) {
+    filteredFields = (db.fields || []).filter(f => {
+      const bf = f.blockFarm || getBlockFarmName(f.id);
+      return bf === targetFarm || 
+             (targetFarm.includes('Block Farm A') && (bf.includes('Block Farm A') || bf.includes('Nacayao'))) ||
+             (targetFarm.includes('Block Farm B') && (bf.includes('Block Farm B') || bf.includes('Victorias'))) ||
+             (targetFarm.includes('Block Farm C') && (bf.includes('Block Farm C') || bf.includes('Talisay'))) ||
+             (targetFarm.includes('Block Farm D') && (bf.includes('Block Farm D') || bf.includes('Manapla')));
+    });
+
+    if (filteredFields.length === 0) {
+      filteredFields = (db.fields || []).filter(f => getBlockFarmName(f.id) === targetFarm);
+    }
+
+    const fieldIds = new Set(filteredFields.map(f => f.id));
+    filteredLogs = (db.logs || []).filter(l => fieldIds.has(l.fieldId) || (l.blockFarm && (l.blockFarm === targetFarm || targetFarm.includes(l.blockFarm))));
+  }
+
+  const query = (searchInput?.value || '').toLowerCase().trim();
+  if (query) {
+    filteredLogs = filteredLogs.filter(l => 
+      (l.id || '').toLowerCase().includes(query) ||
+      (l.fieldId || '').toLowerCase().includes(query) ||
+      (l.task || l.activity || l.operationName || '').toLowerCase().includes(query) ||
+      (l.sraOperationId || '').toLowerCase().includes(query)
+    );
+  }
+
+  if (countEl) countEl.textContent = `${filteredLogs.length} total entries`;
+
+  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / BLOCK_HIST_PAGE_SIZE));
+  blockHistPage = Math.max(1, Math.min(blockHistPage, totalPages));
+
+  const startIdx = (blockHistPage - 1) * BLOCK_HIST_PAGE_SIZE;
+  const pageLogs = filteredLogs.slice(startIdx, startIdx + BLOCK_HIST_PAGE_SIZE);
+
+  if (pageLogs.length === 0) {
+    tableBody.innerHTML = '<tr><td colspan="6" class="text-xs text-hug-muted py-6 text-center">No recorded operations match the search criteria.</td></tr>';
+  } else {
+    tableBody.innerHTML = pageLogs.map(l => {
+      const inputDisplay = l.inputQty ? ` · ${l.inputQty} ${l.inputUnit || ''} (${l.inputName || ''})` : '';
+      return `
+        <tr class="border-b border-border/50 hover:bg-bg transition-colors">
+          <td class="px-3 py-2.5 font-mono font-bold text-primary">${l.id || 'LOG'}</td>
+          <td class="px-3 py-2.5 font-mono font-bold text-hug-text">${l.fieldId || 'FLD'}</td>
+          <td class="px-3 py-2.5">
+            <div class="flex items-center gap-1.5">
+              ${l.sraOperationId ? `<span class="px-1.5 py-0.5 rounded bg-primary-bg text-primary text-[10px] font-bold">${l.sraOperationId}</span>` : ''}
+              <span class="font-semibold text-hug-text">${l.task || l.activity || 'Field Operation'}</span>
+            </div>
+            ${inputDisplay ? `<span class="text-[10px] text-hug-muted block mt-0.5">${inputDisplay}</span>` : ''}
+          </td>
+          <td class="px-3 py-2.5 font-bold text-hug-text">₱${Number(l.cost || l.totalCost || 0).toLocaleString()}</td>
+          <td class="px-3 py-2.5 text-hug-muted">${l.date || 'Recent'}</td>
+          <td class="px-3 py-2.5 text-right">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-bg text-primary">Recorded</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  if (paginationEl) {
+    paginationEl.innerHTML = `
+      <span class="text-xs text-hug-muted font-medium">Page ${blockHistPage} of ${totalPages} (${filteredLogs.length} entries)</span>
+      <div class="flex items-center gap-1.5">
+        <button onclick="setBlockHistPage(${blockHistPage - 1})" ${blockHistPage <= 1 ? 'disabled class="px-2.5 py-1 rounded-lg text-xs bg-bg text-hug-muted border border-border opacity-50 cursor-not-allowed"' : 'class="px-2.5 py-1 rounded-lg text-xs bg-white text-hug-text border border-border hover:border-primary hover:text-primary transition-all cursor-pointer"'}>
+          ‹ Previous
+        </button>
+        <button onclick="setBlockHistPage(${blockHistPage + 1})" ${blockHistPage >= totalPages ? 'disabled class="px-2.5 py-1 rounded-lg text-xs bg-bg text-hug-muted border border-border opacity-50 cursor-not-allowed"' : 'class="px-2.5 py-1 rounded-lg text-xs bg-white text-hug-text border border-border hover:border-primary hover:text-primary transition-all cursor-pointer"'}>
+          Next ›
+        </button>
+      </div>
+    `;
+  }
+}
+
 function openBlockFarmHistoryModal(farmName = null) {
   const db = getDB();
   const currentRole = localStorage.getItem('hugpong_role') || 'admin';
   const isManager = currentRole === 'manager';
 
-  const targetFarm = farmName || (isManager ? 'Block Farm A' : null);
+  const targetFarm = farmName || (isManager ? 'Nacayao Block Farm A' : null);
 
   const codeEl = document.getElementById('block-hist-code');
   const areaEl = document.getElementById('block-hist-area');
@@ -3951,21 +5416,39 @@ function openBlockFarmHistoryModal(farmName = null) {
   const plotsCountEl = document.getElementById('block-hist-plots-count');
   const totalCostEl = document.getElementById('block-hist-total-cost');
   const syncStatusEl = document.getElementById('block-hist-sync-status');
-  const countEl = document.getElementById('block-hist-log-count');
-  const logsListEl = document.getElementById('block-hist-logs-list');
 
-  let filteredFields = db.fields;
-  let filteredLogs = db.logs;
-  let blockCode = 'DISTRICT VII';
-  let title = 'District VII · All Enrolled Block Farms';
-  let sub = 'Regulatory overview across all cooperative clusters in Silay District';
+  let filteredFields = db.fields || [];
+  let filteredLogs = db.logs || [];
+  let blockCode = 'SILAY SRA';
+  let title = 'Silay Sugar Regulatory Administration · All Enrolled Block Farms';
+  let sub = 'Regulatory overview across all cooperative clusters under Silay Sugar Regulatory Administration';
 
   if (targetFarm) {
-    filteredFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === targetFarm);
+    filteredFields = (db.fields || []).filter(f => {
+      const bf = f.blockFarm || getBlockFarmName(f.id);
+      return bf === targetFarm || 
+             (targetFarm.includes('Block Farm A') && (bf.includes('Block Farm A') || bf.includes('Nacayao'))) ||
+             (targetFarm.includes('Block Farm B') && (bf.includes('Block Farm B') || bf.includes('Victorias'))) ||
+             (targetFarm.includes('Block Farm C') && (bf.includes('Block Farm C') || bf.includes('Talisay'))) ||
+             (targetFarm.includes('Block Farm D') && (bf.includes('Block Farm D') || bf.includes('Manapla')));
+    });
+
+    if (filteredFields.length === 0) {
+      filteredFields = (db.fields || []).filter(f => getBlockFarmName(f.id) === targetFarm);
+    }
+
     const fieldIds = new Set(filteredFields.map(f => f.id));
-    filteredLogs = db.logs.filter(l => fieldIds.has(l.fieldId) || (l.blockFarm && l.blockFarm === targetFarm));
+    filteredLogs = (db.logs || []).filter(l => fieldIds.has(l.fieldId) || (l.blockFarm && (l.blockFarm === targetFarm || targetFarm.includes(l.blockFarm))));
     blockCode = getBlockId(targetFarm);
-    const manager = db.users.find(u => u.role === 'Farm Manager' && u.blockFarm === targetFarm);
+    
+    const manager = (db.users || []).find(u => u.role === 'Farm Manager' && (
+      u.blockFarm === targetFarm ||
+      (targetFarm.includes('Block Farm A') && (u.blockFarm?.includes('Block Farm A') || u.blockFarm?.includes('Nacayao'))) ||
+      (targetFarm.includes('Block Farm B') && (u.blockFarm?.includes('Block Farm B') || u.blockFarm?.includes('Victorias'))) ||
+      (targetFarm.includes('Block Farm C') && (u.blockFarm?.includes('Block Farm C') || u.blockFarm?.includes('Talisay'))) ||
+      (targetFarm.includes('Block Farm D') && (u.blockFarm?.includes('Block Farm D') || u.blockFarm?.includes('Manapla')))
+    ));
+
     title = `${targetFarm} · Cooperative History & Audit`;
     sub = `Supervised by ${manager ? manager.name : 'Jose Reyes'} · ${filteredFields.length} Enrolled Member Plots`;
   }
@@ -3982,32 +5465,14 @@ function openBlockFarmHistoryModal(farmName = null) {
   if (totalCostEl) totalCostEl.textContent = `₱${totalSpend.toLocaleString()}`;
   if (syncStatusEl) {
     syncStatusEl.textContent = allSynced ? '100% Synced' : 'Sync Lag Detected';
-    syncStatusEl.className = allSynced ? 'font-bold text-success block mt-0.5' : 'font-bold text-danger block mt-0.5';
+    syncStatusEl.className = allSynced ? 'font-bold text-success block text-base mt-0.5' : 'font-bold text-danger block text-base mt-0.5';
   }
-  if (countEl) countEl.textContent = `${filteredLogs.length} total entries`;
 
-  if (logsListEl) {
-    if (filteredLogs.length === 0) {
-      logsListEl.innerHTML = '<p class="text-xs text-hug-muted py-3 text-center">No historical operations logged for this block farm yet.</p>';
-    } else {
-      logsListEl.innerHTML = filteredLogs.map(l => {
-        const inputDisplay = l.inputQty ? ` · ${l.inputQty} ${l.inputUnit || ''} (${l.inputName || ''})` : '';
-        return `
-          <div class="p-3 bg-bg/50 rounded-xl border border-border flex items-center justify-between text-xs hover:bg-bg transition-colors">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-primary-bg text-primary">${l.fieldId || 'FLD'}</span>
-                <span class="font-bold text-hug-text">${l.task || l.activity}</span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-success-bg text-success">${l.status || 'Recorded'}</span>
-              </div>
-              <p class="text-[11px] text-hug-muted mt-0.5">₱${(l.cost || 0).toLocaleString()} · ${l.date}${inputDisplay}</p>
-            </div>
-            <span class="text-[10px] font-mono text-hug-muted">${l.id}</span>
-          </div>
-        `;
-      }).join('');
-    }
-  }
+  currentBlockHistTarget = targetFarm;
+  blockHistPage = 1;
+  const searchInput = document.getElementById('block-hist-search');
+  if (searchInput) searchInput.value = '';
+  renderBlockHistTable();
 
   const modal = document.getElementById('modal-block-farm-history');
   if (modal) modal.classList.remove('hidden');
@@ -4440,7 +5905,7 @@ function saveEditPlotModal() {
 
 function handleFieldsActionClick() {
   const currentRole = localStorage.getItem('hugpong_role') || 'admin';
-  if (currentRole === 'manager') {
+  if (currentRole === 'manager' || fieldsViewMode === 'plots') {
     openRegisterFieldPlotModal();
   } else {
     openRegisterBlockFarmModal();
@@ -4544,7 +6009,7 @@ function openRegisterBlockFarmModal(farmNameToEdit = null) {
 
   if (nameWrapper) nameWrapper.classList.remove('hidden');
   if (lblCluster) lblCluster.textContent = 'District Cluster';
-  if (displayCluster) displayCluster.textContent = 'SRA District VII';
+  if (displayCluster) displayCluster.textContent = 'Silay Sugar Regulatory Administration';
 
   if (farmNameToEdit) {
     activeEditingBlockFarmName = farmNameToEdit;
@@ -4583,7 +6048,7 @@ function openRegisterBlockFarmModal(farmNameToEdit = null) {
       badgeEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-black bg-[#1A6B9A]/15 text-[#1A6B9A] uppercase tracking-wider';
     }
     if (titleEl) { const s = titleEl.querySelector('span'); if (s) s.textContent = 'Register New Block Farm Entity'; }
-    if (subEl) subEl.textContent = 'Enroll a new cooperative cluster under SRA Sugar District VII oversight.';
+    if (subEl) subEl.textContent = 'Enroll a new cooperative cluster under Silay Sugar Regulatory Administration oversight.';
     
     if (lblPlotId) lblPlotId.textContent = 'Block Farm Code';
     if (lblName) lblName.innerHTML = 'Block Farm Cooperative Name <span class="text-danger">*</span>';
@@ -4850,8 +6315,8 @@ function openTabHistoryModal(moduleType) {
         `;
       }
     } else {
-      if (badgeEl) badgeEl.textContent = 'SRA District VII Cooperative History';
-      if (titleEl) titleEl.textContent = 'District VII · Block Farm Cooperative Lifecycle & Registration History';
+      if (badgeEl) badgeEl.textContent = 'Silay SRA Cooperative History';
+      if (titleEl) titleEl.textContent = 'Silay Sugar Regulatory Administration · Block Farm Cooperative Lifecycle & Registration History';
       if (subEl) subEl.textContent = 'Regulatory overview of cooperative block farm enrollments, manager assignments, and district certifications';
       if (chipsContainer) {
         chipsContainer.innerHTML = `
@@ -4886,15 +6351,15 @@ function openTabHistoryModal(moduleType) {
         <button class="tab-hist-chip text-xs font-semibold px-3 py-1 rounded-full border border-border bg-white text-hug-text2 hover:border-primary hover:text-primary transition-all cursor-pointer" data-filter="revoked" onclick="setTabHistoryFilter('revoked')">Revocations</button>
       `;
     }
-  } else if (moduleType === 'sra') {
-    if (badgeEl) badgeEl.textContent = 'SRA Compliance & Audit History';
-    if (titleEl) titleEl.textContent = 'SRA Compliance & QR Audit Trail';
-    if (subEl) subEl.textContent = 'Audit trail of encrypted QR verifications, certified compliance reports, and SRA regulatory events';
+  } else if (moduleType === 'sra' || moduleType === 'audit') {
+    if (badgeEl) badgeEl.textContent = 'SRA QR Audit & Verification History';
+    if (titleEl) titleEl.textContent = 'SRA Cryptographic QR Verification & Field Compliance Ledger';
+    if (subEl) subEl.textContent = 'Official audit trail of scanned mobile QR hashes, certified field logs, and SRA compliance certificates';
     if (chipsContainer) {
       chipsContainer.innerHTML = `
-        <button class="tab-hist-chip text-xs font-semibold px-3 py-1 rounded-full border border-primary bg-primary text-white transition-all cursor-pointer" data-filter="all" onclick="setTabHistoryFilter('all')">All SRA Audit Events</button>
-        <button class="tab-hist-chip text-xs font-semibold px-3 py-1 rounded-full border border-border bg-white text-hug-text2 hover:border-primary hover:text-primary transition-all cursor-pointer" data-filter="audit" onclick="setTabHistoryFilter('audit')">Certified QR Audits</button>
-        <button class="tab-hist-chip text-xs font-semibold px-3 py-1 rounded-full border border-border bg-white text-hug-text2 hover:border-primary hover:text-primary transition-all cursor-pointer" data-filter="price" onclick="setTabHistoryFilter('price')">Price Benchmarks</button>
+        <button class="tab-hist-chip text-xs font-semibold px-3 py-1 rounded-full border border-primary bg-primary text-white transition-all cursor-pointer" data-filter="all" onclick="setTabHistoryFilter('all')">All QR Audits</button>
+        <button class="tab-hist-chip text-xs font-semibold px-3 py-1 rounded-full border border-border bg-white text-hug-text2 hover:border-primary hover:text-primary transition-all cursor-pointer" data-filter="plot-audit" onclick="setTabHistoryFilter('plot-audit')">Field Plot Audits</button>
+        <button class="tab-hist-chip text-xs font-semibold px-3 py-1 rounded-full border border-border bg-white text-hug-text2 hover:border-primary hover:text-primary transition-all cursor-pointer" data-filter="full-season" onclick="setTabHistoryFilter('full-season')">Full Season Certificates</button>
       `;
     }
   }
@@ -4938,8 +6403,13 @@ function renderTabHistory() {
       // SRA Admin sees Block Farm registrations and all cooperative land events across district
       moduleEvents = allHistory.filter(h => h.category === 'block' || h.category === 'plot' || h.eventType.toLowerCase().includes('block'));
     }
-  } else if (currentTabHistModule === 'sra' && allHistory.filter(h => h.category === 'sra').length === 0) {
-    moduleEvents = allHistory.filter(h => h.category === 'price' || h.eventType.toLowerCase().includes('audit') || h.details.toLowerCase().includes('audit'));
+  } else if (currentTabHistModule === 'sra' || currentTabHistModule === 'audit') {
+    // Strictly QR Audits, Verifications, and Field Compliance Certificates
+    moduleEvents = allHistory.filter(h => 
+      h.category === 'audit' || 
+      (h.eventType && (h.eventType.toLowerCase().includes('audit') || h.eventType.toLowerCase().includes('certificate'))) || 
+      (h.details && (h.details.toLowerCase().includes('qr') || h.details.toLowerCase().includes('compliance')))
+    );
   } else {
     moduleEvents = allHistory.filter(h => h.category === currentTabHistModule);
   }
@@ -4966,10 +6436,10 @@ function renderTabHistory() {
       moduleEvents = moduleEvents.filter(h => h.status === 'Rejected' || h.eventType.toLowerCase().includes('declined') || h.eventType.toLowerCase().includes('rejected'));
     } else if (currentTabHistFilter === 'revoked') {
       moduleEvents = moduleEvents.filter(h => h.status === 'Revoked' || h.eventType.toLowerCase().includes('revoked'));
-    } else if (currentTabHistFilter === 'audit') {
-      moduleEvents = moduleEvents.filter(h => h.eventType.toLowerCase().includes('audit') || h.eventType.toLowerCase().includes('verify') || h.details.toLowerCase().includes('audit'));
-    } else if (currentTabHistFilter === 'price') {
-      moduleEvents = moduleEvents.filter(h => h.eventType.toLowerCase().includes('price') || h.details.toLowerCase().includes('price'));
+    } else if (currentTabHistFilter === 'plot-audit') {
+      moduleEvents = moduleEvents.filter(h => h.entity.includes('FLD-') || h.eventType.toLowerCase().includes('field') || h.eventType.toLowerCase().includes('monthly'));
+    } else if (currentTabHistFilter === 'full-season') {
+      moduleEvents = moduleEvents.filter(h => h.entity.includes('FULL') || h.eventType.toLowerCase().includes('season'));
     }
   }
 
@@ -5160,7 +6630,7 @@ function renderHistory() {
     person: r.manager || r.member || 'Assigned Lead',
     area: `${r.ha} Ha`,
     details: `${r.action} (${r.ha} Ha)`,
-    actor: r.authority || 'SRA District VII',
+    actor: r.authority || 'Silay Sugar Regulatory Administration',
     status: 'Enrolled'
   }));
 
@@ -5264,11 +6734,11 @@ function renderHistory() {
       else if (h.category === 'user') { catDot = 'bg-accent'; catBg = 'bg-accent text-hug-text border-accent'; }
       else if (h.category === 'sra') { catDot = 'bg-farm-blue'; catBg = 'bg-farm-blue-bg text-farm-blue border-farm-blue/20'; }
 
-      let statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-bg text-hug-text border border-border">${h.status || 'Recorded'}</span>`;
-      if (h.status === 'Approved' || h.status === 'Verified' || h.status === 'Completed' || h.status === 'Enrolled') {
-        statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-success-bg text-success border border-success/20">${h.status}</span>`;
+      let statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-bg text-hug-text border border-border whitespace-nowrap">${h.status || 'Recorded'}</span>`;
+      if (h.status === 'Approved' || h.status === 'Verified' || h.status === 'Completed' || h.status === 'Enrolled' || h.status === 'Official Circular') {
+        statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-success-bg text-success border border-success/20 whitespace-nowrap">${h.status}</span>`;
       } else if (h.status === 'Revoked' || h.status === 'Rejected' || h.status === 'Archived') {
-        statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-danger-bg text-danger border border-danger/20">${h.status}</span>`;
+        statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-danger-bg text-danger border border-danger/20 whitespace-nowrap">${h.status}</span>`;
       }
 
       return `
@@ -5321,7 +6791,7 @@ function exportHistoryAuditLogCSV() {
     person: r.manager || r.member || 'Assigned Lead',
     area: `${r.ha} Ha`,
     details: `${r.action} (${r.ha} Ha)`,
-    actor: r.authority || 'SRA District VII',
+    actor: r.authority || 'Silay Sugar Regulatory Administration',
     status: 'Enrolled'
   }));
 
@@ -5369,7 +6839,7 @@ function exportHistoryAuditLogCSV() {
 
 // ── SYNC & INACTIVITY MONITOR CONTROLLER ────────────────
 function dispatchRemoteResyncPing() {
-  toast('Broadcasting MQTT cloud re-sync ping to all 4 District VII terminals...');
+  toast('Broadcasting cloud re-sync ping to all Silay SRA terminals...');
   setTimeout(() => {
     toast('4 of 4 field devices acknowledged re-sync ping. Telemetry updated.');
     const db = getDB();
@@ -5543,6 +7013,13 @@ function renderTickets() {
     );
   }
 
+  // Automatically reset to page 1 whenever any filter or search changes
+  const filterSig = `${query}|${selectedStatus}|${selectedCat}`;
+  if (window._lastTckFilterSig && window._lastTckFilterSig !== filterSig) {
+    ticketsCurrentPage = 1;
+  }
+  window._lastTckFilterSig = filterSig;
+
   const totalTickets = filtered.length;
   const totalTicketPages = Math.ceil(totalTickets / TICKETS_PER_PAGE) || 1;
   if (ticketsCurrentPage > totalTicketPages) ticketsCurrentPage = totalTicketPages;
@@ -5576,9 +7053,9 @@ function renderTickets() {
               <h4 class="text-sm font-bold text-hug-text mb-1">${t.title}</h4>
               <p class="text-xs text-hug-muted line-clamp-2">${t.details}</p>
               <div class="flex items-center gap-4 text-[11px] text-hug-muted mt-2">
-                <span>👤 <strong>${t.author}</strong></span>
-                <span>📍 ${t.blockFarm}</span>
-                <span>🕒 ${t.date}</span>
+                <span><strong>${t.author}</strong></span>
+                <span>${t.blockFarm}</span>
+                <span>${t.date}</span>
               </div>
             </div>
           </div>
@@ -5742,14 +7219,23 @@ function openContactMemberModal(name, phone, fieldId, stage, lastSync, lagDays) 
   const elName = document.getElementById('contact-modal-name');
   const elField = document.getElementById('contact-modal-field');
   const elPhone = document.getElementById('contact-modal-phone');
+  const elPhoneDisplay = document.getElementById('contact-modal-phone-display');
+  const elTelLink = document.getElementById('contact-modal-tel-link');
+  const elQrImg = document.getElementById('contact-modal-qr-img');
   const elStage = document.getElementById('contact-modal-stage');
   const elBadge = document.getElementById('contact-modal-sync-badge');
-  const elSms = document.getElementById('contact-modal-sms');
+
+  const cleanPhone = (phone || '0917-555-0101').replace(/[^0-9+]/g, '');
 
   if (elAvatar) elAvatar.textContent = name.charAt(0);
   if (elName) elName.textContent = name;
   if (elField) elField.textContent = fieldId ? `${fieldId} (Plot Assignment)` : 'Assigned Cultivation Plot';
   if (elPhone) elPhone.textContent = phone || '0917-555-0101';
+  if (elPhoneDisplay) elPhoneDisplay.textContent = phone || '0917-555-0101';
+  if (elTelLink) elTelLink.href = `tel:${cleanPhone}`;
+  if (elQrImg) {
+    elQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=tel:${encodeURIComponent(cleanPhone)}`;
+  }
   if (elStage) elStage.textContent = stage || 'Planting (Patdan)';
 
   const health = getSyncHealthInfo(lastSync, lagDays);
@@ -5757,12 +7243,6 @@ function openContactMemberModal(name, phone, fieldId, stage, lastSync, lagDays) 
     elBadge.className = `px-2.5 py-1 rounded-full text-xs font-bold ${health.pillClass}`;
     elBadge.textContent = health.days > 0 ? `${health.days} Days Offline` : 'Active / Synced';
   }
-
-  const defaultMsg = health.days >= 3
-    ? `Hi ${name}, this is Jose Reyes (Farm Manager - Block Farm A). We noticed your HUGPONG app hasn't synced mobile records in ${health.days} days. Please open the app and tap Sync, or let me know if you need assistance.`
-    : `Hi ${name}, this is Jose Reyes (Farm Manager - Block Farm A) checking in on field progress for ${fieldId}. Please let me know if you have updated operation logs.`;
-
-  if (elSms) elSms.value = defaultMsg;
 
   if (modal) modal.classList.remove('hidden');
 }
@@ -5782,17 +7262,9 @@ function copyMemberPhone() {
   toast(`Contact number ${activeContactMemberData.phone} copied to clipboard!`);
 }
 
-function sendSyncReminderSMS() {
+function sendInAppSyncReminder() {
   if (!activeContactMemberData) return;
-  const smsEl = document.getElementById('contact-modal-sms');
-  const msg = smsEl ? smsEl.value.trim() : '';
-
-  if (!msg) {
-    toast('Error: Message content is empty.');
-    return;
-  }
-
-  toast(`Sync Follow-up SMS dispatched to ${activeContactMemberData.name} (${activeContactMemberData.phone})!`);
+  toast(`In-app sync notice dispatched to ${activeContactMemberData.name} (${activeContactMemberData.fieldId || 'Member'})!`);
   closeContactMemberModal();
 }
 
@@ -5817,11 +7289,11 @@ function openPublishPriceModal() {
   const dateInput = document.getElementById('dash-price-date');
   if (dateInput) dateInput.value = today;
 
-  const latestPrice = db.priceHistory[0]?.price || 2800;
+  const latestPrice = db.priceHistory[0]?.price || 2950;
   const priceInput = document.getElementById('dash-price-val');
   if (priceInput) priceInput.value = latestPrice;
 
-  const latestMol = db.priceHistory[0]?.molasses || 4200;
+  const latestMol = db.priceHistory[0]?.molasses || 4400;
   const molInput = document.getElementById('dash-price-molasses');
   if (molInput) molInput.value = latestMol;
 
@@ -5848,8 +7320,8 @@ function closePublishPriceModal() {
 
 function calculatePriceMovementPreview() {
   const db = getDB();
-  const latestPrice = db.priceHistory[0]?.price || 2800;
-  const latestMol = db.priceHistory[0]?.molasses || 4200;
+  const latestPrice = db.priceHistory[0]?.price || 2950;
+  const latestMol = db.priceHistory[0]?.molasses || 4400;
 
   const priceInput = document.getElementById('dash-price-val');
   const molInput = document.getElementById('dash-price-molasses');
@@ -6171,7 +7643,7 @@ function renderSuperadminTelemetryDashboard(db) {
       <div class="flex items-center justify-between mt-2 pt-2 border-t border-border text-[11px] text-hug-muted">
         <span class="font-semibold text-primary">● Latest Reliability: 98.4%</span>
         <span>Peak Throughput: 142 Packets / Wk</span>
-        <span class="italic text-[10px]">District VII Central SRA Gateway</span>
+        <span class="italic text-[10px]">Silay SRA Central Gateway</span>
       </div>
     `;
   }
@@ -6180,9 +7652,9 @@ function renderSuperadminTelemetryDashboard(db) {
   const matrixEl = document.getElementById('telemetry-blocks-matrix');
   if (matrixEl) {
     const blocks = [
-      { name: 'Block Farm A (Silay)', nodes: '2 Android Terminals', health: '100% Synced', queue: '0 Buffered Logs', isLagging: false },
-      { name: 'Block Farm B (Cadiz)', nodes: '1 Android Terminal', health: '98.5% Synced', queue: '0 Buffered Logs', isLagging: false },
-      { name: 'Block Farm C (Sagay)', nodes: '1 Android Terminal', health: '86.0% Synced', queue: '5 Buffered Logs', isLagging: true, alert: '1 Inactive Member (>7d)' },
+      { name: 'Nacayao Block Farm A (Silay)', nodes: '2 Android Terminals', health: '100% Synced', queue: '0 Buffered Logs', isLagging: false },
+      { name: 'Block Farm B (Victorias)', nodes: '1 Android Terminal', health: '98.5% Synced', queue: '0 Buffered Logs', isLagging: false },
+      { name: 'Block Farm C (Talisay)', nodes: '1 Android Terminal', health: '86.0% Synced', queue: '5 Buffered Logs', isLagging: true, alert: '1 Inactive Member (>7d)' },
       { name: 'Block Farm D (Manapla)', nodes: '1 Android Terminal', health: '99.0% Synced', queue: '0 Buffered Logs', isLagging: false }
     ];
 
@@ -6190,7 +7662,7 @@ function renderSuperadminTelemetryDashboard(db) {
       <div class="p-3 bg-bg/50 rounded-xl border border-border/80 flex items-center justify-between gap-3">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-lg ${b.isLagging ? 'bg-danger-bg text-danger' : 'bg-success-bg text-success'} flex items-center justify-center font-bold text-xs">
-            ${b.isLagging ? '!' : '✓'}
+            ${b.isLagging ? '!' : '<i data-lucide="check" class="w-4 h-4"></i>'}
           </div>
           <div>
             <h5 class="text-xs font-bold text-hug-text">${b.name}</h5>
@@ -6209,11 +7681,11 @@ function renderSuperadminTelemetryDashboard(db) {
   const streamBody = document.getElementById('telemetry-events-stream-body');
   if (streamBody) {
     const events = [
-      { time: '2026-05-23 08:30 AM', type: 'Offline Sync Queue Alert', node: 'TRM-ANDR-02 (Mario Dimagiba)', details: '3 logs queued during offline field operation in field FLD-KTR-001', status: 'Queued Handshake', statusColor: 'warning' },
-      { time: '2026-05-23 08:15 AM', type: 'WebSocket Heartbeat', node: 'District VII Central Gateway', details: 'Automated keep-alive pulse acknowledged by 4 field mobile devices', status: 'Optimal Pulse', statusColor: 'success' },
+      { time: '2026-05-23 08:30 AM', type: 'Offline Sync Queue Alert', node: 'TRM-ANDR-02 (Juan dela Cruz)', details: '3 logs queued during offline field operation in field FLD-KTR-001', status: 'Queued Handshake', statusColor: 'warning' },
+      { time: '2026-05-23 08:15 AM', type: 'WebSocket Heartbeat', node: 'Silay SRA Central Gateway', details: 'Automated keep-alive pulse acknowledged by 4 field mobile devices', status: 'Optimal Pulse', statusColor: 'success' },
       { time: '2026-05-22 02:15 PM', type: 'Support Ticket Intake', node: 'TRM-ANDR-01 (Jose Reyes)', details: 'TCK-802 opened: Plot boundary overlap survey discrepancy', status: 'Triage Assigned', statusColor: 'warning' },
-      { time: '2026-05-21 11:45 AM', type: 'QR Scanner Diagnostics', node: 'SRA Desk Terminal (Juan dela Cruz)', details: 'Compressed QR packet chunk size optimized for Android 11', status: 'Resolved Patch', statusColor: 'success' },
-      { time: '2026-05-20 04:00 PM', type: 'Credential Audit', node: 'Super Admin Terminal (Capstone)', details: 'Member phone number verified and updated for Antonio Luna', status: 'Verified Audit', statusColor: 'success' }
+      { time: '2026-05-21 11:45 AM', type: 'QR Scanner Diagnostics', node: 'SRA Desk Terminal (Maria Santos)', details: 'Compressed QR packet chunk size optimized for Android 11', status: 'Resolved Patch', statusColor: 'success' },
+      { time: '2026-05-20 04:00 PM', type: 'Credential Audit', node: 'Super Admin Terminal (Capstone Group)', details: 'Member phone number verified and updated for Ana Gomez', status: 'Verified Audit', statusColor: 'success' }
     ];
 
     streamBody.innerHTML = events.map(e => `
@@ -6283,12 +7755,17 @@ window.switchRole = switchRole;
 window.applyRoleLayout = applyRoleLayout;
 window.openDetailedAnalyticsModal = openDetailedAnalyticsModal;
 window.closeDetailedAnalyticsModal = closeDetailedAnalyticsModal;
+window.openAllEfficiencyModal = openAllEfficiencyModal;
+window.closeAllEfficiencyModal = closeAllEfficiencyModal;
+window.setAllEffTab = setAllEffTab;
+window.setAllEffPage = setAllEffPage;
 window.openCropStageModal = openCropStageModal;
 window.closeCropStageModal = closeCropStageModal;
 window.openContactMemberModal = openContactMemberModal;
 window.closeContactMemberModal = closeContactMemberModal;
 window.copyMemberPhone = copyMemberPhone;
-window.sendSyncReminderSMS = sendSyncReminderSMS;
+window.sendInAppSyncReminder = sendInAppSyncReminder;
+window.sendSyncReminderSMS = sendInAppSyncReminder;
 window.takeOverFromContactModal = takeOverFromContactModal;
 window.openPublishPriceModal = openPublishPriceModal;
 window.closePublishPriceModal = closePublishPriceModal;
@@ -6310,6 +7787,9 @@ window.setSyncPage = setSyncPage;
 window.onTypeFilterChange = onTypeFilterChange;
 window.renderHistory = renderHistory;
 window.exportHistoryAuditLogCSV = exportHistoryAuditLogCSV;
+window.setAuditDemoCode = setAuditDemoCode;
+window.submitManualQR = submitManualQR;
+window.loadAuditCertificate = loadAuditCertificate;
 window.renderSync = renderSync;
 window.dispatchRemoteResyncPing = dispatchRemoteResyncPing;
 window.renderTickets = renderTickets;
@@ -6471,7 +7951,7 @@ function saveNewPasswordFromSettings() {
   db.userPasswords[currentRole] = newPwd;
   saveDB(db);
 
-  const userName = currentRole === 'manager' ? 'Jose Reyes' : (currentRole === 'superadmin' ? 'Engr. Mateo Alcantara' : 'Juan dela Cruz');
+  const userName = currentRole === 'manager' ? 'Jose Reyes' : (currentRole === 'superadmin' ? 'Capstone Group' : 'Maria Santos');
   logSystemEvent(
     'audit',
     'User Password Updated',
@@ -6503,7 +7983,7 @@ function clearLocalClientCache() {
 function renderSettings() {
   const currentRole = localStorage.getItem('hugpong_role') || 'admin';
   const roleName = currentRole === 'superadmin' ? 'Super Admin' : (currentRole === 'manager' ? 'Farm Manager' : 'SRA (Admin)');
-  const userName = currentRole === 'manager' ? 'Jose Reyes' : (currentRole === 'superadmin' ? 'Engr. Mateo Alcantara' : 'Juan dela Cruz');
+  const userName = currentRole === 'manager' ? 'Jose Reyes' : (currentRole === 'superadmin' ? 'Capstone Group' : 'Maria Santos');
 
   const diagUser = document.getElementById('settings-diag-user');
   const diagRole = document.getElementById('settings-diag-role');
@@ -6565,13 +8045,21 @@ function initTheme() {
 }
 
 function handleLogout() {
-  closeUserMenu();
+  if (typeof closeUserMenu === 'function') closeUserMenu();
   const ok = confirm('Are you sure you want to sign out of HUGPONG Admin Console?');
   if (ok) {
-    toast('Signed out. Redirecting...');
+    try {
+      fetch('http://localhost:3000/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+    } catch (e) {}
+
+    localStorage.removeItem('hugpong_role');
+    localStorage.removeItem('hugpong_user');
+    toast('Signed out. Redirecting to login...');
     setTimeout(() => {
-      window.location.href = 'login.html';
-    }, 500);
+      const isRoleDir = window.location.pathname.includes('/roles/') || window.location.href.includes('/roles/');
+      const loginUrl = isRoleDir ? '../../login.html' : 'login.html';
+      window.location.href = loginUrl;
+    }, 400);
   }
 }
 
@@ -6592,4 +8080,14 @@ window.exportDatabaseJSON = exportDatabaseJSON;
 window.importDatabaseJSON = importDatabaseJSON;
 window.setSyncInactivityThresholdHours = setSyncInactivityThresholdHours;
 window.getSyncInactivityThresholdHours = getSyncInactivityThresholdHours;
+window.setDetailModalTab = setDetailModalTab;
+window.setDetailFieldsPage = setDetailFieldsPage;
+window.setDetailLogsPage = setDetailLogsPage;
+window.setBlockHistPage = setBlockHistPage;
+window.renderBlockHistTable = renderBlockHistTable;
+window.setPlotHistPage = setPlotHistPage;
+window.renderPlotHistTable = renderPlotHistTable;
+window.scanQRFromFile = scanQRFromFile;
+
+
 

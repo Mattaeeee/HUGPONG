@@ -1,65 +1,359 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Modal, Animated, Dimensions, TextInput, Alert, Platform,
+  Modal, Dimensions, TextInput, Alert, Platform, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
-import { subscribe, getCurrentSession, setSynced, setSession, updateSessionFieldId, getIsSynced, MOCK_ASSIGNMENT_REQUESTS, resolveAssignmentRequest, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS, notifyDataUpdate, SRA_PRICE_HISTORY, addSRAPrice, MOCK_MANAGERS, updateFieldCustomStages, getMemberSyncHealth, performMobileSync } from '../data/mockData';
+import { subscribe, getCurrentSession, setSynced, setSession, updateSessionFieldId, getIsSynced, MOCK_ASSIGNMENT_REQUESTS, resolveAssignmentRequest, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS, notifyDataUpdate, SRA_PRICE_HISTORY, addSRAPrice, MOCK_MANAGERS, updateFieldCustomStages, getMemberSyncHealth, performMobileSync, SRA_OPERATIONS_CATALOGUE, SRA_BENCHMARKS, getFieldCustomOperations, saveFieldCustomOperations, MOCK_AUDIT_HISTORY } from '../data/dataStore';
 import { enqueueOutboxItem } from '../services/syncEngine';
 import { useTranslation } from '../services/i18n';
+import MemberFieldOpsView from './member/MemberFieldOpsView';
+import ManagerFieldOpsView from './manager/ManagerFieldOpsView';
+import SRAFieldOpsView from './sra/SRAFieldOpsView';
+import AuditHistoryModal from '../components/AuditHistoryModal';
 
 const { height, width } = Dimensions.get('window');
 
-
-const MEMBER_FIELD = MOCK_FIELDS[0]; // The currently logged-in member's field
-
-// SRA standard default template — used when a field has no custom stages
-const CYCLE_TASKS = [
-  { id: 'T1', phase: 'Land Prep', icon: 'construct', color: '#8F3A8F', month: 0, label: 'Land Preparation', done: true },
-  { id: 'T2', phase: 'Planting', icon: 'leaf', color: '#4A7C2F', month: 1, label: 'Planting', done: true },
-  { id: 'T3', phase: 'Pre-emergence', icon: 'water', color: '#1A6B9A', month: 1.25, label: 'Pre-emergence Spraying', done: true },
-  { id: 'T4', phase: 'Fert Stage 1', icon: 'archive', color: '#1A6B9A', month: 2.5, label: 'Fertilization Stage 1 (18-46) & Ridge Busting', done: true },
-  { id: 'T5', phase: 'Fert Stage 2', icon: 'flask', color: '#4A7C2F', month: 3.5, label: 'Weeding, Fertilization Stage 2 (Urea) & Off-barring', done: false, active: true },
-  { id: 'T6', phase: 'Fert Stage 3', icon: 'flask', color: '#F5A623', month: 4.5, label: 'Weeding, Fertilization Stage 3 (Urea + Potash) & On-barring', done: false },
-  { id: 'T7', phase: 'Off-barring', icon: 'git-branch', color: '#8A9B7A', month: 5.5, label: 'Final Off-barring', done: false },
-  { id: 'T8', phase: 'Harvest', icon: 'basket', color: '#D9534F', month: 10.5, label: 'Harvesting & Milling', done: false },
-];
+// Official SRA Sugarcane 6 Growth Stages Templates
+const CROP_CYCLE_STAGES_BY_TYPE = {
+  'Plant Cane (New Plant)': [
+    {
+      id: 'S1',
+      stageNumber: 1,
+      name: 'Pre-Planting & Land Preparation',
+      monthRange: 'Month 0–1',
+      description: 'Soil sampling, mechanical disc plowing, harrowing, and seedbed furrowing (tudling).',
+      benchmarkCost: 12100,
+      icon: 'construct',
+      color: '#8F3A8F',
+      done: true,
+      active: false,
+      operations: [
+        { id: 'SRA-01', name: 'Soil Sampling', costPerHa: 100, unit: 'ha' },
+        { id: 'SRA-02', name: 'Land Preparation', costPerHa: 12000, unit: 'ha' }
+      ]
+    },
+    {
+      id: 'S2',
+      stageNumber: 2,
+      name: 'Planting & Crop Establishment',
+      monthRange: 'Month 1–2',
+      description: 'Cane points acquisition (patdan), hauling, selection, and furrow planting crew.',
+      benchmarkCost: 20000,
+      icon: 'leaf',
+      color: '#4A7C2F',
+      done: true,
+      active: false,
+      operations: [
+        { id: 'SRA-03', name: 'Cost of Planting Material (Seedcane acquisition)', costPerHa: 15000, unit: 'lac' },
+        { id: 'SRA-04', name: 'Planting (including hauling and selection)', costPerHa: 5000, unit: 'lac' }
+      ]
+    },
+    {
+      id: 'S3',
+      stageNumber: 3,
+      name: 'Basal Nutrition & Early Care',
+      monthRange: 'Month 2–3',
+      description: 'Basal fertilizer application (Urea+DAP+MOP), rock phosphate, and initial off-barring.',
+      benchmarkCost: 20800,
+      icon: 'flask',
+      color: '#1A6B9A',
+      done: false,
+      active: true,
+      operations: [
+        { id: 'SRA-05', name: 'Basal Fertilization', costPerHa: 15100, unit: 'bag' },
+        { id: 'SRA-06', name: 'Fertilizer Application & Soil Amending', costPerHa: 5700, unit: 'bag' }
+      ]
+    },
+    {
+      id: 'S4',
+      stageNumber: 4,
+      name: 'Cultivation & Weed Management',
+      monthRange: 'Month 3–5',
+      description: 'Ridge busting, off-barring & on-barring passes, 1st, 2nd, and 3rd round manual weeding.',
+      benchmarkCost: 9000,
+      icon: 'git-branch',
+      color: '#F5A623',
+      done: false,
+      active: false,
+      operations: [
+        { id: 'SRA-07', name: 'Cultivation (Off-barring & On-barring)', costPerHa: 3000, unit: 'pass' },
+        { id: 'SRA-10', name: 'Weeding', costPerHa: 6000, unit: 'ha' }
+      ]
+    },
+    {
+      id: 'S5',
+      stageNumber: 5,
+      name: 'Crop Maintenance & Final Hilling-Up',
+      monthRange: 'Month 5–8',
+      description: '2nd dose top-dress fertilization, final hilling-up (pasandig), and canal drainage maintenance.',
+      benchmarkCost: 5000,
+      icon: 'water',
+      color: '#0284C7',
+      done: false,
+      active: false,
+      operations: [
+        { id: 'SRA-08', name: 'Fertilization (2nd Dose / Top-dress)', costPerHa: 3800, unit: 'bag' },
+        { id: 'SRA-09', name: 'Fertilizer Application (2nd dose labor)', costPerHa: 200, unit: 'bag' },
+        { id: 'SRA-11', name: 'Drainage / Irrigation', costPerHa: 1000, unit: 'ha' }
+      ]
+    },
+    {
+      id: 'S6',
+      stageNumber: 6,
+      name: 'Harvesting & Post-Harvest Transport',
+      monthRange: 'Month 10–12',
+      description: 'Cane cutting (tapas), truck loading (karga), carabao bull cart, and freight transport to sugar mill.',
+      benchmarkCost: 51000,
+      icon: 'bus',
+      color: '#D9534F',
+      done: false,
+      active: false,
+      operations: [
+        { id: 'SRA-12', name: 'Cutting and Loading', costPerHa: 21000, unit: 'ton' },
+        { id: 'SRA-13', name: 'Hauling (Trucking)', costPerHa: 21000, unit: 'ton' },
+        { id: 'SRA-14', name: 'Bull Cart (In-field transport)', costPerHa: 9000, unit: 'ton' }
+      ]
+    }
+  ],
+  '1st Ratoon (Ratoon 1)': [
+    {
+      id: 'S1',
+      stageNumber: 1,
+      name: 'Pre-Planting & Land Preparation',
+      monthRange: 'Month 0–1',
+      description: 'Stubble shaving, trash blanketing/farming, and field clearing.',
+      benchmarkCost: 4000,
+      icon: 'construct',
+      color: '#8F3A8F',
+      done: true,
+      active: false,
+      operations: [
+        { id: 'SRA-07', name: 'Stubble Shaving & Trash Blanketing', costPerHa: 4000, unit: 'ha' }
+      ]
+    },
+    {
+      id: 'S2',
+      stageNumber: 2,
+      name: 'Planting & Crop Establishment',
+      monthRange: 'Month 1–2',
+      description: 'Stool rehabilitation, replanting missing hills (gap filling), and seedbed loosening.',
+      benchmarkCost: 6000,
+      icon: 'leaf',
+      color: '#4A7C2F',
+      done: true,
+      active: false,
+      operations: [
+        { id: 'SRA-04', name: 'Gap Filling & Stool Rehab', costPerHa: 6000, unit: 'ha' }
+      ]
+    },
+    {
+      id: 'S3',
+      stageNumber: 3,
+      name: 'Basal Nutrition & Early Care',
+      monthRange: 'Month 2–3',
+      description: 'Ratoon basal fertilization (Urea + DAP + MOP), off-barring & furrow cleaning.',
+      benchmarkCost: 14000,
+      icon: 'flask',
+      color: '#1A6B9A',
+      done: false,
+      active: true,
+      operations: [
+        { id: 'SRA-05', name: 'Basal Fertilization', costPerHa: 14000, unit: 'bag' }
+      ]
+    },
+    {
+      id: 'S4',
+      stageNumber: 4,
+      name: 'Cultivation & Weed Management',
+      monthRange: 'Month 3–5',
+      description: 'Off-barring & on-barring passes, inter-row cultivation, and weeding rounds.',
+      benchmarkCost: 7000,
+      icon: 'git-branch',
+      color: '#F5A623',
+      done: false,
+      active: false,
+      operations: [
+        { id: 'SRA-07', name: 'Cultivation (Off-barring & On-barring)', costPerHa: 3000, unit: 'pass' },
+        { id: 'SRA-10', name: 'Weeding', costPerHa: 4000, unit: 'ha' }
+      ]
+    },
+    {
+      id: 'S5',
+      stageNumber: 5,
+      name: 'Crop Maintenance & Final Hilling-Up',
+      monthRange: 'Month 5–8',
+      description: '2nd dose top-dress fertilizer application, final hilling-up, and canal drainage maintenance.',
+      benchmarkCost: 4500,
+      icon: 'water',
+      color: '#0284C7',
+      done: false,
+      active: false,
+      operations: [
+        { id: 'SRA-08', name: 'Fertilization (2nd Dose / Top-dress)', costPerHa: 3800, unit: 'bag' },
+        { id: 'SRA-11', name: 'Drainage / Irrigation', costPerHa: 700, unit: 'ha' }
+      ]
+    },
+    {
+      id: 'S6',
+      stageNumber: 6,
+      name: 'Harvesting & Post-Harvest Transport',
+      monthRange: 'Month 10–12',
+      description: 'Cane cutting (tapas), truck loading (karga), and freight transport to sugar mill.',
+      benchmarkCost: 48000,
+      icon: 'bus',
+      color: '#D9534F',
+      done: false,
+      active: false,
+      operations: [
+        { id: 'SRA-12', name: 'Cutting and Loading', costPerHa: 20000, unit: 'ton' },
+        { id: 'SRA-13', name: 'Hauling (Trucking)', costPerHa: 20000, unit: 'ton' },
+        { id: 'SRA-14', name: 'Bull Cart (In-field transport)', costPerHa: 8000, unit: 'ton' }
+      ]
+    }
+  ],
+  '2nd Ratoon (Ratoon 2)': [
+    {
+      id: 'S1',
+      stageNumber: 1,
+      name: 'Pre-Planting & Land Preparation',
+      monthRange: 'Month 0–1',
+      description: 'Stubble shaving, trash blanketing, and field clearing.',
+      benchmarkCost: 4500,
+      icon: 'construct',
+      color: '#8F3A8F',
+      done: true,
+      active: false,
+      operations: [
+        { id: 'SRA-07', name: 'Stubble Shaving & Prep', costPerHa: 4500, unit: 'ha' }
+      ]
+    },
+    {
+      id: 'S2',
+      stageNumber: 2,
+      name: 'Planting & Crop Establishment',
+      monthRange: 'Month 1–2',
+      description: 'Stool rehabilitation, gap filling, and soil aeration.',
+      benchmarkCost: 6500,
+      icon: 'leaf',
+      color: '#4A7C2F',
+      done: true,
+      active: false,
+      operations: [
+        { id: 'SRA-04', name: '2nd Ratoon Gap Filling', costPerHa: 6500, unit: 'ha' }
+      ]
+    },
+    {
+      id: 'S3',
+      stageNumber: 3,
+      name: 'Basal Nutrition & Early Care',
+      monthRange: 'Month 2–3',
+      description: '2nd Ratoon basal fertilization, off-barring & furrow clearing.',
+      benchmarkCost: 14000,
+      icon: 'flask',
+      color: '#1A6B9A',
+      done: false,
+      active: true,
+      operations: [
+        { id: 'SRA-05', name: 'Basal Fertilization', costPerHa: 14000, unit: 'bag' }
+      ]
+    },
+    {
+      id: 'S4',
+      stageNumber: 4,
+      name: 'Cultivation & Weed Management',
+      monthRange: 'Month 3–5',
+      description: 'Off-barring & on-barring passes, inter-row cultivation, and weeding.',
+      benchmarkCost: 7000,
+      icon: 'git-branch',
+      color: '#F5A623',
+      done: false,
+      active: false,
+      operations: [
+        { id: 'SRA-07', name: 'Cultivation (Off-barring & On-barring)', costPerHa: 3000, unit: 'pass' },
+        { id: 'SRA-10', name: 'Weeding', costPerHa: 4000, unit: 'ha' }
+      ]
+    },
+    {
+      id: 'S5',
+      stageNumber: 5,
+      name: 'Crop Maintenance & Final Hilling-Up',
+      monthRange: 'Month 5–8',
+      description: 'Top-dress fertilization, weed management, and drainage upkeep.',
+      benchmarkCost: 4500,
+      icon: 'water',
+      color: '#0284C7',
+      done: false,
+      active: false,
+      operations: [
+        { id: 'SRA-08', name: 'Fertilization (2nd Dose / Top-dress)', costPerHa: 3800, unit: 'bag' },
+        { id: 'SRA-11', name: 'Drainage / Irrigation', costPerHa: 700, unit: 'ha' }
+      ]
+    },
+    {
+      id: 'S6',
+      stageNumber: 6,
+      name: 'Harvesting & Post-Harvest Transport',
+      monthRange: 'Month 10–12',
+      description: 'Cane cutting, hauling to mill, and cycle conclusion.',
+      benchmarkCost: 48000,
+      icon: 'bus',
+      color: '#D9534F',
+      done: false,
+      active: false,
+      operations: [
+        { id: 'SRA-12', name: 'Cutting and Loading', costPerHa: 20000, unit: 'ton' },
+        { id: 'SRA-13', name: 'Hauling (Trucking)', costPerHa: 20000, unit: 'ton' },
+        { id: 'SRA-14', name: 'Bull Cart (In-field transport)', costPerHa: 8000, unit: 'ton' }
+      ]
+    }
+  ]
+};
 
 // Preset colour palette for custom stages
 const STAGE_COLORS = [
-  '#8F3A8F', '#4A7C2F', '#1A6B9A', '#F5A623', '#D9534F',
-  '#267326', '#C97A00', '#5B4DA7', '#8A9B7A', '#2A7F8F',
+  '#8F3A8F', '#4A7C2F', '#1A6B9A', '#F5A623', '#0284C7', '#D9534F',
+  '#267326', '#C97A00', '#5B4DA7', '#8A9B7A',
 ];
 
-// Returns the active stage list for a field — custom if defined, else empty (member initializes)
+// Returns the active stage list for a field based on its active crop cycle
 const getFieldStages = (fieldId) => {
   const field = MOCK_FIELDS.find(f => f.id === fieldId);
+  const cycleType = field?.cycleType || 'Plant Cane (New Plant)';
   if (field?.customStages && field.customStages.length > 0) return field.customStages;
-  return [];
+  const stages = CROP_CYCLE_STAGES_BY_TYPE[cycleType] || CROP_CYCLE_STAGES_BY_TYPE['Plant Cane (New Plant)'];
+  
+  const fieldStageName = (field?.stage || '').toLowerCase();
+  let targetStageNum = 1;
+  const stageMatch = fieldStageName.match(/stage\s*(\d+)/i);
+  if (stageMatch) {
+    targetStageNum = parseInt(stageMatch[1], 10);
+  }
+
+  return stages.map(s => {
+    const sNum = s.stageNumber || 1;
+    if (sNum < targetStageNum) {
+      return { ...s, done: true, active: false };
+    } else if (sNum === targetStageNum) {
+      return { ...s, done: false, active: true };
+    } else {
+      return { ...s, done: false, active: false };
+    }
+  });
 };
 
 const STATUS_COLORS = { approved: COLORS.success, pending: '#F5A623', flagged: '#D9534F' };
 
-// Standard agricultural benchmarks aligned with Planner calculations
-const STAGE_INPUT_BENCHMARKS = {
-  'T1': { inputName: 'Tractor Plowing & Furrowing', inputQty: '1', inputUnit: 'ha', estimatedCost: '4500', people: '2' },
-  'T2': { inputName: 'Cane Points (Patdan)', inputQty: '40000', inputUnit: 'pcs', estimatedCost: '14000', people: '10' },
-  'T3': { inputName: 'Pre-emergence Herbicide', inputQty: '3', inputUnit: 'liters', estimatedCost: '3500', people: '4' },
-  'T4': { inputName: '18-46 Fertilizer', inputQty: '3', inputUnit: 'bags', estimatedCost: '6600', people: '3' },
-  'T5': { inputName: 'Urea (46-0-0) Fertilizer', inputQty: '4', inputUnit: 'bags', estimatedCost: '7400', people: '4' },
-  'T6': { inputName: 'Urea + Potash (MOP)', inputQty: '5', inputUnit: 'bags', estimatedCost: '9050', people: '4' },
-  'T7': { inputName: 'Final Off-barring (Tractor)', inputQty: '1', inputUnit: 'ha', estimatedCost: '2500', people: '2' },
-  'T8': { inputName: 'Harvesting & Hauling', inputQty: '60', inputUnit: 'tons', estimatedCost: '21000', people: '12' },
-};
-
 export default function FieldOpsScreen({ navigation, route }) {
-  const { t, formatSyncTime } = useTranslation();
+  const { t, formatSyncTime, formatOperationName, formatStageName, formatPhaseMonth } = useTranslation();
   const [activeRole, setActiveRole] = useState(getCurrentSession().role);
   const [selectedFarm, setSelectedFarm] = useState('All Block Farms');
   const [selectedField, setSelectedField] = useState(MOCK_FIELDS[0]);
+  const [showAuditHistoryModal, setShowAuditHistoryModal] = useState(false);
+  const [selectedManagerAuditId, setSelectedManagerAuditId] = useState('AUD-2026-05');
 
   useEffect(() => {
     const unsub = subscribe(() => {
@@ -69,12 +363,13 @@ export default function FieldOpsScreen({ navigation, route }) {
   }, []);
 
   useEffect(() => {
-    if (route?.params?.takeOverFieldId) {
-      const targetF = MOCK_FIELDS.find(f => f.id === route.params.takeOverFieldId);
+    const targetFieldId = route?.params?.fieldId || route?.params?.initialFieldId || route?.params?.takeOverFieldId;
+    if (targetFieldId) {
+      const targetF = MOCK_FIELDS.find(f => f.id === targetFieldId);
       if (targetF) {
         setSelectedField(targetF);
         updateSessionFieldId(targetF.id);
-        if (route.params.isTakeOver) {
+        if (route?.params?.isTakeOver) {
           setIsTakeOver(true);
         }
       }
@@ -84,16 +379,35 @@ export default function FieldOpsScreen({ navigation, route }) {
   const [showLog, setShowLog] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
-  const [manualQR, setManualQR] = useState('');
-  const [logForm, setLogForm] = useState({ id: null, fieldId: '', saveFieldId: true, activity: '', cost: '', period: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), hectares: '', people: '', inputQty: '', inputUnit: 'bags', inputName: '', taskId: null, isSubmit: true });
+  const [logForm, setLogForm] = useState({
+    id: null,
+    fieldId: '',
+    saveFieldId: true,
+    sraOperationId: 'SRA-02',
+    operationName: 'Land Preparation',
+    activity: 'Land Preparation',
+    category: 'prep',
+    cost: '12000',
+    period: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    hectares: '1.50',
+    people: '2',
+    subItems: [
+      { id: 'SI-02-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
+      { id: 'SI-02-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
+      { id: 'SI-02-3', description: 'Furrowing / Tudling', qty: 1.5, unit: 'ha', unitCost: 3000, subTotal: 4500 }
+    ],
+    inputQty: '',
+    inputUnit: 'ha',
+    inputName: '',
+    taskId: null,
+    isSubmit: true
+  });
   const [draftLogs, setDraftLogs] = useState(DRAFT_LOGS);
   const [logTab, setLogTab] = useState('submitted');
-  const [managerLogTab, setManagerLogTab] = useState('all');
   const [managerFieldFilter, setManagerFieldFilter] = useState('my');
   const [logSearch, setLogSearch] = useState('');
   const [logCategoryFilter, setLogCategoryFilter] = useState('all');
   const [expandedLogId, setExpandedLogId] = useState(null);
-  const [showAllLogs, setShowAllLogs] = useState(false);
   const [logCurrentPage, setLogCurrentPage] = useState(1);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [synced, setSyncedState] = useState(getIsSynced());
@@ -104,6 +418,14 @@ export default function FieldOpsScreen({ navigation, route }) {
   const [isTakeOver, setIsTakeOver] = useState(false);
   const [showFieldsModal, setShowFieldsModal] = useState(false);
   const [fieldSearch, setFieldSearch] = useState('');
+  const [fieldsModalPage, setFieldsModalPage] = useState(1);
+  const [manualQR, setManualQR] = useState('');
+  const [showOpPicker, setShowOpPicker] = useState(false);
+  const [showCycleModal, setShowCycleModal] = useState(false);
+  const [cycleTypeForm, setCycleTypeForm] = useState({
+    cycleType: 'Plant Cane (New Plant)',
+    cropYear: 'CY 2025–2026'
+  });
   const [showManagerAssignModal, setShowManagerAssignModal] = useState(false);
   const [managerAssignForm, setManagerAssignForm] = useState({ memberName: '', fieldId: '', ha: '' });
 
@@ -180,11 +502,74 @@ export default function FieldOpsScreen({ navigation, route }) {
   };
   const [reqFieldId, setReqFieldId] = useState('');
   const [reqFieldHa, setReqFieldHa] = useState('');
-  const [sraPriceInput, setSraPriceInput] = useState('');
-  const [cycleTasksByField, setCycleTasksByField] = useState({
-    [MOCK_FIELDS[0].id]: getFieldStages(MOCK_FIELDS[0].id),
+  const [cycleTasksByField, setCycleTasksByField] = useState(() => {
+    const initial = {};
+    MOCK_FIELDS.forEach(f => {
+      initial[f.id] = getFieldStages(f.id);
+    });
+    return initial;
   });
-  const slideAnim = useRef(new Animated.Value(height)).current;
+  const openOperationLog = (targetTask, sraOpId) => {
+    const stageNum = targetTask?.stageNumber || 1;
+    const customOps = getFieldCustomOperations(selectedField.id, stageNum);
+    const targetOp = customOps.find(o => o.id === sraOpId) || SRA_OPERATIONS_CATALOGUE.find(o => o.id === sraOpId) || SRA_OPERATIONS_CATALOGUE.find(o => o.name === targetTask?.name) || SRA_OPERATIONS_CATALOGUE[1];
+    const haVal = parseFloat(selectedField.ha || '1.5') || 1.0;
+    const isGrp = targetOp.isGroup ?? (targetOp.inputType === 'group' || (targetOp.subItems && targetOp.subItems.length > 1));
+
+    let initialSubItems = [];
+    let totalCost = 0;
+    let directQty = '';
+    let directUnit = targetOp.unit || 'ha';
+    let directRate = targetOp.rate || targetOp.costPerHa || 0;
+
+    if (isGrp) {
+      initialSubItems = (targetOp.subItems || []).map((si, idx) => {
+        const scaledQty = Number(((si.qty || 1) * (si.unit === 'lac' || si.unit === 'pass' || si.unit === 'ha' || si.unit === 'ton' ? haVal : 1)).toFixed(1));
+        const subTotal = Math.round(scaledQty * (si.unitCost || si.rate || 0));
+        return {
+          id: `SI-${Date.now()}-${idx}`,
+          description: si.description || si.name,
+          qty: scaledQty,
+          unit: si.unit || 'bag',
+          unitCost: si.unitCost || si.rate || 0,
+          subTotal: subTotal
+        };
+      });
+      totalCost = initialSubItems.reduce((sum, item) => sum + item.subTotal, 0);
+    } else {
+      const scaledDirectQty = Number(((targetOp.perHa || 1) * haVal).toFixed(1));
+      directQty = String(scaledDirectQty);
+      directRate = targetOp.rate || targetOp.costPerHa || 0;
+      totalCost = Math.round(scaledDirectQty * directRate);
+    }
+
+    setLogForm({
+      id: null,
+      fieldId: selectedField.id,
+      saveFieldId: true,
+      stageNumber: stageNum,
+      stageName: targetTask?.name || targetOp.stageName || `Stage ${stageNum}`,
+      sraOperationId: targetOp.id || 'CUSTOM',
+      operationName: targetOp.name,
+      activity: targetOp.name,
+      category: targetOp.category || 'prep',
+      isGroup: isGrp,
+      inputType: isGrp ? 'group' : 'direct',
+      cost: String(totalCost),
+      directRate: String(directRate),
+      period: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      hectares: selectedField.ha || '1.5',
+      people: '2',
+      subItems: initialSubItems,
+      inputQty: directQty,
+      inputUnit: directUnit,
+      inputName: !isGrp ? targetOp.name : '',
+      taskId: targetTask?.id || `S${stageNum}`,
+      isSubmit: true
+    });
+    setShowOpPicker(false);
+    setShowLog(true);
+  };
 
   const toggleTaskStatus = (taskId, forceComplete = false) => {
     if (activeRole === 'SRA (Admin)') return;
@@ -199,13 +584,13 @@ export default function FieldOpsScreen({ navigation, route }) {
       return;
     }
 
-    const fieldTasks = cycleTasksByField[selectedField.id] || [];
+    const fieldTasks = cycleTasksByField[selectedField.id] || getFieldStages(selectedField.id);
     const taskIndex = fieldTasks.findIndex(t => t.id === taskId);
     const targetTask = fieldTasks[taskIndex];
     if (!targetTask) return;
 
     const applyToggle = () => {
-      const currentTasks = cycleTasksByField[selectedField.id] || [];
+      const currentTasks = cycleTasksByField[selectedField.id] || getFieldStages(selectedField.id);
       const updated = currentTasks.map(t => {
         if (t.id === taskId) {
           if (forceComplete) return { ...t, done: true, active: false };
@@ -225,11 +610,13 @@ export default function FieldOpsScreen({ navigation, route }) {
         const nextIndex = updated.findIndex(t => !t.done);
         if (nextIndex === -1) {
           isFullyCompleted = true;
+        } else {
+          updated[nextIndex].active = true;
         }
       }
 
       const activeTask = updated.find(t => t.active);
-      const newStageLabel = activeTask ? activeTask.label : (isFullyCompleted ? 'Harvesting & Milling (Completed)' : 'Waiting to Start Next Stage');
+      const newStageLabel = activeTask ? (activeTask.name || activeTask.label) : (isFullyCompleted ? 'Harvesting & Milling (Completed)' : 'Waiting for Next Stage');
       
       setSelectedField(prevF => ({ ...prevF, stage: newStageLabel }));
       const mf = MOCK_FIELDS.find(f => f.id === selectedField.id);
@@ -241,18 +628,19 @@ export default function FieldOpsScreen({ navigation, route }) {
         setTimeout(() => {
           Alert.alert(
             'Crop Cycle Completed!',
-            'All stages for this field are complete. Would you like to reset the timeline for a new crop cycle?',
+            'All 5 stages for this field cycle are complete. Would you like to start a new crop cycle?',
             [
               { text: 'Not Now', style: 'cancel' },
               { text: 'Start New Cycle', style: 'default', onPress: () => {
-                 const resetStages = (selectedField.customStages?.length > 0 ? selectedField.customStages : CYCLE_TASKS).map((t) => ({...t, done: false, active: false}));
+                 const resetStages = getFieldStages(selectedField.id).map((t) => ({...t, done: false, active: false}));
+                 resetStages[0].active = true;
                  setCycleTasksByField(p => ({
                    ...p,
                    [selectedField.id]: resetStages
                  }));
-                 setSelectedField(prevF => ({ ...prevF, stage: 'Not Started' }));
+                 setSelectedField(prevF => ({ ...prevF, stage: resetStages[0].name }));
                  const resetMf = MOCK_FIELDS.find(f => f.id === selectedField.id);
-                 if (resetMf) resetMf.stage = 'Not Started';
+                 if (resetMf) resetMf.stage = resetStages[0].name;
                  
                  // Mark logs as past cycle instead of deleting
                  MOCK_LOGS.forEach(l => {
@@ -278,9 +666,14 @@ export default function FieldOpsScreen({ navigation, route }) {
           Alert.alert('Action Denied', 'You cannot skip ahead. Please submit logs and mark the previous stages as complete first.');
           return;
         }
+        const priorTask = fieldTasks[taskIndex - 1];
+        const hasPriorLogs = logs.some(l => l.fieldId === selectedField.id && (l.taskId === priorTask?.id || l.stageNumber === priorTask?.stageNumber) && !l.isPastCycle);
+        const priorMsg = hasPriorLogs 
+          ? 'Previous stages are not yet marked done. Are you sure you want to jump ahead?' 
+          : `Notice: Stage ${priorTask?.stageNumber || taskIndex} has no operations recorded yet. Are you sure you want to skip ahead without logging previous work?`;
         Alert.alert(
           'Skip Stage Warning',
-          'Previous stages in the crop cycle are not yet completed. Are you sure you want to jump ahead?',
+          priorMsg,
           [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Yes, Skip Ahead', onPress: applyToggle, style: 'destructive' }
@@ -293,7 +686,7 @@ export default function FieldOpsScreen({ navigation, route }) {
     if (!targetTask.active && !targetTask.done && !forceComplete) {
        Alert.alert(
          'Activate Stage',
-         `Start working on "${targetTask.label}"?`,
+         `Start working on Stage ${targetTask.stageNumber || taskIndex + 1}: "${targetTask.name || targetTask.label}"?`,
          [
            { text: 'Cancel', style: 'cancel' },
            { text: 'Activate', onPress: applyToggle, style: 'default' }
@@ -303,29 +696,23 @@ export default function FieldOpsScreen({ navigation, route }) {
     }
 
     if (targetTask.active && !forceComplete) {
-      const stageDrafts = draftLogs.filter(d => d.taskId === targetTask.id && d.fieldId === selectedField.id);
+      const stageNum = targetTask.stageNumber || taskIndex + 1;
+      const stageDrafts = draftLogs.filter(d => (d.taskId === targetTask.id || d.stageNumber === stageNum) && d.fieldId === selectedField.id);
       if (stageDrafts.length > 0) {
         editDraft(stageDrafts[0]);
       } else {
-        const benchmark = STAGE_INPUT_BENCHMARKS[targetTask.id];
-        const haNum = parseFloat(selectedField.ha) || 1.0;
-        setLogForm({
-          id: null,
-          fieldId: selectedField.id,
-          saveFieldId: true,
-          activity: targetTask.label,
-          cost: benchmark ? Math.round(parseFloat(benchmark.estimatedCost) * haNum).toString() : '',
-          period: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          hectares: selectedField.ha || '1.5',
-          people: benchmark?.people || '4',
-          inputQty: benchmark ? (parseFloat(benchmark.inputQty) * haNum).toString() : '',
-          inputUnit: benchmark?.inputUnit || 'bags',
-          inputName: benchmark?.inputName || '',
-          taskId: targetTask.id,
-          isSubmit: true
-        });
-        setShowLog(true);
-        Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
+        const stageOps = getFieldCustomOperations(selectedField.id, stageNum);
+
+        // Find the first operation in this stage that hasn't been recorded yet
+        const nextPendingOp = stageOps.find(op => !logs.some(l => 
+          l.fieldId === selectedField.id && 
+          (l.operationName === op.name || l.sraOperationId === op.id || l.activity === op.name) && 
+          (l.stageNumber === stageNum || l.taskId === targetTask.id) && 
+          !l.isPastCycle
+        ));
+
+        const targetOpToOpen = nextPendingOp || stageOps[0] || (targetTask.operations && targetTask.operations[0]) || { id: 'SRA-02' };
+        openOperationLog(targetTask, targetOpToOpen.id);
       }
       return;
     } else if (!isProgressing) {
@@ -401,37 +788,144 @@ export default function FieldOpsScreen({ navigation, route }) {
     setShowAddField(false);
   };
 
-  const openLog = () => {
+  const selectSraOperation = (opId, ha = null) => {
+    const op = SRA_OPERATIONS_CATALOGUE.find(o => o.id === opId) || SRA_OPERATIONS_CATALOGUE[0];
+    const haVal = parseFloat(ha || logForm.hectares || selectedField.ha || '1.5') || 1.0;
+    const scaledSubItems = op.subItems.map((si, idx) => {
+      const baseQty = si.qty;
+      const scaledQty = Number((baseQty * (si.unit === 'lac' || si.unit === 'pass' || si.unit === 'ha' || si.unit === 'ton' ? haVal : 1)).toFixed(1));
+      const subTotal = Math.round(scaledQty * si.unitCost);
+      return {
+        id: `SI-${Date.now()}-${idx}`,
+        description: si.description,
+        qty: scaledQty,
+        unit: si.unit,
+        unitCost: si.unitCost,
+        subTotal: subTotal
+      };
+    });
+    const totalCost = scaledSubItems.reduce((sum, item) => sum + (Number(item.subTotal) || 0), 0);
+    setLogForm(prev => ({
+      ...prev,
+      sraOperationId: op.id,
+      operationName: op.name,
+      activity: op.name,
+      category: op.category,
+      subItems: scaledSubItems,
+      cost: String(totalCost),
+    }));
+  };
+
+  const addCustomSubItem = () => {
+    const newItem = {
+      id: `SI-CUST-${Date.now()}`,
+      description: '',
+      qty: 1,
+      unit: 'days',
+      unitCost: 500,
+      subTotal: 500
+    };
+    setLogForm(prev => {
+      const updated = [...(prev.subItems || []), newItem];
+      const totalCost = updated.reduce((sum, item) => sum + (Number(item.subTotal) || 0), 0);
+      return {
+        ...prev,
+        subItems: updated,
+        cost: String(totalCost)
+      };
+    });
+  };
+
+  const updateSubItemRow = (index, field, value) => {
+    setLogForm(prev => {
+      const updated = [...(prev.subItems || [])];
+      if (!updated[index]) return prev;
+      const item = { ...updated[index], [field]: value };
+      if (field === 'qty' || field === 'unitCost') {
+        const q = parseFloat(item.qty) || 0;
+        const uc = parseFloat(item.unitCost) || 0;
+        item.subTotal = Math.round(q * uc);
+      }
+      updated[index] = item;
+      const totalCost = updated.reduce((sum, it) => sum + (Number(it.subTotal) || 0), 0);
+      return {
+        ...prev,
+        subItems: updated,
+        cost: String(totalCost)
+      };
+    });
+  };
+
+  const removeSubItemRow = (index) => {
+    setLogForm(prev => {
+      const updated = (prev.subItems || []).filter((_, i) => i !== index);
+      const totalCost = updated.reduce((sum, it) => sum + (Number(it.subTotal) || 0), 0);
+      return {
+        ...prev,
+        subItems: updated,
+        cost: String(totalCost)
+      };
+    });
+  };
+
+  const openLog = (opId = 'SRA-02') => {
+    const targetOp = SRA_OPERATIONS_CATALOGUE.find(o => o.id === opId) || SRA_OPERATIONS_CATALOGUE[1];
+    const haVal = parseFloat(selectedField.ha || '1.5') || 1.0;
+    const initialSubItems = targetOp.subItems.map((si, idx) => {
+      const scaledQty = Number((si.qty * (si.unit === 'lac' || si.unit === 'pass' || si.unit === 'ha' || si.unit === 'ton' ? haVal : 1)).toFixed(1));
+      const subTotal = Math.round(scaledQty * si.unitCost);
+      return {
+        id: `SI-${Date.now()}-${idx}`,
+        description: si.description,
+        qty: scaledQty,
+        unit: si.unit,
+        unitCost: si.unitCost,
+        subTotal: subTotal
+      };
+    });
+    const totalCost = initialSubItems.reduce((sum, item) => sum + item.subTotal, 0);
+
     setLogForm(p => ({
       ...p,
       id: null,
       fieldId: selectedField.id,
       saveFieldId: true,
-      activity: '',
-      cost: '',
+      sraOperationId: targetOp.id,
+      operationName: targetOp.name,
+      activity: targetOp.name,
+      category: targetOp.category,
+      cost: String(totalCost),
       hectares: selectedField.ha || '1.5',
-      people: '',
+      people: '2',
+      subItems: initialSubItems,
       inputQty: '',
-      inputUnit: 'bags',
+      inputUnit: targetOp.unit || 'bags',
       inputName: '',
       period: p.period || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       isSubmit: true
     }));
     setShowLog(true);
-    Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
   };
 
   const closeLog = () => {
-    Animated.timing(slideAnim, { toValue: height, duration: 220, useNativeDriver: true }).start(() => setShowLog(false));
+    setShowLog(false);
   };
 
   const handleSaveLog = (asSubmit = true, forceCostConfirm = false, forceDuplicateConfirm = false) => {
-    if (!logForm.activity.trim() || !logForm.cost || !logForm.fieldId?.trim() || !logForm.period?.trim() || !logForm.hectares || !logForm.people) {
+    const effectiveActivity = logForm.operationName || logForm.activity || 'Field Operation';
+    let computedCost = parseFloat(logForm.cost) || 0;
+    if (logForm.isGroup && logForm.subItems && logForm.subItems.length > 0) {
+      computedCost = logForm.subItems.reduce((sum, it) => sum + (it.subTotal || 0), 0);
+    } else if (!logForm.isGroup && logForm.inputQty && logForm.directRate) {
+      computedCost = Math.round(parseFloat(logForm.inputQty) * parseFloat(logForm.directRate));
+    }
+
+    if (!effectiveActivity.trim() || !logForm.fieldId?.trim() || !logForm.period?.trim() || !logForm.hectares || !logForm.people) {
       Alert.alert('Required', 'Please fill in Date, Activity, Operational Cost, Hectares, and Workers.');
       return;
     }
     
-    const costValue = parseFloat(logForm.cost);
+    const costValue = computedCost;
     const ha = parseFloat(logForm.hectares);
     const ppl = parseInt(logForm.people);
 
@@ -446,7 +940,7 @@ export default function FieldOpsScreen({ navigation, route }) {
     if (ha > 50) { Alert.alert('Invalid Input', 'Hectares cannot exceed 50 per log.'); return; }
     if (ppl > 100) { Alert.alert('Invalid Input', 'Worker count cannot exceed 100 per log.'); return; }
 
-    // FIX 4: Block future dates (back-dating up to 30 days is allowed)
+    // Block future dates
     const parsedDate = new Date(logForm.period);
     const today = new Date();
     today.setHours(23, 59, 59, 999);
@@ -461,43 +955,38 @@ export default function FieldOpsScreen({ navigation, route }) {
       return;
     }
 
-    // FIX 2: Cost warning threshold for unusually high amounts
-    const isCostConfirmed = forceCostConfirm || logForm._costConfirmed;
-    if (costValue > 25000 && !isCostConfirmed) {
-      Alert.alert(
-        'Unusual Cost Amount',
-        `You entered Php ${costValue.toLocaleString()}. This is higher than the typical per-operation cost. Are you sure this is correct?`,
-        [
-          { text: 'Go Back & Fix', style: 'cancel' },
-          { text: 'Yes, Correct Amount', onPress: () => {
-            setLogForm(prev => ({ ...prev, _costConfirmed: true }));
-            handleSaveLog(asSubmit, true, forceDuplicateConfirm);
-          }}
-        ]
-      );
-      return;
-    }
-
     const submittedFieldId = logForm.fieldId.trim().toUpperCase();
 
-    // FIX 3: Duplicate detection (same field + activity + date + cost)
+    // Member Field Lock: Members can only log activities for their own assigned plot
+    if (activeRole === 'Member') {
+      const session = getCurrentSession();
+      const myPlot = session.fieldId?.trim()?.toUpperCase();
+      if (myPlot && submittedFieldId !== myPlot) {
+        Alert.alert(
+          'Action Denied',
+          `As a Member farmer, you may only record operations for your assigned plot (${session.fieldId}). To request an additional plot, please use Field Requests.`
+        );
+        return;
+      }
+    }
+
+    // Duplicate detection (soft warning)
     const isDupConfirmed = forceDuplicateConfirm || logForm._duplicateConfirmed;
     if (asSubmit && !logForm.id) {
       const isDuplicate = MOCK_LOGS.some(l =>
         l.fieldId === submittedFieldId &&
-        l.activity === logForm.activity.trim() &&
-        l.date === (logForm.period || '') &&
-        l.cost === costValue
+        (l.operationName === logForm.operationName || l.activity === logForm.activity.trim()) &&
+        l.date === (logForm.period || '')
       );
       if (isDuplicate && !isDupConfirmed) {
         Alert.alert(
-          'Possible Duplicate',
-          `A log with the same activity, cost, and date already exists for ${submittedFieldId}. Do you still want to submit?`,
+          'Possible Duplicate Notice',
+          `An operation for "${logForm.operationName || logForm.activity}" is already recorded on ${logForm.period} for ${submittedFieldId}. Do you still wish to record this?`,
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Submit Anyway', style: 'destructive', onPress: () => {
+            { text: 'Record Anyway', style: 'default', onPress: () => {
               setLogForm(prev => ({ ...prev, _duplicateConfirmed: true }));
-              handleSaveLog(asSubmit, isCostConfirmed, true);
+              handleSaveLog(asSubmit, true, true);
             }}
           ]
         );
@@ -505,25 +994,44 @@ export default function FieldOpsScreen({ navigation, route }) {
       }
     }
 
+    const safeHa = Math.max(ha, 0.1);
+    const costPerHaVal = Math.round(costValue / safeHa);
+    const loggedByStr = isTakeOver
+      ? `Manager (${getCurrentSession().name} - Takeover)`
+      : `${getCurrentSession().role === 'Farm Manager' ? 'Manager' : 'Farmer'} (${getCurrentSession().name})`;
+
+    const matchedOp = SRA_OPERATIONS_CATALOGUE.find(o => o.id === logForm.sraOperationId) || {};
+    const parentStageNum = logForm.stageNumber || matchedOp.stageNumber || 1;
+    const parentStageName = logForm.stageName || matchedOp.stageName || 'Stage 1: Pre-Planting & Land Preparation';
+
     const newLog = {
       id: logForm.id || `L${Date.now()}`,
       fieldId: submittedFieldId,
+      stageNumber: parentStageNum,
+      stageName: parentStageName,
+      sraOperationId: logForm.sraOperationId || matchedOp.id || 'SRA-02',
+      operationName: logForm.operationName || matchedOp.name || logForm.activity,
       activity: logForm.activity,
       cost: costValue,
+      totalCost: costValue,
+      costPerHa: costPerHaVal,
       hectares: logForm.hectares,
       people: logForm.people,
+      subItems: logForm.subItems || [],
       inputQty: logForm.inputQty || '',
       inputUnit: logForm.inputUnit || '',
       inputName: logForm.inputName || '',
       date: logForm.period || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       approved: true,
+      status: 'Approved',
+      loggedBy: loggedByStr,
       taskId: logForm.taskId,
       isOffline: !synced,
       editHistory: [],
     };
 
     if (!MOCK_FIELDS.find(f => f.id === submittedFieldId)) {
-      MOCK_FIELDS.push({ id: submittedFieldId, member: getCurrentSession().name || 'Current User', ha: logForm.hectares || '0.0', stage: 'Newly Logged', month: 0, synced: false, lastSync: 'Just now', customStages: [] });
+      MOCK_FIELDS.push({ id: submittedFieldId, member: getCurrentSession().name || 'Current User', ha: logForm.hectares || '0.0', stage: logForm.operationName || 'Newly Logged', month: 0, synced: false, lastSync: 'Just now', customStages: [] });
     }
 
     if (asSubmit) {
@@ -571,37 +1079,44 @@ export default function FieldOpsScreen({ navigation, route }) {
       setLogs([...MOCK_LOGS]);
       setLogTab('submitted');
       
-      // Automatically complete the stage for this log
+      // Keep stage active and allow multiple operations per stage
       if (logForm.taskId && logForm.taskId !== 'Emergency') {
         const currentTasks = cycleTasksByField[submittedFieldId] || [];
-        const taskIdx = currentTasks.findIndex(t => t.id === logForm.taskId);
-        if (taskIdx > -1) {
-          const updated = currentTasks.map(t => {
-            if (t.id === logForm.taskId) return { ...t, done: true, active: false };
-            return t;
-          });
-          setCycleTasksByField(p => ({ ...p, [submittedFieldId]: updated }));
-          const isFullyCompleted = updated.every(t => t.done);
-          const nextPending = updated.find(t => !t.done);
-          const newStageLabel = isFullyCompleted 
-            ? 'Harvesting & Milling (Completed)' 
-            : (nextPending ? `Waiting: ${nextPending.label}` : 'Crop Cycle Complete');
-          
-          if (submittedFieldId === selectedField.id) {
-            setSelectedField(prevF => ({ ...prevF, stage: newStageLabel }));
-          }
-          const mf = MOCK_FIELDS.find(f => f.id === submittedFieldId);
-          if (mf) mf.stage = newStageLabel;
-        }
+        const targetTask = currentTasks.find(t => t.id === logForm.taskId);
+        const stageNum = logForm.stageNumber || targetTask?.stageNumber || 1;
 
-        Alert.alert(
-          'Operation Logged',
-          `"${newLog.activity}" recorded to field history. Stage completed!`,
-          [{ text: 'OK', style: 'default' }]
-        );
+        const stagePlannedOps = getFieldCustomOperations(submittedFieldId, stageNum);
+        const stageLoggedOps = MOCK_LOGS.filter(l => l.fieldId === submittedFieldId && (l.stageNumber === stageNum || l.taskId === logForm.taskId) && !l.isPastCycle);
+
+        if (stagePlannedOps.length > 1 && stageLoggedOps.length < stagePlannedOps.length) {
+          Alert.alert(
+            'Operation Recorded',
+            `"${newLog.activity}" recorded to field history (${stageLoggedOps.length} of ${stagePlannedOps.length} operations logged for Stage ${stageNum}).\n\nStage ${stageNum} remains active for your next operation.`,
+            [{ text: 'OK', style: 'default' }]
+          );
+        } else if (stagePlannedOps.length > 0 && stageLoggedOps.length >= stagePlannedOps.length) {
+          Alert.alert(
+            'Stage Operations Complete!',
+            `All ${stagePlannedOps.length} operations for Stage ${stageNum} have been recorded.\n\nWould you like to mark Stage ${stageNum} as complete and advance to the next stage?`,
+            [
+              { text: 'Keep Stage Active', style: 'cancel' },
+              { 
+                text: 'Complete Stage', 
+                style: 'default', 
+                onPress: () => toggleTaskStatus(logForm.taskId, true) 
+              }
+            ]
+          );
+        } else {
+          Alert.alert(
+            'Operation Logged',
+            `"${newLog.activity}" recorded to field history.`,
+            [{ text: 'OK', style: 'default' }]
+          );
+        }
       } else {
         Alert.alert(
-          'Unplanned Work Logged',
+          'Operation Logged',
           `"${newLog.activity}" has been recorded to field history.`,
           [{ text: 'OK', style: 'default' }]
         );
@@ -683,7 +1198,6 @@ export default function FieldOpsScreen({ navigation, route }) {
       isSubmit: false,
     });
     setShowLog(true);
-    Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
   };
 
   const deleteDraft = (draftId) => {
@@ -714,8 +1228,15 @@ export default function FieldOpsScreen({ navigation, route }) {
       id: log.id,
       fieldId: log.fieldId,
       saveFieldId: true,
+      sraOperationId: log.sraOperationId || '',
+      operationName: log.operationName || log.activity || '',
       activity: log.activity || '',
-      cost: log.cost ? log.cost.toString() : '',
+      category: log.category || 'prep',
+      stageNumber: log.stageNumber,
+      stageName: log.stageName,
+      isGroup: Array.isArray(log.subItems) && log.subItems.length > 0,
+      subItems: Array.isArray(log.subItems) ? log.subItems.map(si => ({ ...si })) : [],
+      cost: log.totalCost != null ? log.totalCost.toString() : (log.cost ? log.cost.toString() : ''),
       period: log.date || log.period || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       hectares: log.hectares ? log.hectares.toString() : (selectedField?.ha || '1.5'),
       people: log.people ? log.people.toString() : '',
@@ -726,7 +1247,6 @@ export default function FieldOpsScreen({ navigation, route }) {
       isSubmit: true,
     });
     setShowLog(true);
-    Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
   };
 
   const deleteSubmittedLog = (log) => {
@@ -817,15 +1337,35 @@ export default function FieldOpsScreen({ navigation, route }) {
 
   const renderCompactLogList = (baseList, isDraft = false, isManager = false) => {
     const filtered = baseList.filter(log => {
-      if (!isDraft) {
-        if (logCategoryFilter === 'stage' && log.taskId === 'Emergency') return false;
-        if (logCategoryFilter === 'unplanned' && log.taskId !== 'Emergency') return false;
-        if (logCategoryFilter === 'offline' && !log.isOffline) return false;
-        if (logCategoryFilter === 'prep' && !(log.activity || '').toLowerCase().includes('prep') && !(log.activity || '').toLowerCase().includes('plow')) return false;
-        if (logCategoryFilter === 'planting' && !(log.activity || '').toLowerCase().includes('plant') && !(log.activity || '').toLowerCase().includes('patdan')) return false;
-        if (logCategoryFilter === 'weeding' && !(log.activity || '').toLowerCase().includes('weed') && !(log.activity || '').toLowerCase().includes('hilamon')) return false;
-        if (logCategoryFilter === 'fertilizer' && !(log.activity || '').toLowerCase().includes('fert') && !(log.activity || '').toLowerCase().includes('urea')) return false;
-        if (logCategoryFilter === 'harvest' && !(log.activity || '').toLowerCase().includes('harvest') && !(log.activity || '').toLowerCase().includes('tapas') && !(log.activity || '').toLowerCase().includes('truck')) return false;
+      if (!isDraft && logCategoryFilter !== 'all') {
+        const stageNum = parseInt(logCategoryFilter.replace('stage', ''), 10);
+        const isMatch = (
+          log.stageNumber === stageNum ||
+          (log.taskId && log.taskId.toUpperCase() === `S${stageNum}`) ||
+          (log.taskId && (
+            (stageNum === 1 && (log.taskId === 'T1' || log.taskId === 'T2')) ||
+            (stageNum === 2 && (log.taskId === 'T3' || log.taskId === 'T4')) ||
+            (stageNum === 3 && (log.taskId === 'T5' || log.taskId === 'T6')) ||
+            (stageNum === 4 && (log.taskId === 'T7' || log.taskId === 'T10')) ||
+            (stageNum === 5 && (log.taskId === 'T8' || log.taskId === 'T9' || log.taskId === 'T11')) ||
+            (stageNum === 6 && (log.taskId === 'T12' || log.taskId === 'T13' || log.taskId === 'T14'))
+          )) ||
+          (log.sraOperationId && (
+            (stageNum === 1 && (log.sraOperationId === 'SRA-01' || log.sraOperationId === 'SRA-02')) ||
+            (stageNum === 2 && (log.sraOperationId === 'SRA-03' || log.sraOperationId === 'SRA-04')) ||
+            (stageNum === 3 && (log.sraOperationId === 'SRA-05' || log.sraOperationId === 'SRA-06')) ||
+            (stageNum === 4 && (log.sraOperationId === 'SRA-07' || log.sraOperationId === 'SRA-10')) ||
+            (stageNum === 5 && (log.sraOperationId === 'SRA-08' || log.sraOperationId === 'SRA-09' || log.sraOperationId === 'SRA-11')) ||
+            (stageNum === 6 && (log.sraOperationId === 'SRA-12' || log.sraOperationId === 'SRA-13' || log.sraOperationId === 'SRA-14'))
+          )) ||
+          (stageNum === 1 && ((log.activity || '').toLowerCase().includes('prep') || (log.activity || '').toLowerCase().includes('plow') || (log.activity || '').toLowerCase().includes('soil'))) ||
+          (stageNum === 2 && ((log.activity || '').toLowerCase().includes('plant') || (log.activity || '').toLowerCase().includes('patdan') || (log.activity || '').toLowerCase().includes('seedcane'))) ||
+          (stageNum === 3 && ((log.activity || '').toLowerCase().includes('basal') || (log.activity || '').toLowerCase().includes('dap') || (log.activity || '').toLowerCase().includes('phosphate') || (log.activity || '').toLowerCase().includes('early care'))) ||
+          (stageNum === 4 && ((log.activity || '').toLowerCase().includes('cultivation') || (log.activity || '').toLowerCase().includes('weed') || (log.activity || '').toLowerCase().includes('barring'))) ||
+          (stageNum === 5 && ((log.activity || '').toLowerCase().includes('top-dress') || (log.activity || '').toLowerCase().includes('hilling') || (log.activity || '').toLowerCase().includes('maintenance') || (log.activity || '').toLowerCase().includes('drainage'))) ||
+          (stageNum === 6 && ((log.activity || '').toLowerCase().includes('harvest') || (log.activity || '').toLowerCase().includes('cutting') || (log.activity || '').toLowerCase().includes('truck') || (log.activity || '').toLowerCase().includes('haul') || (log.activity || '').toLowerCase().includes('bull cart')))
+        );
+        if (!isMatch) return false;
       }
 
       if (logSearch.trim()) {
@@ -867,18 +1407,17 @@ export default function FieldOpsScreen({ navigation, route }) {
           )}
         </View>
 
-        {/* Filter Pills (for non-drafts) */}
+        {/* Filter Pills (6 Official SRA Growth Stages) */}
         {!isDraft && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: 4 }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 6 }}>
             {[
               { key: 'all', label: `${t('cat_all', 'All')} (${baseList.length})` },
-              { key: 'prep', label: t('cat_prep', 'Land Prep') },
-              { key: 'planting', label: t('cat_plant', 'Planting') },
-              { key: 'weeding', label: t('cat_weed', 'Weeding & Care') },
-              { key: 'fertilizer', label: t('cat_fert', 'Fertilization') },
-              { key: 'harvest', label: t('cat_harvest', 'Harvesting') },
-              { key: 'unplanned', label: `Unplanned (${baseList.filter(l => l.taskId === 'Emergency').length})` },
-              { key: 'offline', label: `Offline (${baseList.filter(l => l.isOffline).length})` }
+              { key: 'stage1', label: `${t('stage_word', 'Stage')} 1: ${t('stage_1_short', 'Land Prep')}` },
+              { key: 'stage2', label: `${t('stage_word', 'Stage')} 2: ${t('stage_2_short', 'Planting')}` },
+              { key: 'stage3', label: `${t('stage_word', 'Stage')} 3: ${t('stage_3_short', 'Basal Fert')}` },
+              { key: 'stage4', label: `${t('stage_word', 'Stage')} 4: ${t('stage_4_short', 'Cultivation')}` },
+              { key: 'stage5', label: `${t('stage_word', 'Stage')} 5: ${t('stage_5_short', 'Maintenance')}` },
+              { key: 'stage6', label: `${t('stage_word', 'Stage')} 6: ${t('stage_6_short', 'Harvesting')}` },
             ].map(f => (
               <TouchableOpacity
                 key={f.key}
@@ -910,14 +1449,13 @@ export default function FieldOpsScreen({ navigation, route }) {
         {displayItems.length === 0 && (
           <View style={s.emptyCard}>
             <Ionicons name="document-text-outline" size={28} color={COLORS.border} />
-            <Text style={s.emptyText}>{isFiltering ? 'No logs match your search or filter.' : (isDraft ? 'No draft logs.' : t('empty_logs', 'No operational logs recorded yet.'))}</Text>
+            <Text style={s.emptyText}>{isFiltering ? t('no_matching_logs', 'No logs match your search or filter.') : (isDraft ? t('no_draft_logs', 'No draft logs.') : t('empty_logs', 'No operational logs recorded yet.'))}</Text>
           </View>
         )}
 
         {/* Compact Expandable Item Rows */}
         {displayItems.map(log => {
           const isExpanded = expandedLogId === log.id;
-          const isUnplanned = log.taskId === 'Emergency';
 
           return (
             <View key={log.id} style={[s.compactLogCard, isDraft && { borderColor: '#F5A623', backgroundColor: '#FFFBF0' }]}>
@@ -926,11 +1464,29 @@ export default function FieldOpsScreen({ navigation, route }) {
                 onPress={() => setExpandedLogId(isExpanded ? null : log.id)}
                 activeOpacity={0.7}
               >
-                <View style={[s.compactLogDot, { backgroundColor: isDraft ? '#C97A00' : (isUnplanned ? '#D9534F' : COLORS.primary) }]} />
+                <View style={[s.compactLogDot, { backgroundColor: isDraft ? '#C97A00' : COLORS.primary }]} />
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={s.compactLogTitle} numberOfLines={1}>{log.activity}</Text>
-                  <Text style={s.compactLogSub}>
-                    {log.date || log.period} · {log.hectares} Ha · {log.people} Workers{log.inputQty ? ` · ${log.inputQty} ${log.inputUnit}${log.inputName ? ` (${log.inputName})` : ''}` : ''}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {log.sraOperationId && (
+                      <View style={{ backgroundColor: COLORS.primaryBg, paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: RADIUS.xs }}>
+                        <Text style={{ fontSize: 10, fontWeight: '900', color: COLORS.primary }}>{log.sraOperationId}</Text>
+                      </View>
+                    )}
+                    <Text style={s.compactLogTitle} numberOfLines={1}>
+                      {formatOperationName ? formatOperationName(log.operationName || log.activity) : log.operationName || log.activity}
+                    </Text>
+                  </View>
+                  
+                  {/* Connected Parent Stage Badge */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <Ionicons name="git-branch-outline" size={11} color={COLORS.primary} />
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }} numberOfLines={1}>
+                      {formatStageName ? formatStageName(log.stageName || `Stage ${log.stageNumber}`, true) : log.stageName || `Stage ${log.stageNumber}`}
+                    </Text>
+                  </View>
+
+                  <Text style={[s.compactLogSub, { marginTop: 2 }]}>
+                    {log.date || log.period} · {log.hectares} Ha · {log.people} Workers{log.subItems?.length ? ` · ${log.subItems.length} ${t('child_items_lbl', 'Items')}` : ''}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
@@ -942,22 +1498,52 @@ export default function FieldOpsScreen({ navigation, route }) {
                 </View>
               </TouchableOpacity>
 
-              {/* Expandable Details Drawer */}
+              {/* Expandable Details Drawer with Child Sub-Items */}
               {isExpanded && (
                 <View style={s.compactLogDrawer}>
                   <View style={s.compactLogDivider} />
                   <View style={s.receiptRow}>
+                    <Text style={s.receiptLabel}>{t('operation_name_lbl', 'Operation Name')}</Text>
+                    <Text style={s.receiptValue}>{log.sraOperationId ? `[${log.sraOperationId}] ` : ''}{log.operationName || log.activity}</Text>
+                  </View>
+                  <View style={s.receiptRow}>
+                    <Text style={s.receiptLabel}>{t('connected_stage_lbl', 'Connected Stage')}</Text>
+                    <Text style={[s.receiptValue, { color: COLORS.primary, fontWeight: '800' }]}>
+                      {log.stageName || (log.stageNumber ? `Stage ${log.stageNumber}` : 'General Operation')}
+                    </Text>
+                  </View>
+                  <View style={s.receiptRow}>
                     <Text style={s.receiptLabel}>{t('receipt_ref', 'Log Reference')}</Text>
-                    <Text style={s.receiptValue}>#{log.id} {isUnplanned ? '· Unplanned Work' : ''}</Text>
+                    <Text style={s.receiptValue}>#{log.id}</Text>
                   </View>
                   <View style={s.receiptRow}>
                     <Text style={s.receiptLabel}>{t('receipt_coverage', 'Work Coverage')}</Text>
-                    <Text style={s.receiptValue}>{log.hectares} Hectares · {log.people} Workers</Text>
+                    <Text style={s.receiptValue}>{log.hectares} {t('hectares_unit', 'Hectares')} · {log.people} {t('workers_unit', 'Workers')}</Text>
                   </View>
-                  {Boolean(log.inputQty) && (
+
+                  {/* Child Items / Materials & Inputs Breakdown */}
+                  {log.subItems && log.subItems.length > 0 && (
+                    <View style={{ backgroundColor: '#F8FAF5', padding: 10, borderRadius: RADIUS.sm, gap: 5, marginVertical: 6, borderWidth: 1, borderColor: COLORS.border }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.primary, textTransform: 'uppercase' }}>
+                        {t('op_children_materials_lbl', 'Operation Items & Materials')} ({log.subItems.length})
+                      </Text>
+                      {log.subItems.map((si, idx) => (
+                        <View key={si.id || idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: idx !== log.subItems.length - 1 ? 1 : 0, borderBottomColor: '#EDEDED', paddingVertical: 3 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: COLORS.text, flex: 1, marginRight: 6 }}>
+                            • {si.description}
+                          </Text>
+                          <Text style={{ fontSize: 11.5, fontWeight: '700', color: COLORS.textSecondary }}>
+                            {si.qty} {si.unit} @ ₱{Number(si.unitCost || 0).toLocaleString()} = ₱{Number(si.subTotal || 0).toLocaleString()}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {Boolean(log.inputQty) && (!log.subItems || log.subItems.length === 0) && (
                     <View style={s.receiptRow}>
-                      <Text style={s.receiptLabel}>{t('planner_materials', 'Inputs / Materials')}</Text>
-                      <Text style={s.receiptValue}>{log.inputQty} {log.inputUnit} {log.inputName ? `· ${log.inputName}` : ''}</Text>
+                      <Text style={s.receiptLabel}>{t('direct_op_input_lbl', 'Direct Operation Input')}</Text>
+                      <Text style={s.receiptValue}>{log.inputQty} {log.inputUnit || 'ha'} {log.directRate ? `@ ₱${Number(log.directRate).toLocaleString()}/${log.inputUnit || 'ha'}` : ''}</Text>
                     </View>
                   )}
                   <View style={s.receiptRow}>
@@ -1066,50 +1652,7 @@ export default function FieldOpsScreen({ navigation, route }) {
     );
   };
 
-  const renderDraftsBanner = () => {
-    const currentFieldId = selectedField?.id || MOCK_FIELDS[0]?.id;
-    const scopedDrafts = draftLogs.filter(d => d.fieldId === currentFieldId);
-    if (scopedDrafts.length === 0) return null;
-    return (
-      <View style={{ backgroundColor: '#FFFDF5', borderColor: '#F5A623', borderWidth: 1.5, borderRadius: RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.md, ...SHADOW.card }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#FEF0D0', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="document-text" size={14} color="#C97A00" />
-            </View>
-            <Text style={{ fontSize: 13, fontWeight: '800', color: '#92400E' }}>{t('drafts_title', 'Saved Draft Logs')} ({scopedDrafts.length})</Text>
-          </View>
-          <View style={{ backgroundColor: '#FEF0D0', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
-            <Text style={{ fontSize: 10, color: '#92400E', fontWeight: '700' }}>For {currentFieldId}</Text>
-          </View>
-        </View>
-        <View style={{ gap: 8 }}>
-          {scopedDrafts.map(draft => (
-            <View key={draft.id} style={{ backgroundColor: '#fff', borderRadius: RADIUS.md, borderWidth: 1, borderColor: '#FDE68A', padding: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.text }} numberOfLines={1}>{draft.activity || 'Untitled Draft'}</Text>
-                <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{draft.fieldId} · Php {Number(draft.cost || 0).toLocaleString()} · {draft.hectares || '1.5'} Ha</Text>
-              </View>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                <TouchableOpacity 
-                  style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 7, borderRadius: RADIUS.sm }}
-                  onPress={() => editDraft(draft)}
-                >
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#92400E' }}>{t('btn_edit', 'Edit')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={{ backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 7, borderRadius: RADIUS.sm }}
-                  onPress={() => submitDraft(draft)}
-                >
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>{t('btn_submit', 'Submit')}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
-    );
-  };
+
 
   const SRA_TASK_KEY_MAP = {
     T1: 'task_t1',
@@ -1120,6 +1663,12 @@ export default function FieldOpsScreen({ navigation, route }) {
     T6: 'task_t6',
     T7: 'task_t7',
     T8: 'task_t8',
+    T9: 'task_t9',
+    T10: 'task_t10',
+    T11: 'task_t11',
+    T12: 'task_t12',
+    T13: 'task_t13',
+    T14: 'task_t14',
   };
 
   const getTaskLabel = (task) => {
@@ -1130,137 +1679,328 @@ export default function FieldOpsScreen({ navigation, route }) {
   };
 
   const renderTimeline = () => {
-    const tasks = cycleTasksByField[selectedField.id] || [];
-    
-    if (tasks.length === 0) {
-      return (
-        <View style={{ marginBottom: SPACING.md }}>
-          <View style={s.sectionRow}>
-            <Text style={s.sectionLabel}>{t('timeline_title', 'Crop Cycle Timeline')}</Text>
-          </View>
-          <View style={[s.timelineCard, { padding: SPACING.lg, alignItems: 'center' }]}>
-            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primaryBg, justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
-              <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
-            </View>
-            <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text, marginBottom: 4, textAlign: 'center' }}>{t('no_cycle_setup', 'No Crop Cycle Set Up Yet')}</Text>
-            <Text style={{ fontSize: 12, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 17, marginBottom: 16 }}>
-              {t('no_cycle_sub', "Each field follows its own cycle. Set up your field's stages to start logging and tracking progress.")}
-            </Text>
-
-            <View style={{ width: '100%', gap: 10 }}>
-              <TouchableOpacity
-                style={{ backgroundColor: COLORS.primary, paddingVertical: 12, borderRadius: RADIUS.md, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, ...SHADOW.card }}
-                onPress={() => {
-                  const session = getCurrentSession();
-                  const isMyField = selectedField.member === session.name;
-                  if (activeRole === 'Farm Manager' && !isMyField && !isTakeOver) {
-                    Alert.alert(
-                      'Supervisor Takeover Required',
-                      'Please enable "Take Over Field" mode to set up or modify the crop cycle for this offline member.'
-                    );
-                    return;
-                  }
-                  const defaultStages = CYCLE_TASKS.map((t, idx) => ({ ...t, done: idx === 0, active: idx === 1 }));
-                  setEditingStages(defaultStages);
-                  setNewStageLabel('');
-                  setNewStageColor(STAGE_COLORS[0]);
-                  setShowStageEditor(true);
-                }}
-              >
-                <Ionicons name="copy-outline" size={16} color="#fff" />
-                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{t('btn_use_sra_standard', 'Use SRA Standard (8 Stages)')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={{ backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.primary, paddingVertical: 11, borderRadius: RADIUS.md, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }}
-                onPress={() => {
-                  const session = getCurrentSession();
-                  const isMyField = selectedField.member === session.name;
-                  if (activeRole === 'Farm Manager' && !isMyField && !isTakeOver) {
-                    Alert.alert(
-                      'Supervisor Takeover Required',
-                      'Please enable "Take Over Field" mode to set up or modify the crop cycle for this offline member.'
-                    );
-                    return;
-                  }
-                  setEditingStages([]);
-                  setNewStageLabel('');
-                  setNewStageColor(STAGE_COLORS[0]);
-                  setShowStageEditor(true);
-                }}
-              >
-                <Ionicons name="add-circle-outline" size={16} color={COLORS.primary} />
-                <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '700' }}>{t('btn_build_custom_cycle', 'Build Custom Cycle')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      );
-    }
-
+    const tasks = cycleTasksByField[selectedField.id] || getFieldStages(selectedField.id);
+    const activeStage = tasks.find(t => t.active) || tasks.find(t => !t.done) || tasks[0];
+    const completedCount = tasks.filter(t => t.done).length;
+    const progressPercent = Math.round((completedCount / tasks.length) * 100);
     const isFullyCompleted = tasks.every(t => t.done);
+
     return (
       <View style={{ marginBottom: SPACING.md }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
-          <Text style={{ fontSize: 11.5, fontWeight: '700', color: COLORS.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('timeline_title', 'Crop Cycle Timeline')}</Text>
-          <Text style={{ fontSize: 10.5, color: COLORS.textMuted }}>{t('tap_active_stage', 'Tap active stage to log')}</Text>
+        {/* Section Header */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, marginRight: 6 }}>
+            <Ionicons name="git-network-outline" size={18} color={COLORS.primary} />
+            <Text style={{ fontSize: 13, fontWeight: '800', color: COLORS.text, textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 1 }} numberOfLines={1}>
+              {t('field_growth_stages_title', 'Field Growth Stages')}
+            </Text>
+          </View>
+          <View style={{ backgroundColor: '#F0F8EC', paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIUS.xs, flexShrink: 0 }}>
+            <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.primary }}>
+              {completedCount} / {tasks.length} ({progressPercent}%)
+            </Text>
+          </View>
         </View>
-        <View style={s.timelineCard}>
-          {tasks.map((task, i) => (
-            <TouchableOpacity key={task.id} style={s.timelineRow} onPress={() => {
-              if (activeRole === 'Farm Manager' && !isTakeOver) {
-                Alert.alert('View Only', 'Please enable "Take Over Field" mode to update the timeline.');
-                return;
-              }
-              toggleTaskStatus(task.id);
-            }} activeOpacity={0.7}>
-              <View style={s.timelineLeft}>
-                <View style={[s.timelineDot, { backgroundColor: task.done ? COLORS.success : task.active ? task.color : COLORS.border }]}>
-                  {task.done && <Ionicons name="checkmark" size={10} color="#fff" />}
-                  {task.active && !task.done && <View style={s.activePulse} />}
+
+        {/* Main Growth Stages Card */}
+        <View style={[s.fieldCard, { padding: SPACING.md, gap: 12 }]}>
+          {/* Active Stage Indicator Header */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F8FAF5', padding: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.primary, textTransform: 'uppercase' }}>{t('current_field_stage_title', 'Current Field Stage')}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '900', color: COLORS.text, marginTop: 2 }}>
+                {formatStageName ? formatStageName(activeStage?.name || selectedField.stage) : (activeStage?.name || selectedField.stage)}
+              </Text>
+              <Text style={{ fontSize: 11.5, color: COLORS.textSecondary, marginTop: 1 }}>
+                {formatPhaseMonth ? formatPhaseMonth(activeStage?.monthRange || 'Month 1–3') : (activeStage?.monthRange || 'Month 1–3')} · {t('tap_active_stage_hint', 'Tap active stage below to log operations')}
+              </Text>
+            </View>
+          </View>
+
+          {/* Visual Progress Bar */}
+          <View style={{ height: 6, backgroundColor: '#E5E7EB', borderRadius: 3, overflow: 'hidden' }}>
+            <View style={{ width: `${progressPercent}%`, height: '100%', backgroundColor: COLORS.primary, borderRadius: 3 }} />
+          </View>
+
+          {/* 5 Growth Stages */}
+          <View style={{ gap: 8 }}>
+            {tasks.map((task, i) => {
+              const isCurrentActive = task.active && !task.done;
+              return (
+                <View
+                  key={task.id || i}
+                  style={[
+                    { borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff', overflow: 'hidden' },
+                    isCurrentActive && { borderColor: COLORS.primary, backgroundColor: '#F8FAF5' }
+                  ]}
+                >
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 }}
+                    onPress={() => {
+                      if (activeRole === 'Farm Manager' && !isTakeOver) {
+                        Alert.alert('View Only', 'Please enable "Take Over Field" mode to update the timeline.');
+                        return;
+                      }
+                      toggleTaskStatus(task.id);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    {/* Stage Number Badge */}
+                    <View style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: task.done ? COLORS.success : isCurrentActive ? COLORS.primary : '#E5E7EB',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      flexShrink: 0
+                    }}>
+                      {task.done ? (
+                        <Ionicons name="checkmark" size={18} color="#fff" />
+                      ) : isCurrentActive ? (
+                        <Ionicons name="play" size={14} color="#fff" style={{ marginLeft: 2 }} />
+                      ) : (
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#6B7280' }}>{task.stageNumber || i + 1}</Text>
+                      )}
+                    </View>
+
+                    {/* Stage Details */}
+                    <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
+                      <Text style={{
+                        fontSize: isCurrentActive ? 14 : 13,
+                        fontWeight: isCurrentActive ? '900' : task.done ? '700' : '600',
+                        color: isCurrentActive ? COLORS.primary : task.done ? COLORS.text : COLORS.textMuted,
+                        lineHeight: 18
+                      }}>
+                        {formatStageName ? formatStageName(task.name || task.label) : `Stage ${task.stageNumber || i + 1}: ${task.name || task.label}`}
+                      </Text>
+
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                        <View style={{ backgroundColor: isCurrentActive ? '#E2EED9' : '#F3F4F6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: RADIUS.xs }}>
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: isCurrentActive ? COLORS.primary : COLORS.textSecondary }}>
+                            {formatPhaseMonth ? formatPhaseMonth(task.monthRange || `Month ${task.month || i + 1}`) : (task.monthRange || `Month ${task.month || i + 1}`)}
+                          </Text>
+                        </View>
+                        <Text style={{ fontSize: 11, color: task.done ? COLORS.success : isCurrentActive ? COLORS.textSecondary : COLORS.textMuted, flex: 1 }} numberOfLines={1}>
+                          {task.done ? t('status_completed', 'Completed') : (isCurrentActive ? t('tap_to_record_op_hint', 'Tap to record operation log') : t('status_pending', 'Pending'))}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Right Icon / Status Badge */}
+                    {task.done ? (
+                      <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+                    ) : isCurrentActive ? (
+                      <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIUS.xs, borderWidth: 1, borderColor: '#86EFAC', flexShrink: 0 }}>
+                        <Text style={{ fontSize: 10.5, fontWeight: '900', color: '#15803D' }}>{t('badge_active', 'ACTIVE')}</Text>
+                      </View>
+                    ) : (
+                      <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Active Stage Expanded Action Box with Nested Operations */}
+                  {isCurrentActive && (
+                    <View style={{ backgroundColor: '#F0F8EC', borderTopWidth: 1, borderTopColor: '#D1E0C5', padding: 12, gap: 10 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 11.5, fontWeight: '800', color: COLORS.primary, textTransform: 'uppercase' }}>
+                          {t('operations_in_stage', 'Operations in Stage')} {task.stageNumber || i + 1}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: COLORS.textSecondary }}>
+                          {t('benchmark_lbl', 'Benchmark')}: ₱ {Number(task.benchmarkCost || 12000).toLocaleString()} / ha
+                        </Text>
+                      </View>
+
+                      {/* List of distinct operations under this stage (Customized by member or SRA default) */}
+                      <View style={{ gap: 6 }}>
+                        {getFieldCustomOperations(selectedField.id, task.stageNumber || i + 1).map(op => {
+                          const opCostPerHa = (op.subItems || []).reduce((sum, si) => sum + (si.qty * si.unitCost), 0) || op.costPerHa || 0;
+                          const isOpLogged = fieldLogs.some(l => (l.operationName === op.name || l.sraOperationId === op.id || l.activity === op.name) && (l.stageNumber === (task.stageNumber || i + 1) || l.taskId === task.id) && !l.isPastCycle);
+
+                          return (
+                            <TouchableOpacity
+                              key={op.id}
+                              style={{
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                backgroundColor: isOpLogged ? '#F4FAF0' : '#fff',
+                                padding: 10,
+                                borderRadius: RADIUS.md,
+                                borderWidth: 1.5,
+                                borderColor: isOpLogged ? COLORS.primary + '50' : COLORS.border,
+                                ...SHADOW.card
+                              }}
+                              onPress={() => {
+                                if (isOpLogged) {
+                                  Alert.alert(
+                                    'Log Additional Entry',
+                                    `"${op.name}" has already been recorded for this stage. Would you like to record an additional entry or repeat pass?`,
+                                    [
+                                      { text: 'Cancel', style: 'cancel' },
+                                      { text: 'Yes, Log Again', onPress: () => openOperationLog(task, op.id) }
+                                    ]
+                                  );
+                                } else {
+                                  openOperationLog(task, op.id);
+                                }
+                              }}
+                              activeOpacity={0.8}
+                            >
+                              <View style={{ flex: 1, paddingRight: 8 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                  <View style={{ backgroundColor: COLORS.primaryBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: RADIUS.xs }}>
+                                    <Text style={{ fontSize: 10.5, fontWeight: '900', color: COLORS.primary }}>{op.id}</Text>
+                                  </View>
+                                  {isOpLogged && (
+                                    <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: RADIUS.xs }}>
+                                      <Text style={{ fontSize: 9.5, fontWeight: '900', color: '#15803D' }}>✓ {t('recorded_badge', 'RECORDED')}</Text>
+                                    </View>
+                                  )}
+                                  <Text style={{ fontSize: 13.5, fontWeight: '800', color: COLORS.text }} numberOfLines={1}>
+                                    {formatOperationName ? formatOperationName(op.name) : op.name}
+                                  </Text>
+                                </View>
+                                <Text style={{ fontSize: 11.5, color: COLORS.textSecondary, marginTop: 3 }}>
+                                  ₱ {Number(opCostPerHa).toLocaleString()} / ha {(op.isGroup || (op.subItems && op.subItems.length > 1)) ? `· ${op.subItems?.length || 0} Child Item${op.subItems?.length !== 1 ? 's' : ''}` : `· Direct Input`}
+                                </Text>
+                              </View>
+                              <View
+                                style={{
+                                  width: 38,
+                                  height: 38,
+                                  borderRadius: RADIUS.sm,
+                                  backgroundColor: isOpLogged ? '#E2EED9' : COLORS.primary,
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderWidth: isOpLogged ? 1.5 : 0,
+                                  borderColor: COLORS.primary,
+                                  flexShrink: 0
+                                }}
+                              >
+                                <Ionicons
+                                  name={isOpLogged ? "repeat-outline" : "create-outline"}
+                                  size={20}
+                                  color={isOpLogged ? COLORS.primary : '#fff'}
+                                />
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })}
+
+                        {/* Quick Add Custom Operation to Active Stage */}
+                        <TouchableOpacity
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            backgroundColor: '#fff',
+                            borderWidth: 1.5,
+                            borderColor: COLORS.primary + '60',
+                            borderStyle: 'dashed',
+                            borderRadius: RADIUS.md,
+                            paddingVertical: 10,
+                            marginTop: 4
+                          }}
+                          onPress={() => {
+                            setLogForm({
+                              id: null,
+                              fieldId: selectedField.id,
+                              saveFieldId: true,
+                              stageNumber: task.stageNumber || i + 1,
+                              stageName: `Stage ${task.stageNumber || i + 1}: ${task.name || task.label}`,
+                              sraOperationId: 'CUSTOM',
+                              operationName: '',
+                              activity: '',
+                              category: 'prep',
+                              cost: '0',
+                              period: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                              hectares: selectedField.ha || '1.5',
+                              people: '2',
+                              subItems: [],
+                              inputQty: '',
+                              inputUnit: 'bags',
+                              inputName: '',
+                              taskId: task.id,
+                              isSubmit: true
+                            });
+                            setShowOpPicker(false);
+                            setShowLog(true);
+                          }}
+                        >
+                          <Ionicons name="add-circle-outline" size={17} color={COLORS.primary} />
+                          <Text style={{ fontSize: 12.5, fontWeight: '800', color: COLORS.primary }}>Add Custom Operation</Text>
+                        </TouchableOpacity>
+
+                        {/* Manual Complete Stage Button */}
+                        <TouchableOpacity
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            backgroundColor: COLORS.primary,
+                            borderRadius: RADIUS.md,
+                            paddingVertical: 12,
+                            marginTop: 6
+                          }}
+                          onPress={() => {
+                            Alert.alert(
+                              'Complete Stage',
+                              `Are you finished with all operations in Stage ${task.stageNumber || i + 1}?`,
+                              [
+                                { text: 'Keep Active', style: 'cancel' },
+                                { text: 'Yes, Complete Stage', onPress: () => toggleTaskStatus(task.id, true) }
+                              ]
+                            );
+                          }}
+                        >
+                          <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
+                          <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>
+                            Mark Stage {task.stageNumber || i + 1} as Complete
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
                 </View>
-                {i < tasks.length - 1 && <View style={[s.timelineLine, { backgroundColor: task.done ? COLORS.success : COLORS.border }]} />}
-              </View>
-              <View style={[s.timelineContent, task.active && s.timelineContentActive]}>
-                <Text style={[s.timelineLabel, task.active && { color: task.color, fontWeight: '800' }]}>{getTaskLabel(task)}</Text>
-                <Text style={s.timelineMonth}>{task.done ? t('status_completed', 'Completed') : task.active ? t('status_in_progress', 'In Progress') : t('status_pending', 'Pending')}</Text>
-                {task.active && (
-                  <View style={[s.activeBadge, { backgroundColor: task.color }]}>
-                    <Text style={s.activeBadgeText}>{t('current_stage_badge', 'CURRENT STAGE')}</Text>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
+              );
+            })}
+          </View>
+
           {isFullyCompleted && (
-            <TouchableOpacity style={{ marginTop: 16, backgroundColor: COLORS.primary, paddingVertical: 12, borderRadius: RADIUS.sm, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }} onPress={() => {
-                 Alert.alert(
-                   t('btn_start_new_cycle', 'Start New Crop Year'),
-                   'Are you sure you want to start a new crop cycle?',
-                   [
-                     { text: t('btn_cancel', 'Cancel'), style: 'cancel' },
-                     { text: 'Yes, Start', style: 'default', onPress: () => {
-                        const baseStages = (selectedField.customStages?.length > 0 ? selectedField.customStages : CYCLE_TASKS).map((t) => ({...t, done: false, active: false}));
-                        setCycleTasksByField(p => ({
-                          ...p,
-                          [selectedField.id]: baseStages
-                        }));
-                        setSelectedField(prevF => ({ ...prevF, stage: 'Not Started' }));
-                        const resetMf = MOCK_FIELDS.find(f => f.id === selectedField.id);
-                        if (resetMf) resetMf.stage = 'Not Started';
-                        
-                        MOCK_LOGS.forEach(l => {
-                          if (l.fieldId === selectedField.id) l.isPastCycle = true;
-                        });
-                        setLogs([...MOCK_LOGS]);
-                        
-                        setDraftLogs(prev => prev.filter(d => d.fieldId !== selectedField.id));
-                     }}
-                   ]
-                 );
-            }}>
+            <TouchableOpacity
+              style={{ marginTop: 8, backgroundColor: COLORS.primary, paddingVertical: 14, borderRadius: RADIUS.md, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+              onPress={() => {
+                Alert.alert(
+                  t('btn_start_new_cycle', 'Start New Crop Year'),
+                  'Are you sure you want to start a new crop cycle?',
+                  [
+                    { text: t('btn_cancel', 'Cancel'), style: 'cancel' },
+                    { text: 'Yes, Start', style: 'default', onPress: () => {
+                      const baseStages = getFieldStages(selectedField.id).map(t => ({ ...t, done: false, active: false }));
+                      baseStages[0].active = true;
+                      setCycleTasksByField(p => ({
+                        ...p,
+                        [selectedField.id]: baseStages
+                      }));
+                      setSelectedField(prevF => ({ ...prevF, stage: baseStages[0].name }));
+                      const resetMf = MOCK_FIELDS.find(f => f.id === selectedField.id);
+                      if (resetMf) resetMf.stage = baseStages[0].name;
+
+                      MOCK_LOGS.forEach(l => {
+                        if (l.fieldId === selectedField.id) l.isPastCycle = true;
+                      });
+                      setLogs([...MOCK_LOGS]);
+                      setDraftLogs(prev => prev.filter(d => d.fieldId !== selectedField.id));
+                    }}
+                  ]
+                );
+              }}
+            >
               <Ionicons name="refresh" size={16} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{t('btn_start_new_cycle', 'Start New Crop Year')}</Text>
+              <Text style={{ color: '#fff', fontSize: 13.5, fontWeight: '800' }}>Start New Crop Year Cycle</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1268,9 +2008,40 @@ export default function FieldOpsScreen({ navigation, route }) {
     );
   };
 
+  const scopedDrafts = activeRole === 'Member' ? draftLogs.filter(d => d.fieldId === selectedField.id) : [];
+  const totalLedgerCount = fieldLogs.length;
+
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-      <AppHeader />
+      <AppHeader
+        right={
+          activeRole === 'SRA (Admin)' ? (
+            <TouchableOpacity
+              style={s.topbarLedgerBtn}
+              onPress={() => {
+                setLogTab('audit_history');
+                setShowHistoryModal(true);
+              }}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="receipt-outline" size={22} color={COLORS.primary} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={s.topbarLedgerBtn}
+              onPress={() => setShowHistoryModal(true)}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="receipt-outline" size={22} color={COLORS.text} />
+              {totalLedgerCount > 0 && (
+                <View style={s.topbarLedgerBadge}>
+                  <Text style={s.topbarLedgerBadgeText}>{totalLedgerCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )
+        }
+      />
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
@@ -1279,22 +2050,38 @@ export default function FieldOpsScreen({ navigation, route }) {
         {/* ═══════════════════════════════════════════════════════════════ */}
         {activeRole === 'Member' && (
           <>
-            {/* My Fields Selector — read only, assigned by Manager */}
-            <Text style={s.sectionLabel}>{t('my_fields', 'My Fields')}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: SPACING.md }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8 }}>
-              {MOCK_FIELDS.filter(f => f.member === getCurrentSession().name || f.id === selectedField.id).map(field => (
-                <TouchableOpacity
-                  key={field.id}
-                  style={[s.fieldChip, selectedField.id === field.id && s.fieldChipActive]}
-                  onPress={() => {
-                    setSelectedField(field);
-                    updateSessionFieldId(field.id);
-                  }}
-                >
-                  <Text style={[s.fieldChipText, selectedField.id === field.id && s.fieldChipTextActive]}>{field.id}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            {/* My Fields Selector */}
+            <Text style={s.sectionLabel}>{t('my_fields', 'My Sugarcane Plots')}</Text>
+            {(() => {
+              const sess = getCurrentSession();
+              const sName = (sess.name || '').trim().toLowerCase();
+              const memberFieldList = MOCK_FIELDS.filter(f => {
+                const mName = (f.member || '').trim().toLowerCase();
+                return (sess.fieldId && f.id === sess.fieldId) || (sName && (mName === sName || mName.includes(sName) || sName.includes(mName))) || f.id === selectedField.id;
+              });
+              const fieldsToRender = memberFieldList.length > 0 ? memberFieldList : [MOCK_FIELDS[0]];
+
+              return (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: SPACING.sm }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8 }}>
+                  {fieldsToRender.map(field => (
+                    <TouchableOpacity
+                      key={field.id}
+                      style={[s.fieldChip, selectedField.id === field.id && s.fieldChipActive]}
+                      onPress={() => {
+                        setSelectedField(field);
+                        updateSessionFieldId(field.id);
+                      }}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="leaf" size={13} color={selectedField.id === field.id ? COLORS.primary : COLORS.textMuted} />
+                      <Text style={[s.fieldChipText, selectedField.id === field.id && s.fieldChipTextActive]}>
+                        {field.id} ({field.ha} Ha)
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              );
+            })()}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: SPACING.md, backgroundColor: COLORS.primaryBg, borderRadius: RADIUS.md, padding: 10 }}>
               <Ionicons name="information-circle-outline" size={14} color={COLORS.primary} />
               <Text style={{ fontSize: 12, color: COLORS.primary, flex: 1 }}>{t('field_alloc_notice')}</Text>
@@ -1306,82 +2093,15 @@ export default function FieldOpsScreen({ navigation, route }) {
                 <View style={s.fieldIdBadge}><Text style={s.fieldIdText}>{selectedField.id}</Text></View>
                 <Text style={s.fieldHa}>{selectedField.ha} Ha</Text>
               </View>
-              <Text style={s.fieldStage}>{t('stage', 'Stage')}: <Text style={s.fieldStageVal}>{selectedField.stage}</Text></Text>
+              <Text style={s.fieldMember}>{t('member_label', 'Member')}: {selectedField.member}</Text>
               <Text style={s.fieldSync}>
-                <Ionicons name={selectedField.synced ? 'cloud-done-outline' : 'cloud-offline-outline'} size={12} color={selectedField.synced ? '#267326' : '#C97A00'} />
+                <Ionicons name={selectedField.synced ? 'cloud-done-outline' : 'cloud-offline-outline'} size={14} color={selectedField.synced ? '#267326' : '#C97A00'} />
                 {' '}{selectedField.synced ? `${t('synced', 'Synced')} ${formatSyncTime(selectedField.lastSync)}` : `${t('not_synced', 'Not synced')} (${formatSyncTime(selectedField.lastSync)})`}
               </Text>
-              <TouchableOpacity
-                style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: COLORS.primaryBg, borderRadius: RADIUS.sm, paddingHorizontal: 10, paddingVertical: 6 }}
-                onPress={() => {
-                  const current = getFieldStages(selectedField.id);
-                  setEditingStages(current.map(t => ({ ...t })));
-                  setNewStageLabel('');
-                  setNewStageColor(STAGE_COLORS[0]);
-                  setShowStageEditor(true);
-                }}
-              >
-                <Ionicons name="list-outline" size={14} color={COLORS.primary} />
-                <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}>{t('btn_stage_editor', 'Edit Field Stages')}</Text>
-              </TouchableOpacity>
             </View>
 
             {/* Crop Cycle Timeline */}
             {renderTimeline()}
-
-            {/* Saved Drafts Quick Access Banner */}
-            {renderDraftsBanner()}
-
-            {/* Field Activity & History Card */}
-            <View style={s.historySummaryCard}>
-              <View style={s.historySummaryTop}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.historySummaryTitle}>{t('ops_title', 'Field Activity & Ledger')}</Text>
-                  <Text style={s.historySummarySub}>
-                    {fieldLogs.length} logged {fieldLogs.length === 1 ? 'activity' : 'activities'} · Php {fieldLogs.reduce((sum, l) => sum + Number(l.cost || 0), 0).toLocaleString()}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={s.unplannedBtn}
-                  onPress={() => {
-                    setLogForm(p => ({...p, fieldId: selectedField.id, activity: '', taskId: 'Emergency', isSubmit: true}));
-                    setShowLog(true);
-                    Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
-                  }}
-                >
-                  <Ionicons name="add" size={13} color="#C97A00" />
-                  <Text style={s.unplannedBtnText}>{t('btn_unplanned_work', '+ Unplanned Work')}</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Recent 2-3 activities preview */}
-              {fieldLogs.length === 0 ? (
-                <View style={s.emptyMiniCard}>
-                  <Text style={s.emptyMiniText}>{t('empty_logs', 'No operations recorded for this field yet.')}</Text>
-                </View>
-              ) : (
-                <View style={{ gap: 6, marginVertical: 6 }}>
-                  {fieldLogs.slice(0, 3).map(log => (
-                    <View key={log.id} style={s.miniLogRow}>
-                      <View style={[s.compactLogDot, { backgroundColor: log.taskId === 'Emergency' ? '#D9534F' : COLORS.primary }]} />
-                      <Text style={s.miniLogTitle} numberOfLines={1}>{log.activity}</Text>
-                      <Text style={s.miniLogCost}>Php {Number(log.cost || 0).toLocaleString()}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Button to open Dedicated Full History Modal */}
-              <TouchableOpacity
-                style={s.openLedgerBtn}
-                onPress={() => setShowHistoryModal(true)}
-              >
-                <Ionicons name="receipt-outline" size={15} color="#fff" />
-                <Text style={s.openLedgerBtnText}>
-                  {t('btn_view_history', 'View Full History & Ledger')} ({fieldLogs.length})
-                </Text>
-              </TouchableOpacity>
-            </View>
           </>
         )}
 
@@ -1427,67 +2147,47 @@ export default function FieldOpsScreen({ navigation, route }) {
             )}
 
             {/* Field Scope Filter Switcher */}
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
-              <TouchableOpacity
-                style={[
-                  { flex: 1, paddingVertical: 8, borderRadius: RADIUS.md, alignItems: 'center', borderWidth: 1 },
-                  managerFieldFilter === 'my' 
-                    ? { backgroundColor: COLORS.primary, borderColor: COLORS.primary }
-                    : { backgroundColor: '#fff', borderColor: COLORS.border }
-                ]}
-                onPress={() => {
-                  setManagerFieldFilter('my');
-                  const myFields = MOCK_FIELDS.filter(f => f.member === getCurrentSession().name);
-                  if (myFields.length > 0) {
-                    setSelectedField(myFields[0]);
-                    updateSessionFieldId(myFields[0].id);
-                  }
-                }}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '700', color: managerFieldFilter === 'my' ? '#fff' : COLORS.text }}>
-                  {t('my_fields', 'My Fields')} ({MOCK_FIELDS.filter(f => f.member === getCurrentSession().name).length})
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  { flex: 1, paddingVertical: 8, borderRadius: RADIUS.md, alignItems: 'center', borderWidth: 1 },
-                  managerFieldFilter === 'all' 
-                    ? { backgroundColor: COLORS.primary, borderColor: COLORS.primary }
-                    : { backgroundColor: '#fff', borderColor: COLORS.border }
-                ]}
-                onPress={() => {
-                  setManagerFieldFilter('all');
-                  if (MOCK_FIELDS.length > 0) {
-                    setSelectedField(MOCK_FIELDS[0]);
-                    updateSessionFieldId(MOCK_FIELDS[0].id);
-                  }
-                }}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '700', color: managerFieldFilter === 'all' ? '#fff' : COLORS.text }}>
-                  {t('view_all_fields', 'All Block Farm Fields')} ({MOCK_FIELDS.length})
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Field Selector */}
+            {/* Field Selector & Segmented Scope Switcher */}
             {(() => {
+              const myFieldList = MOCK_FIELDS.filter(f => f.member === getCurrentSession().name || f.id === getCurrentSession().fieldId);
               const displayedFields = managerFieldFilter === 'my'
-                ? MOCK_FIELDS.filter(f => f.member === getCurrentSession().name)
+                ? (myFieldList.length > 0 ? myFieldList : MOCK_FIELDS)
                 : MOCK_FIELDS;
 
               return (
-                <>
+                <View style={{ marginBottom: 4 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <Text style={[s.sectionLabel, { marginBottom: 0 }]}>
-                      {managerFieldFilter === 'my' ? t('my_fields', 'My Fields') : t('view_all_fields', 'All Block Farm Fields')}
+                      {managerFieldFilter === 'my' ? t('my_fields', 'My Managed Plot') : t('view_all_fields', 'All Block Farm Fields')}
                     </Text>
-                    {displayedFields.length > 3 && (
-                      <TouchableOpacity onPress={() => setShowFieldsModal(true)}>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }}>{t('show_more', 'Show More')}</Text>
+                    
+                    {/* Sleek Segmented Pill Switcher matching Planner UI */}
+                    <View style={{ flexDirection: 'row', backgroundColor: '#EEF2E6', borderRadius: RADIUS.sm, padding: 2 }}>
+                      <TouchableOpacity
+                        style={[{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.xs }, managerFieldFilter === 'my' && { backgroundColor: '#fff', ...SHADOW.card }]}
+                        onPress={() => {
+                          setManagerFieldFilter('my');
+                          if (myFieldList.length > 0) {
+                            setSelectedField(myFieldList[0]);
+                            updateSessionFieldId(myFieldList[0].id);
+                          }
+                        }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: managerFieldFilter === 'my' ? '800' : '600', color: managerFieldFilter === 'my' ? COLORS.primary : COLORS.textMuted }}>
+                          My Plot ({myFieldList.length})
+                        </Text>
                       </TouchableOpacity>
-                    )}
+                      <TouchableOpacity
+                        style={[{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.xs }, managerFieldFilter === 'all' && { backgroundColor: '#fff', ...SHADOW.card }]}
+                        onPress={() => setManagerFieldFilter('all')}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: managerFieldFilter === 'all' ? '800' : '600', color: managerFieldFilter === 'all' ? COLORS.primary : COLORS.textMuted }}>
+                          All Plots ({MOCK_FIELDS.length})
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
+
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: SPACING.md }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8, paddingBottom: 4 }}>
                     {displayedFields.slice(0, 3).map(field => (
                       <TouchableOpacity
@@ -1499,16 +2199,16 @@ export default function FieldOpsScreen({ navigation, route }) {
                         }}
                       >
                         <View style={[s.syncDot, { backgroundColor: field.synced ? COLORS.success : '#C97A00' }]} />
-                        <Text style={[s.fieldChipText, selectedField.id === field.id && s.fieldChipTextActive]}>{field.id}</Text>
+                        <Text style={[s.fieldChipText, selectedField.id === field.id && s.fieldChipTextActive]}>{field.id} ({field.ha} Ha)</Text>
                       </TouchableOpacity>
                     ))}
                     {displayedFields.length > 3 && (
-                      <TouchableOpacity style={[s.fieldChip, { backgroundColor: COLORS.background }]} onPress={() => setShowFieldsModal(true)}>
-                        <Text style={[s.fieldChipText, { color: COLORS.primary }]}>+ {displayedFields.length - 3} More</Text>
+                      <TouchableOpacity style={[s.fieldChip, { backgroundColor: COLORS.primaryBg, borderColor: COLORS.primary }]} onPress={() => setShowFieldsModal(true)}>
+                        <Text style={[s.fieldChipText, { color: COLORS.primary, fontWeight: '800' }]}>+ {displayedFields.length - 3} More</Text>
                       </TouchableOpacity>
                     )}
                   </ScrollView>
-                </>
+                </View>
               );
             })()}
 
@@ -1526,7 +2226,6 @@ export default function FieldOpsScreen({ navigation, route }) {
                 )}
               </View>
               <Text style={s.fieldMember}>{t('member_label', 'Member')}: {selectedField.member}</Text>
-              <Text style={s.fieldStage}>{t('stage', 'Stage')}: <Text style={s.fieldStageVal}>{selectedField.stage}</Text></Text>
               
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, flexWrap: 'wrap', gap: 6 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -1554,71 +2253,6 @@ export default function FieldOpsScreen({ navigation, route }) {
 
             {/* Crop Cycle Timeline */}
             {renderTimeline()}
-
-            {/* Saved Drafts Quick Access Banner */}
-            {renderDraftsBanner()}
-
-            {/* Field Activity & History Card */}
-            <View style={s.historySummaryCard}>
-              <View style={s.historySummaryTop}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.historySummaryTitle}>Field Activity & Ledger</Text>
-                  <Text style={s.historySummarySub}>
-                    {fieldLogs.length} logged {fieldLogs.length === 1 ? 'activity' : 'activities'} · Php {fieldLogs.reduce((sum, l) => sum + Number(l.cost || 0), 0).toLocaleString()}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={s.unplannedBtn}
-                  onPress={() => {
-                    const session = getCurrentSession();
-                    const isMyField = selectedField.member === session.name;
-                    if (!isMyField && !isTakeOver) {
-                      Alert.alert(
-                        'Supervisor Takeover Required',
-                        'This field is managed by ' + selectedField.member + '. To add unplanned work or log operations, please tap "Take Over Field" on the field card first.'
-                      );
-                      return;
-                    }
-
-                    setLogForm(p => ({...p, fieldId: selectedField.id, activity: '', taskId: 'Emergency', isSubmit: true}));
-                    setShowLog(true);
-                    Animated.spring(slideAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }).start();
-                  }}
-                >
-                  <Ionicons name="add" size={13} color="#C97A00" />
-                  <Text style={s.unplannedBtnText}>{t('btn_unplanned_work', '+ Unplanned Work')}</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Recent 2-3 activities preview */}
-              {fieldLogs.length === 0 ? (
-                <View style={s.emptyMiniCard}>
-                  <Text style={s.emptyMiniText}>{t('empty_logs', 'No operations recorded for this field yet.')}</Text>
-                </View>
-              ) : (
-                <View style={{ gap: 6, marginVertical: 6 }}>
-                  {fieldLogs.slice(0, 3).map(log => (
-                    <View key={log.id} style={s.miniLogRow}>
-                      <View style={[s.compactLogDot, { backgroundColor: log.taskId === 'Emergency' ? '#D9534F' : COLORS.primary }]} />
-                      <Text style={s.miniLogTitle} numberOfLines={1}>{log.activity}</Text>
-                      <Text style={s.miniLogCost}>Php {Number(log.cost || 0).toLocaleString()}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Button to open Dedicated Full History Modal */}
-              <TouchableOpacity
-                style={s.openLedgerBtn}
-                onPress={() => setShowHistoryModal(true)}
-              >
-                <Ionicons name="receipt-outline" size={15} color="#fff" />
-                <Text style={s.openLedgerBtnText}>
-                  {t('btn_view_history', 'View Full History & Ledger')} ({fieldLogs.length})
-                </Text>
-              </TouchableOpacity>
-            </View>
-
           </>
         )}
 
@@ -1627,85 +2261,96 @@ export default function FieldOpsScreen({ navigation, route }) {
         {/* ═══════════════════════════════════════════════════════════════ */}
         {activeRole === 'SRA (Admin)' && (
           <>
-            {/* ── Block Farm Summary ── */}
-            <Text style={s.sectionLabel}>Block Farm Overview</Text>
+            {/* ── Block Farm Summary (SRA Supervision) ── */}
+            <Text style={s.sectionLabel}>District Block Farms Overview</Text>
 
             {/* Farm Selector */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, marginBottom: SPACING.md }}>
-              {['All Block Farms', 'Silay Block Farm A', 'Silay Block Farm B', 'Silay Block Farm C'].map(farm => (
-                <TouchableOpacity 
-                  key={farm}
-                  style={{
-                    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
-                    backgroundColor: selectedFarm === farm ? COLORS.primary : COLORS.background,
-                    borderWidth: 1, borderColor: selectedFarm === farm ? COLORS.primary : COLORS.border
-                  }}
-                  onPress={() => setSelectedFarm(farm)}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: selectedFarm === farm ? '#fff' : COLORS.text }}>{farm}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            {(() => {
+              const availableFarms = ['All Block Farms', ...new Set(MOCK_FIELDS.map(f => f.blockFarm || 'Nacayao Block Farm A'))];
+
+              return (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, marginBottom: SPACING.md }}>
+                  {availableFarms.map(farm => (
+                    <TouchableOpacity 
+                      key={farm}
+                      style={{
+                        paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+                        backgroundColor: selectedFarm === farm ? COLORS.primary : COLORS.background,
+                        borderWidth: 1, borderColor: selectedFarm === farm ? COLORS.primary : COLORS.border
+                      }}
+                      onPress={() => setSelectedFarm(farm)}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: selectedFarm === farm ? '#fff' : COLORS.text }}>{farm}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              );
+            })()}
 
             <View style={[s.receiptCard, { marginBottom: SPACING.md }]}>
               <View style={s.receiptHeader}>
-                <Text style={s.receiptTitle}>Descriptive Summary</Text>
-                <Text style={s.receiptId}>Live Data</Text>
+                <View>
+                  <Text style={s.receiptTitle}>Descriptive Summary</Text>
+                  <Text style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: '600', marginTop: 2 }}>{selectedFarm}</Text>
+                </View>
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('Analytics', { blockFarm: selectedFarm })}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primaryBg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: RADIUS.xs }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }}>Open Analytics</Text>
+                  <Ionicons name="chevron-forward" size={12} color={COLORS.primary} />
+                </TouchableOpacity>
               </View>
               <View style={s.receiptDivider} />
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, padding: SPACING.sm }}>
                 {(() => {
                   const isAll = selectedFarm === 'All Block Farms';
-                  
-                  // Keep the actual data synchronized with AnalyticsScreen logic
-                  const BLOCK_FARM_DATA = {
-                    'Silay Block Farm A': { ha: 18.5, members: 42, cost: 262700, logs: 840 },
-                    'Silay Block Farm B': { ha: 20.0, members: 55, cost: 336000, logs: 915 },
-                    'Silay Block Farm C': { ha: 28.0, members: 89, cost: 366800, logs: 1105 },
-                    'Silay Block Farm D': { ha: 22.0, members: 63, cost: 253000, logs: 552 },
-                  };
+                  const farmFields = isAll ? MOCK_FIELDS : MOCK_FIELDS.filter(f => (f.blockFarm || 'Nacayao Block Farm A') === selectedFarm);
+                  const farmFieldIds = farmFields.map(f => f.id);
+                  const farmLogs = MOCK_LOGS.filter(l => farmFieldIds.includes(l.fieldId));
 
-                  const displayHa = isAll ? 88.5 : (BLOCK_FARM_DATA[selectedFarm]?.ha || 0);
-                  const displayMembers = isAll ? 249 : (BLOCK_FARM_DATA[selectedFarm]?.members || 0);
-                  const displayCost = isAll ? 1218500 : (BLOCK_FARM_DATA[selectedFarm]?.cost || 0);
-                  const displayLogs = isAll ? 3412 : (BLOCK_FARM_DATA[selectedFarm]?.logs || 0);
+                  const totalHa = farmFields.reduce((sum, f) => sum + (parseFloat(f.ha) || 1.5), 0);
+                  const uniqueFarms = isAll ? new Set(MOCK_FIELDS.map(f => f.blockFarm || 'Nacayao Block Farm A')).size : 1;
+                  const uniqueMembers = new Set(farmFields.map(f => f.member).filter(Boolean)).size || farmFields.length;
                   const fManagers = isAll ? MOCK_MANAGERS : MOCK_MANAGERS.filter(m => m.blockFarm === selectedFarm);
-                  const displayFarms = isAll ? 4 : 1;
+                  const totalCost = farmLogs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
+                  const costPerHa = totalHa > 0 ? Math.round(totalCost / totalHa) : 0;
+                  const compiledLogsCount = farmLogs.length;
 
                   return [
                     {
                       label: t('stat_total_ha', 'Total Hectares'),
-                      value: `${displayHa.toFixed(1)} Ha`,
+                      value: `${totalHa.toFixed(1)} Ha`,
                       icon: 'map-outline',
                       color: COLORS.primary,
                     },
                     {
                       label: t('stat_block_farms', 'Block Farms'),
-                      value: `${displayFarms} ${t('farms_unit', 'Farms')}`,
+                      value: `${uniqueFarms} ${t('farms_unit', 'Farms')}`,
                       icon: 'grid-outline',
                       color: '#4A7C2F',
                     },
                     {
                       label: t('stat_active_members', 'Active Members'),
-                      value: `${displayMembers} ${t('members_unit', 'Members')}`,
+                      value: `${uniqueMembers} ${t('members_unit', 'Members')}`,
                       icon: 'people-outline',
                       color: '#1A6B9A',
                     },
                     {
                       label: t('stat_farm_managers', 'Farm Managers'),
-                      value: `${fManagers.length} ${t('managers_unit', 'Managers')}`,
+                      value: `${fManagers.length > 0 ? fManagers.length : 1} ${t('managers_unit', 'Managers')}`,
                       icon: 'briefcase-outline',
                       color: '#8F3A8F',
                     },
                     {
-                      label: t('stat_total_cost', 'Total Op. Cost'),
-                      value: `₱${displayCost >= 1000000 ? (displayCost / 1000000).toFixed(2) + 'M' : (displayCost / 1000).toFixed(1) + 'k'}`,
+                      label: 'Avg Direct Cost',
+                      value: `₱${costPerHa.toLocaleString()} / Ha`,
                       icon: 'cash-outline',
-                      color: '#F5A623',
+                      color: '#D97706',
                     },
                     {
                       label: t('stat_recorded_logs', 'Compiled Logs'),
-                      value: `${displayLogs.toLocaleString()} ${t('logs_unit', 'Logs')}`,
+                      value: `${compiledLogsCount.toLocaleString()} ${t('logs_unit', 'Logs')}`,
                       icon: 'checkmark-circle-outline',
                       color: COLORS.success,
                     },
@@ -1715,7 +2360,7 @@ export default function FieldOpsScreen({ navigation, route }) {
                         <Ionicons name={stat.icon} size={14} color={stat.color} />
                         <Text style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 }} numberOfLines={1}>{stat.label}</Text>
                       </View>
-                      <Text style={{ fontSize: 15, fontWeight: '800', color: stat.color }} numberOfLines={1}>{stat.value}</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: stat.color }} numberOfLines={1}>{stat.value}</Text>
                     </View>
                   ));
                 })()}
@@ -1762,8 +2407,13 @@ export default function FieldOpsScreen({ navigation, route }) {
               </TouchableOpacity>
             </View>
 
-            {/* Last Audit Summary */}
-            <Text style={s.sectionLabel}>{t('last_scanned_report', 'Last Scanned Report')}</Text>
+            {/* Last Audit Summary Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.xs }}>
+              <Text style={[s.sectionLabel, { marginBottom: 0 }]}>{t('last_scanned_report', 'Last Scanned Report')}</Text>
+              <TouchableOpacity onPress={() => setShowAuditHistoryModal(true)}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.primary }}>{t('monthly_audit_history_tab', 'Audit History')} →</Text>
+              </TouchableOpacity>
+            </View>
             <View style={s.auditCard}>
               <View style={s.auditHeader}>
                 <Ionicons name="document-text" size={18} color={COLORS.primary} />
@@ -1798,218 +2448,366 @@ export default function FieldOpsScreen({ navigation, route }) {
 
       </ScrollView>
 
-      {/* ── Add Log Bottom Sheet ── */}
-      <Modal visible={showLog} transparent animationType="none">
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={closeLog} />
-        <Animated.View style={[s.sheet, { transform: [{ translateY: slideAnim }] }]}>
-          <View style={s.sheetHandle} />
+      {/* ── Add / Edit Log Full-Screen Modal ── */}
+      <Modal visible={showLog} animationType="slide" onRequestClose={closeLog}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
           <View style={s.sheetHeader}>
-            <View>
-              <Text style={s.sheetTitle}>{logForm.id ? t('btn_edit', 'Edit Log') : t('btn_log_operation', 'Add Operation Log')}</Text>
-              <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 1 }}>{logForm.taskId === 'Emergency' ? t('btn_unplanned_work', 'Unplanned field work') : t('action_log_ops_sub', 'Record field progress and labor')}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.sheetTitle}>{logForm.id ? t('log_modal_edit_title', 'Edit Log') : t('log_modal_record_title', 'Record Field Operation')}</Text>
+              <Text style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 1 }}>Field {logForm.fieldId || selectedField.id} ({selectedField.ha} Ha)</Text>
             </View>
-            <TouchableOpacity onPress={closeLog}><Ionicons name="close" size={22} color={COLORS.text} /></TouchableOpacity>
+            <TouchableOpacity onPress={closeLog} style={{ padding: 4 }}><Ionicons name="close" size={24} color={COLORS.text} /></TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={s.sheetBody} keyboardShouldPersistTaps="handled">
-            <Text style={s.formLabel}>{t('form_field_id', 'Field ID *')}</Text>
+
+            {/* Target Operation & Connected Stage Banner */}
+            <View style={{ backgroundColor: '#F0F8EC', borderRadius: RADIUS.md, padding: 14, borderWidth: 1.5, borderColor: COLORS.primary, marginBottom: SPACING.md }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Ionicons name="construct" size={22} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={{ backgroundColor: COLORS.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: RADIUS.xs }}>
+                      <Text style={{ fontSize: 11, fontWeight: '900', color: '#fff' }}>{logForm.sraOperationId || 'SRA'}</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.primary, textTransform: 'uppercase' }}>{t('log_target_op', 'Target Operation')}</Text>
+                  </View>
+                  <Text style={{ fontSize: 16, fontWeight: '900', color: COLORS.text, marginTop: 3 }}>
+                    {formatOperationName ? formatOperationName(logForm.operationName || logForm.activity) : (logForm.operationName || logForm.activity || 'Field Operation')}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                    <Ionicons name="git-branch-outline" size={12} color={COLORS.primary} />
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.primary }}>
+                      {t('log_connected_to', 'Connected to:')} {formatStageName ? formatStageName(logForm.stageName || (logForm.stageNumber ? `Stage ${logForm.stageNumber}` : 'Stage 1: Pre-Planting & Land Preparation')) : (logForm.stageName || 'Stage 1')}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 11.5, color: COLORS.textSecondary, marginTop: 3 }}>
+                    {t('log_std_cost', 'Standard Cost')}: ₱ {Number(SRA_OPERATIONS_CATALOGUE.find(o => o.id === logForm.sraOperationId)?.costPerHa || 0).toLocaleString()} / hectare
+                  </Text>
+                </View>
+                <View style={{ padding: 6, backgroundColor: '#E2EED9', borderRadius: RADIUS.xs }}>
+                  <Ionicons name="lock-closed" size={16} color={COLORS.primary} />
+                </View>
+              </View>
+            </View>
+
+            {/* Field Plot Selector */}
+            <Text style={[s.formLabel, { fontSize: 13, fontWeight: '700', marginBottom: 6 }]}>{t('log_field_plot', 'Field Plot')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: SPACING.md }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8 }}>
               {MOCK_FIELDS.filter(f => f.member === getCurrentSession().name || f.id === selectedField.id).map(field => (
                 <TouchableOpacity
                   key={field.id}
-                  style={[s.fieldChip, logForm.fieldId === field.id && s.fieldChipActive]}
+                  style={[
+                    { paddingHorizontal: 16, paddingVertical: 10, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff' },
+                    logForm.fieldId === field.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }
+                  ]}
                   onPress={() => setLogForm(p => ({ ...p, fieldId: field.id }))}
                 >
-                  <Text style={[s.fieldChipText, logForm.fieldId === field.id && s.fieldChipTextActive]}>{field.id}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: logForm.fieldId === field.id ? '900' : '600', color: logForm.fieldId === field.id ? COLORS.primary : COLORS.text }}>{field.id}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
-            <Text style={s.formLabel}>{t('form_date', 'Date *')}</Text>
-            <TouchableOpacity onPress={() => setShowCalendar(true)}>
-              <View pointerEvents="none">
-                <TextInput
-                  style={[s.formInput, { color: COLORS.text }]}
-                  value={logForm.period}
-                  editable={false}
-                  placeholder={t('form_tap_date', 'Tap to select date')}
-                  placeholderTextColor={COLORS.textMuted}
-                />
+            {/* Date Picker Button */}
+            <Text style={[s.formLabel, { fontSize: 13, fontWeight: '700', marginBottom: 6 }]}>{t('log_date_of_op', 'Date of Operation')}</Text>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F8FAF5', borderWidth: 1.5, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingHorizontal: 14, paddingVertical: 12, marginBottom: SPACING.md }}
+              onPress={() => setShowCalendar(true)}
+              activeOpacity={0.8}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                <Text style={{ fontSize: 15, fontWeight: '700', color: COLORS.text }}>{logForm.period || t('log_tap_date', 'Tap to select date')}</Text>
               </View>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}>{t('btn_change_date', 'Change Date')}</Text>
             </TouchableOpacity>
 
-            <Text style={s.formLabel}>{t('form_category', 'Category / Agronomic Stage *')}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: SPACING.md }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 6 }}>
-              {[
-                { key: 'prep', label: t('cat_prep', 'Land Prep'), icon: 'construct', unit: 'ha' },
-                { key: 'plant', label: t('cat_plant', 'Planting'), icon: 'leaf', unit: 'pcs' },
-                { key: 'fert', label: t('cat_fert', 'Fertilization'), icon: 'flask', unit: 'bags' },
-                { key: 'weed', label: t('cat_weed', 'Weeding & Care'), icon: 'water', unit: 'liters' },
-                { key: 'harvest', label: t('cat_harvest', 'Harvesting'), icon: 'basket', unit: 'tons' },
-              ].map(c => {
-                const isSel = (logForm.category === c.key) || (
-                  !logForm.category && (
-                    (c.key === 'fert' && (logForm.activity || '').toLowerCase().includes('fert')) ||
-                    (c.key === 'prep' && (logForm.activity || '').toLowerCase().includes('prep')) ||
-                    (c.key === 'plant' && (logForm.activity || '').toLowerCase().includes('plant')) ||
-                    (c.key === 'harvest' && (logForm.activity || '').toLowerCase().includes('harvest')) ||
-                    (c.key === 'weed' && (logForm.activity || '').toLowerCase().includes('weed'))
-                  )
-                );
-                return (
-                  <TouchableOpacity
-                    key={c.key}
-                    style={[
-                      { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff' },
-                      isSel && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }
-                    ]}
-                    onPress={() => {
-                      setLogForm(p => ({
-                        ...p,
-                        category: c.key,
-                        inputUnit: p.inputUnit || c.unit
-                      }));
-                    }}
-                  >
-                    <Ionicons name={c.icon} size={14} color={isSel ? COLORS.primary : COLORS.textMuted} />
-                    <Text style={{ fontSize: 12, fontWeight: isSel ? '800' : '600', color: isSel ? COLORS.primary : COLORS.textSecondary }}>{c.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            <Text style={s.formLabel}>{t('form_activity', 'Activity / Operation *')}</Text>
-            <TextInput
-              style={[s.formInput, { backgroundColor: '#fff', color: COLORS.text }]}
-              value={logForm.activity}
-              onChangeText={v => setLogForm(p => ({ ...p, activity: v }))}
-              editable={true}
-              placeholder={t('form_placeholder_activity', 'e.g. Fertilization Stage 2 (Urea application)')}
-              placeholderTextColor={COLORS.textMuted}
-            />
-
-            <Text style={s.formLabel}>{t('form_cost', 'Operational Cost (Php) *')}</Text>
-            <TextInput
-              style={[s.formInput, { marginBottom: SPACING.md }]}
-              value={logForm.cost}
-              onChangeText={v => setLogForm(p => ({ ...p, cost: v }))}
-              keyboardType="decimal-pad"
-              placeholder={t('form_placeholder_cost', 'e.g. 4500')}
-              placeholderTextColor={COLORS.textMuted}
-            />
-
-            <Text style={s.formLabel}>{t('form_hectares', 'Hectares Covered *')}</Text>
-            <TextInput
-              style={s.formInput}
-              value={logForm.hectares}
-              onChangeText={v => setLogForm(p => ({ ...p, hectares: v }))}
-              keyboardType="decimal-pad"
-              placeholder='e.g. 1.5'
-              placeholderTextColor={COLORS.textMuted}
-            />
-
-            <Text style={s.formLabel}>{t('form_people_count', 'Number of People / Workers *')}</Text>
-            <TextInput
-              style={s.formInput}
-              value={logForm.people}
-              onChangeText={v => setLogForm(p => ({ ...p, people: v }))}
-              keyboardType="number-pad"
-              placeholder='e.g. 10'
-              placeholderTextColor={COLORS.textMuted}
-            />
-
-            {/* Inputs & Materials Used Section */}
-            <View style={{ backgroundColor: '#F8FAF5', borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.md, gap: 8, marginTop: 4 }}>
-              <Text style={[s.formLabel, { color: COLORS.primary }]}>{t('form_materials_section', 'Materials & Inputs Used (Aligned with Planner)')}</Text>
-              
-              <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textSecondary }}>{t('form_input_name', 'Material / Input Name')}</Text>
-              <TextInput
-                style={[s.formInput, { backgroundColor: '#fff' }]}
-                value={logForm.inputName}
-                onChangeText={v => setLogForm(p => ({ ...p, inputName: v }))}
-                placeholder='e.g. Urea (46-0-0) / Patdan / Herbicide / Disc Plow'
-                placeholderTextColor={COLORS.textMuted}
-              />
-
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 2 }}>{t('form_input_qty', 'Quantity')}</Text>
+            {/* Hectares & Workers Side-by-Side */}
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: SPACING.md }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.formLabel, { fontSize: 13, fontWeight: '700', marginBottom: 6 }]}>{t('log_ha_covered', 'Hectares Covered')}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAF5', borderWidth: 1.5, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingHorizontal: 12 }}>
                   <TextInput
-                    style={[s.formInput, { backgroundColor: '#fff' }]}
-                    value={logForm.inputQty}
-                    onChangeText={v => setLogForm(p => ({ ...p, inputQty: v }))}
+                    style={{ flex: 1, height: 48, fontSize: 16, fontWeight: '800', color: COLORS.text }}
+                    value={logForm.hectares}
+                    onChangeText={v => {
+                      setLogForm(p => ({ ...p, hectares: v }));
+                      if (logForm.sraOperationId) selectSraOperation(logForm.sraOperationId, v);
+                    }}
                     keyboardType="decimal-pad"
-                    placeholder='e.g. 4'
+                    placeholder='1.5'
                     placeholderTextColor={COLORS.textMuted}
                   />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.textMuted }}>Ha</Text>
+                </View>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.formLabel, { fontSize: 13, fontWeight: '700', marginBottom: 6 }]}>{t('log_workers_crew', 'Workers / Crew')}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAF5', borderWidth: 1.5, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingHorizontal: 12 }}>
+                  <TextInput
+                    style={{ flex: 1, height: 48, fontSize: 16, fontWeight: '800', color: COLORS.text }}
+                    value={logForm.people}
+                    onChangeText={v => setLogForm(p => ({ ...p, people: v }))}
+                    keyboardType="number-pad"
+                    placeholder='2'
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.textMuted }}>Pax</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* ── Member Choice: Structure Mode Switcher ── */}
+            <View style={{ marginBottom: SPACING.md }}>
+              <Text style={[s.formLabel, { fontSize: 13, fontWeight: '700', marginBottom: 6 }]}>{t('log_input_style', 'Input Style (Member Choice)')}</Text>
+              <View style={{ flexDirection: 'row', backgroundColor: '#EDEFE9', borderRadius: RADIUS.sm, padding: 3 }}>
+                <TouchableOpacity
+                  style={[
+                    { flex: 1, paddingVertical: 8, paddingHorizontal: 10, borderRadius: RADIUS.xs, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+                    logForm.isGroup && { backgroundColor: '#fff', ...SHADOW.card }
+                  ]}
+                  onPress={() => {
+                    if (!logForm.isGroup) {
+                      const defaultItems = (logForm.subItems && logForm.subItems.length > 0)
+                        ? logForm.subItems
+                        : [{ id: `SI-${Date.now()}`, description: `${logForm.operationName || 'Operation'} Material/Labor`, qty: parseFloat(logForm.inputQty) || 1, unit: logForm.inputUnit || 'ha', unitCost: parseFloat(logForm.directRate) || 1000, subTotal: Math.round((parseFloat(logForm.inputQty) || 1) * (parseFloat(logForm.directRate) || 1000)) }];
+                      const totalCost = defaultItems.reduce((sum, item) => sum + (item.subTotal || 0), 0);
+                      setLogForm(p => ({ ...p, isGroup: true, inputType: 'group', subItems: defaultItems, cost: String(totalCost) }));
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="layers-outline" size={16} color={logForm.isGroup ? '#6D28D9' : COLORS.textMuted} />
+                  <Text style={{ fontSize: 12, fontWeight: logForm.isGroup ? '900' : '700', color: logForm.isGroup ? '#6D28D9' : COLORS.textSecondary, textAlign: 'center', flexShrink: 1 }} numberOfLines={1} adjustsFontSizeToFit>{t('mode_title_child', 'Title with Child Items')}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    { flex: 1, paddingVertical: 8, paddingHorizontal: 10, borderRadius: RADIUS.xs, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+                    !logForm.isGroup && { backgroundColor: '#fff', ...SHADOW.card }
+                  ]}
+                  onPress={() => {
+                    if (logForm.isGroup) {
+                      const totalFromSub = (logForm.subItems || []).reduce((sum, item) => sum + (item.subTotal || 0), 0);
+                      const haVal = parseFloat(logForm.hectares) || 1.0;
+                      const directRate = Math.round(totalFromSub / haVal) || 1000;
+                      setLogForm(p => ({
+                        ...p,
+                        isGroup: false,
+                        inputType: 'direct',
+                        inputQty: String(haVal),
+                        inputUnit: 'ha',
+                        directRate: String(directRate),
+                        cost: String(totalFromSub || Math.round(haVal * directRate))
+                      }));
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="create-outline" size={16} color={!logForm.isGroup ? '#15803D' : COLORS.textMuted} />
+                  <Text style={{ fontSize: 12, fontWeight: !logForm.isGroup ? '900' : '700', color: !logForm.isGroup ? '#15803D' : COLORS.textSecondary, textAlign: 'center', flexShrink: 1 }} numberOfLines={1} adjustsFontSizeToFit>{t('mode_direct_input', 'Direct Input')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* ── Input Section: Title-Only Group vs Direct Input Operation ── */}
+            {logForm.isGroup ? (
+              /* CASE A: Title Only Group (e.g. Basal Fertilization) -> Inputs in Child Items */
+              <View style={{ backgroundColor: '#F8FAF5', borderWidth: 1.5, borderColor: COLORS.border, borderRadius: RADIUS.lg, padding: SPACING.md, gap: 12, marginBottom: SPACING.md }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="list-circle" size={20} color={COLORS.primary} />
+                    <View>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text }}>{t('log_child_materials', 'Child Materials & Labor')}</Text>
+                      <Text style={{ fontSize: 10.5, color: COLORS.textMuted }}>{t('log_child_sub', 'Inputs are recorded per child item')}</Text>
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.textMuted }}>{logForm.subItems?.length || 0} item{(logForm.subItems?.length || 0) !== 1 ? 's' : ''}</Text>
                 </View>
 
-                <View style={{ flex: 1.5 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 2 }}>{t('form_input_unit', 'Unit')}</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -2 }} contentContainerStyle={{ gap: 4, paddingVertical: 2 }}>
-                    {['bags', 'liters', 'pcs', 'ha', 'tons', 'truckload', 'days'].map(u => (
+                {(logForm.subItems || []).map((item, index) => (
+                  <View key={item.id || index} style={{ backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: 12, gap: 8, ...SHADOW.card }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary, textTransform: 'uppercase' }}>{t('log_item_num', 'Item #')}{index + 1}</Text>
+                      <TouchableOpacity onPress={() => removeSubItemRow(index)} style={{ padding: 4 }}>
+                        <Ionicons name="trash-outline" size={18} color="#D9534F" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <TextInput
+                      style={{ fontSize: 14.5, fontWeight: '700', color: COLORS.text, backgroundColor: '#F8FAF5', borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, paddingHorizontal: 12, paddingVertical: 8 }}
+                      value={item.description}
+                      onChangeText={v => updateSubItemRow(index, 'description', v)}
+                      placeholder='e.g. 46-0-0 Urea / DAP / Labor Crew'
+                      placeholderTextColor={COLORS.textMuted}
+                    />
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 11, color: COLORS.textSecondary, fontWeight: '700', marginBottom: 3 }}>{t('log_qty', 'Quantity')}</Text>
+                        <TextInput
+                          style={{ height: 42, backgroundColor: '#F8FAF5', borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, paddingHorizontal: 10, fontSize: 14, fontWeight: '800', color: COLORS.text }}
+                          value={String(item.qty || '')}
+                          onChangeText={v => updateSubItemRow(index, 'qty', v)}
+                          keyboardType="decimal-pad"
+                          placeholder='1'
+                        />
+                      </View>
+
+                      <View style={{ flex: 1.4 }}>
+                        <Text style={{ fontSize: 11, color: COLORS.textSecondary, fontWeight: '700', marginBottom: 3 }}>{t('log_unit_price', 'Unit Price (₱)')}</Text>
+                        <TextInput
+                          style={{ height: 42, backgroundColor: '#F8FAF5', borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, paddingHorizontal: 10, fontSize: 14, fontWeight: '800', color: COLORS.text }}
+                          value={String(item.unitCost || '')}
+                          onChangeText={v => updateSubItemRow(index, 'unitCost', v)}
+                          keyboardType="decimal-pad"
+                          placeholder='₱ 0'
+                        />
+                      </View>
+                    </View>
+
+                    {/* Unit Selector Chips */}
+                    <View>
+                      <Text style={{ fontSize: 11, color: COLORS.textSecondary, fontWeight: '700', marginBottom: 4 }}>{t('log_select_unit', 'Select Unit:')}</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                        {['bag', 'ha', 'pass', 'lac', 'ton', 'days', 'pax', 'liters'].map(u => (
+                          <TouchableOpacity
+                            key={u}
+                            style={[
+                              { paddingHorizontal: 10, paddingVertical: 6, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.border, backgroundColor: '#fff' },
+                              item.unit === u && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }
+                            ]}
+                            onPress={() => updateSubItemRow(index, 'unit', u)}
+                          >
+                            <Text style={{ fontSize: 11.5, fontWeight: '700', color: item.unit === u ? COLORS.primary : COLORS.textSecondary }}>{u}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 6, marginTop: 2 }}>
+                      <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{item.unit === 'lac' ? 'Note: 1 lac = 10,000 points' : ''}</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '900', color: COLORS.text }}>{t('log_subtotal', 'Subtotal:')} ₱ {(item.subTotal || 0).toLocaleString()}</Text>
+                    </View>
+                  </View>
+                ))}
+
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.primary, borderStyle: 'dashed', borderRadius: RADIUS.md, paddingVertical: 12 }}
+                  onPress={addCustomSubItem}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="add-circle" size={20} color={COLORS.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: COLORS.primary, textAlign: 'center', flexShrink: 1 }} numberOfLines={1} adjustsFontSizeToFit>{t('log_add_expense', 'Add Expense / Material')}</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* CASE B: Direct Single Operation (e.g. Soil Sampling, Hauling) -> Direct Inputs */
+              <View style={{ backgroundColor: '#F8FAF5', borderWidth: 1.5, borderColor: COLORS.border, borderRadius: RADIUS.lg, padding: SPACING.md, gap: 12, marginBottom: SPACING.md }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="create-outline" size={20} color={COLORS.primary} />
+                  <View>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text }}>{t('log_direct_inputs', 'Direct Operation Inputs')}</Text>
+                    <Text style={{ fontSize: 10.5, color: COLORS.textMuted }}>{t('log_direct_sub', 'Record direct quantity and rate for this operation')}</Text>
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, color: COLORS.textSecondary, fontWeight: '700', marginBottom: 4 }}>Quantity</Text>
+                    <TextInput
+                      style={{ height: 44, backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.border, borderRadius: RADIUS.sm, paddingHorizontal: 12, fontSize: 15, fontWeight: '800', color: COLORS.text }}
+                      value={String(logForm.inputQty || '')}
+                      onChangeText={v => {
+                        const q = parseFloat(v) || 0;
+                        const r = parseFloat(logForm.directRate) || 0;
+                        setLogForm(p => ({ ...p, inputQty: v, cost: String(Math.round(q * r)) }));
+                      }}
+                      keyboardType="decimal-pad"
+                      placeholder="1"
+                      placeholderTextColor={COLORS.textMuted}
+                    />
+                  </View>
+
+                  <View style={{ flex: 1.4 }}>
+                    <Text style={{ fontSize: 11, color: COLORS.textSecondary, fontWeight: '700', marginBottom: 4 }}>{t('log_unit_rate', 'Unit Rate / Cost (₱)')}</Text>
+                    <TextInput
+                      style={{ height: 44, backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.border, borderRadius: RADIUS.sm, paddingHorizontal: 12, fontSize: 15, fontWeight: '800', color: COLORS.text }}
+                      value={String(logForm.directRate || '')}
+                      onChangeText={v => {
+                        const r = parseFloat(v) || 0;
+                        const q = parseFloat(logForm.inputQty) || 0;
+                        setLogForm(p => ({ ...p, directRate: v, cost: String(Math.round(q * r)) }));
+                      }}
+                      keyboardType="decimal-pad"
+                      placeholder="0"
+                      placeholderTextColor={COLORS.textMuted}
+                    />
+                  </View>
+                </View>
+
+                {/* Unit Selector Chips */}
+                <View>
+                  <Text style={{ fontSize: 11, color: COLORS.textSecondary, fontWeight: '700', marginBottom: 4 }}>Select Unit:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                    {['ha', 'ton', 'lac', 'pass', 'bag', 'days', 'pax', 'liters'].map(u => (
                       <TouchableOpacity
                         key={u}
                         style={[
-                          { paddingHorizontal: 10, paddingVertical: 8, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.border, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+                          { paddingHorizontal: 12, paddingVertical: 7, borderRadius: RADIUS.sm, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff' },
                           logForm.inputUnit === u && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }
                         ]}
                         onPress={() => setLogForm(p => ({ ...p, inputUnit: u }))}
                       >
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: logForm.inputUnit === u ? COLORS.primary : COLORS.textSecondary }}>{u}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: logForm.inputUnit === u ? COLORS.primary : COLORS.textSecondary }}>{u}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
                 </View>
               </View>
-            </View>
+            )}
 
-            {/* Photo / Receipt Attachment Section */}
-            <View style={{ backgroundColor: '#F8FAF5', borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.md, gap: 8, marginTop: 4 }}>
-              <Text style={[s.formLabel, { color: COLORS.primary }]}>{t('form_attach_photo', 'Attach Field Photo or Receipt (Optional)')}</Text>
-              {logForm.photoUri ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: RADIUS.sm, padding: 10, borderWidth: 1, borderColor: COLORS.success }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                    <Ionicons name="image" size={20} color={COLORS.success} />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.success, flexShrink: 1 }}>{t('form_photo_added', 'Photo attached')}</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => setLogForm(p => ({ ...p, photoUri: null }))}>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#D9534F' }}>{t('form_remove_photo', 'Remove Photo')}</Text>
-                  </TouchableOpacity>
+            {/* High-Visibility Cost Summary Card */}
+            <View style={{ backgroundColor: '#1E4D2B', borderRadius: RADIUS.lg, padding: 16, marginBottom: SPACING.md }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#D4EAD6', textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('log_total_cost', 'Total Operation Cost')}</Text>
+                  <Text style={{ fontSize: 26, fontWeight: '900', color: '#fff', marginTop: 2 }}>₱ {Number(logForm.cost || 0).toLocaleString()}</Text>
                 </View>
-              ) : (
-                <TouchableOpacity
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.primary, borderStyle: 'dashed', borderRadius: RADIUS.md, paddingVertical: 14 }}
-                  onPress={() => {
-                    setLogForm(p => ({ ...p, photoUri: 'mock://field_photo_2026.jpg' }));
-                    Alert.alert(t('form_photo_added', 'Photo attached'), 'Photo from device camera / gallery attached to field log.');
-                  }}
-                >
-                  <Ionicons name="camera-outline" size={18} color={COLORS.primary} />
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}>{t('form_take_photo', 'Take Photo / Upload')}</Text>
-                </TouchableOpacity>
-              )}
+                <View style={{ alignItems: 'flex-end', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: RADIUS.sm }}>
+                  <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#D4EAD6' }}>{t('log_per_ha', 'Per Hectare')}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff', marginTop: 1 }}>
+                    ₱ {Math.round((Number(logForm.cost || 0)) / Math.max(parseFloat(logForm.hectares) || 1, 0.1)).toLocaleString()} / ha
+                  </Text>
+                </View>
+              </View>
             </View>
 
-            {/* Clean Dual Action Buttons */}
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: SPACING.md, paddingTop: SPACING.sm }}>
+            {/* Big Action Buttons */}
+            <View style={{ gap: 10, marginTop: SPACING.xs, paddingBottom: SPACING.lg }}>
               <TouchableOpacity
-                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFFBF0', borderWidth: 1.5, borderColor: '#F5A623', borderRadius: RADIUS.md, paddingVertical: 13 }}
+                style={{ backgroundColor: COLORS.primary, borderRadius: RADIUS.lg, paddingVertical: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, ...SHADOW.card }}
+                onPress={() => handleSaveLog(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name={logForm.id ? "checkmark-circle" : "paper-plane"} size={20} color="#fff" />
+                <Text style={{ fontSize: 16, fontWeight: '900', color: '#fff', letterSpacing: 0.5 }}>
+                  {logForm.id ? t('log_save_changes', 'SAVE CHANGES') : t('log_record_op', 'RECORD OPERATION')}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ backgroundColor: '#FFFBF0', borderWidth: 1.5, borderColor: '#F5A623', borderRadius: RADIUS.md, paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }}
                 onPress={() => handleSaveLog(false)}
+                activeOpacity={0.8}
               >
                 <Ionicons name="document-text-outline" size={16} color="#C97A00" />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#C97A00' }}>{t('btn_save_draft', 'Save as Draft')}</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={{ flex: 1.3, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 13, ...SHADOW.card }}
-                onPress={() => handleSaveLog(true)}
-              >
-                <Ionicons name={logForm.id ? "checkmark-circle-outline" : "paper-plane-outline"} size={16} color="#fff" />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{logForm.id ? t('btn_edit', 'Save Changes') : t('btn_submit', 'Record Operation')}</Text>
+                <Text style={{ fontSize: 13.5, fontWeight: '800', color: '#C97A00' }} numberOfLines={1} adjustsFontSizeToFit>{t('log_save_draft', 'Save as Draft')}</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
-        </Animated.View>
+        </SafeAreaView>
       </Modal>
 
       {/* ── QR Code Display Modal ── */}
@@ -2018,24 +2816,14 @@ export default function FieldOpsScreen({ navigation, route }) {
           <View style={s.qrModal}>
             <Text style={s.qrModalTitle}>SRA Monthly Audit QR</Text>
             <Text style={s.qrModalSub}>May 2026 — Block Farm Kapitan Ramon, Silay</Text>
-            {/* Simulated QR Code Box */}
-            <View style={s.qrBox}>
-              <View style={s.qrSimulated}>
-                {Array.from({ length: 8 }).map((_, row) => (
-                  <View key={row} style={{ flexDirection: 'row' }}>
-                    {Array.from({ length: 8 }).map((_, col) => (
-                      <View
-                        key={col}
-                        style={[
-                          s.qrCell,
-                          { backgroundColor: (row + col) % 3 === 0 || (row * col) % 5 === 0 ? '#000' : '#fff' },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                ))}
-              </View>
-              <Text style={s.qrCode}>HUG-202605-A3F9</Text>
+            {/* Real Scannable QR Code */}
+            <View style={[s.qrBox, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', padding: 14, borderRadius: 16, borderWidth: 1.5, borderColor: '#e2e8dc' }]}>
+              <Image
+                source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=${encodeURIComponent('HUG-202605-A3F9')}` }}
+                style={{ width: 190, height: 190, borderRadius: 8, backgroundColor: '#fff' }}
+                resizeMode="contain"
+              />
+              <Text style={[s.qrCode, { marginTop: 10, letterSpacing: 2 }]}>HUG-202605-A3F9</Text>
             </View>
             <Text style={s.qrNote}>{uniqueFieldsCount} field{uniqueFieldsCount !== 1 ? 's' : ''} · {totalLogsCount} log{totalLogsCount !== 1 ? 's' : ''} · Total: Php {totalOperationalCost.toLocaleString()}</Text>
             <TouchableOpacity style={s.qrCloseBtn} onPress={() => setShowQR(false)}>
@@ -2048,77 +2836,116 @@ export default function FieldOpsScreen({ navigation, route }) {
       {/* ── Custom Calendar Modal ── */}
       <Modal visible={showCalendar} transparent animationType="fade">
         <View style={s.qrOverlay}>
-          <View style={[s.qrModal, { width: 320, padding: 0, overflow: 'hidden' }]}>
+          <View style={[s.qrModal, { width: 330, padding: 0, overflow: 'hidden', borderRadius: RADIUS.xl }]}>
             
-            {/* Calendar Header */}
-            <View style={{ backgroundColor: COLORS.primary, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <TouchableOpacity onPress={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1))}>
-                <Ionicons name="chevron-back" size={24} color="#fff" />
+            {/* Calendar Header with Month & Year Navigation */}
+            <View style={{ backgroundColor: COLORS.primary, paddingVertical: 14, paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <TouchableOpacity 
+                style={{ padding: 6, borderRadius: RADIUS.sm, backgroundColor: 'rgba(255,255,255,0.15)' }}
+                onPress={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1))}
+              >
+                <Ionicons name="chevron-back" size={20} color="#fff" />
               </TouchableOpacity>
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
-                {new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(calDate)}
-              </Text>
-              <TouchableOpacity onPress={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() + 1, 1))}>
-                <Ionicons name="chevron-forward" size={24} color="#fff" />
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 0.3 }}>
+                  {new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(calDate)}
+                </Text>
+                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10.5, fontWeight: '600', marginTop: 1 }}>Select Operation Date</Text>
+              </View>
+              <TouchableOpacity 
+                style={{ padding: 6, borderRadius: RADIUS.sm, backgroundColor: 'rgba(255,255,255,0.15)' }}
+                onPress={() => setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() + 1, 1))}
+              >
+                <Ionicons name="chevron-forward" size={20} color="#fff" />
               </TouchableOpacity>
             </View>
 
+            {/* Quick 1-Tap Preset Date Chips */}
+            <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, backgroundColor: '#F8FAF5', borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
+              {[
+                { label: 'Today', offsetDays: 0 },
+                { label: 'Yesterday', offsetDays: 1 },
+                { label: '2 Days Ago', offsetDays: 2 },
+              ].map(preset => (
+                <TouchableOpacity
+                  key={preset.label}
+                  style={{ flex: 1, paddingVertical: 6, backgroundColor: '#fff', borderRadius: RADIUS.xs, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center' }}
+                  onPress={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - preset.offsetDays);
+                    const formatted = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(d);
+                    setLogForm(p => ({ ...p, period: formatted }));
+                    setShowCalendar(false);
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }}>{preset.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             {/* Calendar Grid */}
-            <View style={{ padding: 16, paddingBottom: 8 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-                  <Text key={d} style={{ width: 32, textAlign: 'center', fontSize: 12, color: COLORS.textMuted, fontWeight: '700' }}>{d}</Text>
+            <View style={{ padding: 16, paddingBottom: 12 }}>
+              {/* Day of Week Headers */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, idx) => (
+                  <Text key={d + idx} style={{ width: 36, textAlign: 'center', fontSize: 11.5, color: COLORS.textMuted, fontWeight: '800' }}>{d}</Text>
                 ))}
               </View>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8, justifyContent: 'space-between' }}>
-                {Array.from({ length: new Date(calDate.getFullYear(), calDate.getMonth(), 1).getDay() }).map((_, i) => <View key={`blank-${i}`} style={{ width: 32, height: 32 }} />)}
+
+              {/* Day Number Cells */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 6, justifyContent: 'space-between' }}>
+                {Array.from({ length: new Date(calDate.getFullYear(), calDate.getMonth(), 1).getDay() }).map((_, i) => (
+                  <View key={`blank-${i}`} style={{ width: 36, height: 36 }} />
+                ))}
                 
                 {Array.from({ length: new Date(calDate.getFullYear(), calDate.getMonth() + 1, 0).getDate() }).map((_, i) => {
                   const day = i + 1;
-                  const isToday = calDate.getFullYear() === 2026 && calDate.getMonth() === 4 && day === 21;
+                  const formattedMonth = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(calDate);
+                  const thisDateStr = `${formattedMonth} ${day}, ${calDate.getFullYear()}`;
+                  const isSelected = (logForm.period || '').startsWith(thisDateStr);
+                  const now = new Date();
+                  const isToday = calDate.getFullYear() === now.getFullYear() && calDate.getMonth() === now.getMonth() && day === now.getDate();
+
                   return (
                     <TouchableOpacity
                       key={day}
-                      style={{ width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', backgroundColor: isToday ? COLORS.primary : 'transparent' }}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        backgroundColor: isSelected ? COLORS.primary : isToday ? '#E2EED9' : 'transparent',
+                        borderWidth: isToday && !isSelected ? 1.5 : 0,
+                        borderColor: COLORS.primary
+                      }}
                       onPress={() => {
-                        const formattedMonth = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(calDate);
-                        setLogForm(p => ({...p, period: `${formattedMonth} ${day}, ${calDate.getFullYear()}`}));
+                        setLogForm(p => ({ ...p, period: thisDateStr }));
                         setShowCalendar(false);
                       }}
+                      activeOpacity={0.7}
                     >
-                      <Text style={{ fontSize: 14, color: isToday ? '#fff' : COLORS.text, fontWeight: isToday ? '700' : '500' }}>{day}</Text>
+                      <Text style={{
+                        fontSize: 13,
+                        color: isSelected ? '#fff' : isToday ? COLORS.primary : COLORS.text,
+                        fontWeight: isSelected || isToday ? '800' : '500'
+                      }}>
+                        {day}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
 
-            {/* Time Selector */}
-            <View style={{ borderTopWidth: 1, borderTopColor: COLORS.border, padding: 16 }}>
-              <Text style={{ fontSize: 12, color: COLORS.textSecondary, fontWeight: '600', marginBottom: 8 }}>Select Time</Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity 
-                  style={{ flex: 1, paddingVertical: 10, backgroundColor: COLORS.primaryBg, borderRadius: RADIUS.sm, alignItems: 'center' }}
-                  onPress={() => setLogForm(p => ({...p, period: (p.period || 'May 21, 2026') + ' - 08:00 AM'}))}
-                >
-                  <Text style={{ color: COLORS.primary, fontWeight: '600' }}>08:00 AM</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={{ flex: 1, paddingVertical: 10, backgroundColor: COLORS.primaryBg, borderRadius: RADIUS.sm, alignItems: 'center' }}
-                  onPress={() => setLogForm(p => ({...p, period: (p.period || 'May 21, 2026') + ' - 01:00 PM'}))}
-                >
-                  <Text style={{ color: COLORS.primary, fontWeight: '600' }}>01:00 PM</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Actions */}
-            <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: COLORS.border }}>
-              <TouchableOpacity style={{ flex: 1, paddingVertical: 14, alignItems: 'center' }} onPress={() => setShowCalendar(false)}>
-                <Text style={{ color: COLORS.textMuted, fontWeight: '600' }}>Cancel</Text>
+            {/* Selected Date Summary & Actions */}
+            <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: COLORS.border, backgroundColor: '#FAFAFA' }}>
+              <TouchableOpacity style={{ flex: 1, paddingVertical: 13, alignItems: 'center' }} onPress={() => setShowCalendar(false)}>
+                <Text style={{ color: COLORS.textMuted, fontWeight: '700', fontSize: 13 }}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={{ flex: 1, paddingVertical: 14, alignItems: 'center', backgroundColor: COLORS.primary }} onPress={() => setShowCalendar(false)}>
-                <Text style={{ color: '#fff', fontWeight: '700' }}>Confirm Date</Text>
+              <TouchableOpacity style={{ flex: 1, paddingVertical: 13, alignItems: 'center', backgroundColor: COLORS.primary }} onPress={() => setShowCalendar(false)}>
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>Confirm Date</Text>
               </TouchableOpacity>
             </View>
 
@@ -2185,48 +3012,98 @@ export default function FieldOpsScreen({ navigation, route }) {
               )}
             </View>
           </View>
-          <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: 10 }}>
-            {MOCK_FIELDS.filter(f => f.id.toLowerCase().includes(fieldSearch.toLowerCase()) || f.member.toLowerCase().includes(fieldSearch.toLowerCase())).length === 0 && (
-               <Text style={s.emptyText}>No fields match your search.</Text>
-            )}
-            {MOCK_FIELDS.filter(f => f.id.toLowerCase().includes(fieldSearch.toLowerCase()) || f.member.toLowerCase().includes(fieldSearch.toLowerCase())).map(field => (
-              <View key={field.id} style={[s.receiptCard, selectedField.id === field.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg, marginBottom: 0 }, { marginBottom: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: SPACING.md }]}>
-                <TouchableOpacity style={{ flex: 1 }} onPress={() => {
-                  setSelectedField(field);
-                  updateSessionFieldId(field.id);
-                  setShowFieldsModal(false);
-                  setFieldSearch('');
-                }}>
-                  <View style={s.receiptHeader}>
-                    <Text style={[s.receiptTitle, { color: COLORS.text }]}>{field.id}</Text>
-                    <Text style={s.receiptId}>{field.ha} Ha</Text>
-                  </View>
-                  <Text style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>Member: <Text style={{ color: COLORS.text, fontWeight: '700' }}>{field.member}</Text></Text>
-                  <Text style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>Stage: <Text style={{ color: COLORS.text }}>{field.stage}</Text></Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                    <View style={[s.syncDot, { backgroundColor: field.synced ? COLORS.success : '#C97A00' }]} />
-                    <Text style={{ fontSize: 10, color: field.synced ? COLORS.success : '#C97A00' }}>
-                      {field.synced ? `Synced ${field.lastSync}` : `Not synced`}
+          {(() => {
+            const filtered = MOCK_FIELDS.filter(f => f.id.toLowerCase().includes(fieldSearch.toLowerCase()) || f.member.toLowerCase().includes(fieldSearch.toLowerCase()));
+            const pageSize = 4;
+            const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+            const curPage = Math.min(fieldsModalPage, totalPages);
+            const paginated = filtered.slice((curPage - 1) * pageSize, curPage * pageSize);
+
+            return (
+              <>
+                <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: 10, paddingBottom: 16 }}>
+                  {filtered.length === 0 && (
+                    <Text style={s.emptyText}>No fields match your search.</Text>
+                  )}
+                  {paginated.map(field => (
+                    <View key={field.id} style={[s.receiptCard, selectedField.id === field.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg, marginBottom: 0 }, { marginBottom: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: SPACING.md }]}>
+                      <TouchableOpacity style={{ flex: 1 }} onPress={() => {
+                        setSelectedField(field);
+                        updateSessionFieldId(field.id);
+                        setShowFieldsModal(false);
+                        setFieldSearch('');
+                        setFieldsModalPage(1);
+                      }}>
+                        <View style={s.receiptHeader}>
+                          <Text style={[s.receiptTitle, { color: COLORS.text }]}>{field.id}</Text>
+                          <Text style={s.receiptId}>{field.ha} Ha</Text>
+                        </View>
+                        <Text style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>Member: <Text style={{ color: COLORS.text, fontWeight: '700' }}>{field.member}</Text></Text>
+                        <Text style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>Stage: <Text style={{ color: COLORS.text }}>{field.stage}</Text></Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                          <View style={[s.syncDot, { backgroundColor: field.synced ? COLORS.success : '#C97A00' }]} />
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: field.synced ? COLORS.success : '#C97A00' }}>
+                            {field.synced ? `Synced (${formatSyncTime(field.lastSync)})` : `Not synced (${formatSyncTime(field.lastSync || '4 days ago')})`}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      {activeRole === 'Farm Manager' && (
+                        <TouchableOpacity 
+                          style={{ padding: 10, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: COLORS.border, marginLeft: 10, alignItems: 'center', justifyContent: 'center' }}
+                          onPress={() => {
+                            setShowFieldsModal(false);
+                            openAssignModal(field);
+                          }}
+                          title="Edit Field Ownership"
+                        >
+                          <Ionicons name="pencil" size={16} color={COLORS.primary} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+                </ScrollView>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingVertical: 12, borderTopWidth: 1, borderTopColor: COLORS.border, backgroundColor: '#fff' }}>
+                    <TouchableOpacity
+                      disabled={curPage === 1}
+                      onPress={() => setFieldsModalPage(p => Math.max(1, p - 1))}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: curPage === 1 ? COLORS.border : COLORS.primary, backgroundColor: curPage === 1 ? '#F8F9FA' : COLORS.primaryBg, opacity: curPage === 1 ? 0.6 : 1 }}
+                    >
+                      <Ionicons name="chevron-back" size={14} color={curPage === 1 ? COLORS.textMuted : COLORS.primary} />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: curPage === 1 ? COLORS.textMuted : COLORS.primary }}>Prev</Text>
+                    </TouchableOpacity>
+
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.textSecondary }}>
+                      Page {curPage} of {totalPages} ({filtered.length} Fields)
                     </Text>
+
+                    <TouchableOpacity
+                      disabled={curPage === totalPages}
+                      onPress={() => setFieldsModalPage(p => Math.min(totalPages, p + 1))}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: curPage === totalPages ? COLORS.border : COLORS.primary, backgroundColor: curPage === totalPages ? '#F8F9FA' : COLORS.primaryBg, opacity: curPage === totalPages ? 0.6 : 1 }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: curPage === totalPages ? COLORS.textMuted : COLORS.primary }}>Next</Text>
+                      <Ionicons name="chevron-forward" size={14} color={curPage === totalPages ? COLORS.textMuted : COLORS.primary} />
+                    </TouchableOpacity>
                   </View>
-                </TouchableOpacity>
-                {activeRole === 'Farm Manager' && (
-                  <TouchableOpacity 
-                    style={{ padding: 10, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: COLORS.border, marginLeft: 10, alignItems: 'center', justifyContent: 'center' }}
-                    onPress={() => {
-                      setShowFieldsModal(false);
-                      openAssignModal(field);
-                    }}
-                    title="Edit Field Ownership"
-                  >
-                    <Ionicons name="pencil" size={16} color={COLORS.primary} />
-                  </TouchableOpacity>
                 )}
-              </View>
-            ))}
-          </ScrollView>
+              </>
+            );
+          })()}
         </View>
       </Modal>
+
+      {/* ── Audit History & Monthly Breakdown Modal ── */}
+      <AuditHistoryModal
+        visible={showAuditHistoryModal}
+        onClose={() => setShowAuditHistoryModal(false)}
+        onOpenQR={() => {
+          setShowAuditHistoryModal(false);
+          handleGenerateAudit();
+        }}
+      />
 
       {/* ── Manager Assign Field Modal ── */}
       <Modal visible={showManagerAssignModal} transparent animationType="slide">
@@ -2287,7 +3164,7 @@ export default function FieldOpsScreen({ navigation, route }) {
                     month: 0,
                     synced: false,
                     lastSync: 'Just now',
-                    blockFarm: session.farm || 'Silay Block Farm'
+                    blockFarm: session.farm || 'Nacayao Block Farm A'
                   };
                   MOCK_FIELDS.push(newField);
                   setSelectedField(newField);
@@ -2297,6 +3174,111 @@ export default function FieldOpsScreen({ navigation, route }) {
                 setManagerAssignForm({ userId: '', fieldId: '', ha: '', isEditing: false });
               }}>
                 <Text style={s.submitBtnText}>{managerAssignForm.isEditing ? 'Save Changes' : 'Assign Field'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Crop Cycle Selection Modal ── */}
+      <Modal visible={showCycleModal} transparent animationType="slide">
+        <View style={s.overlay} />
+        <View style={s.sheet}>
+          <View style={s.sheetHandle} />
+          <View style={s.sheetHeader}>
+            <View>
+              <Text style={s.sheetTitle}>Crop Cycle Configuration</Text>
+              <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 1 }}>Field {selectedField.id} ({selectedField.ha} Ha)</Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowCycleModal(false)}>
+              <Ionicons name="close-circle" size={24} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={s.sheetBody}>
+            <Text style={s.formLabel}>Select Sugarcane Cycle Type *</Text>
+            <View style={{ gap: 8, marginBottom: SPACING.md }}>
+              {[
+                { type: 'Plant Cane (New Plant)', duration: '12–14 months', icon: 'leaf', desc: 'New planting cycle: Full soil prep, canepoints planting, basal & top-dress.' },
+                { type: '1st Ratoon (Ratoon 1)', duration: '10–12 months', icon: 'git-branch', desc: 'First ratoon stubble shaving, trash blanketing, off-barring & fertilization.' },
+                { type: '2nd Ratoon (Ratoon 2)', duration: '10–12 months', icon: 'water', desc: 'Second ratoon maintenance, cultivation, fertilization & harvesting.' }
+              ].map(item => {
+                const isSel = cycleTypeForm.cycleType === item.type;
+                return (
+                  <TouchableOpacity
+                    key={item.type}
+                    style={[
+                      { padding: 12, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff', gap: 3 },
+                      isSel && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }
+                    ]}
+                    onPress={() => setCycleTypeForm(p => ({ ...p, cycleType: item.type }))}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name={item.icon} size={16} color={isSel ? COLORS.primary : COLORS.textSecondary} />
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: isSel ? COLORS.primary : COLORS.text }}>{item.type}</Text>
+                      </View>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: isSel ? COLORS.primary : COLORS.textMuted }}>{item.duration}</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 15 }}>{item.desc}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={s.formLabel}>Select Crop Year (CY) *</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: SPACING.lg }}>
+              {['CY 2025–2026', 'CY 2026–2027', 'CY 2027–2028'].map(cy => {
+                const isSel = cycleTypeForm.cropYear === cy;
+                return (
+                  <TouchableOpacity
+                    key={cy}
+                    style={[
+                      { flex: 1, paddingVertical: 10, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff', alignItems: 'center' },
+                      isSel && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }
+                    ]}
+                    onPress={() => setCycleTypeForm(p => ({ ...p, cropYear: cy }))}
+                  >
+                    <Text style={{ fontSize: 11.5, fontWeight: isSel ? '800' : '600', color: isSel ? COLORS.primary : COLORS.text }}>{cy}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={s.sheetFooter}>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => setShowCycleModal(false)}>
+                <Text style={s.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.submitBtn}
+                onPress={() => {
+                  const newStages = (CROP_CYCLE_STAGES_BY_TYPE[cycleTypeForm.cycleType] || CROP_CYCLE_STAGES_BY_TYPE['Plant Cane (New Plant)']).map(s => ({ ...s }));
+                  const activeStg = newStages.find(s => s.active) || newStages[0];
+                  
+                  const updatedField = {
+                    ...selectedField,
+                    cycleType: cycleTypeForm.cycleType,
+                    cropYear: cycleTypeForm.cropYear,
+                    stage: activeStg.name
+                  };
+                  setSelectedField(updatedField);
+                  setCycleTasksByField(p => ({
+                    ...p,
+                    [selectedField.id]: newStages
+                  }));
+
+                  const mf = MOCK_FIELDS.find(f => f.id === selectedField.id);
+                  if (mf) {
+                    mf.cycleType = cycleTypeForm.cycleType;
+                    mf.cropYear = cycleTypeForm.cropYear;
+                    mf.stage = activeStg.name;
+                  }
+                  notifyDataUpdate();
+                  setShowCycleModal(false);
+                  Alert.alert('Crop Cycle Updated', `${selectedField.id} is now set to ${cycleTypeForm.cycleType} (${cycleTypeForm.cropYear}) with its 5 growth stages.`);
+                }}
+              >
+                <Text style={s.submitBtnText}>Save Cycle</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2383,81 +3365,83 @@ export default function FieldOpsScreen({ navigation, route }) {
               })}
 
               {/* Add new stage */}
-              <View style={{ marginTop: 8, backgroundColor: COLORS.background, borderRadius: RADIUS.md, padding: 14, gap: 10 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.text }}>{t('add_new_stage', 'Add New Stage')}</Text>
-                
-                {/* Quick Sugarcane Stage Presets */}
-                <Text style={{ fontSize: 11, fontWeight: '600', color: COLORS.textSecondary }}>{t('suggested_presets', 'Suggested Stage Presets (Tap to fill)')}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -14 }} contentContainerStyle={{ paddingHorizontal: 14, gap: 6 }}>
-                  {[
-                    t('task_t1', 'Land Preparation'),
-                    t('task_t2', 'Planting'),
-                    t('task_t3', 'Pre-emergence Spraying'),
-                    t('task_t4', 'Fertilization Stage 1'),
-                    t('task_t5', 'Fertilization Stage 2'),
-                    t('task_t6', 'Fertilization Stage 3'),
-                    t('task_t7', 'Final Off-barring'),
-                    t('task_t8', 'Harvesting & Milling')
-                  ].map(preset => (
+              {(() => {
+                const defaultStagesForCycle = CROP_CYCLE_STAGES_BY_TYPE[selectedField?.cycleType || 'Plant Cane (New Plant)'] || CROP_CYCLE_STAGES_BY_TYPE['Plant Cane (New Plant)'];
+
+                return (
+                  <>
+                    <View style={{ marginTop: 8, backgroundColor: COLORS.background, borderRadius: RADIUS.md, padding: 14, gap: 10 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: COLORS.text }}>{t('add_new_stage', 'Add New Stage')}</Text>
+                      
+                      {/* Quick Sugarcane Stage Presets */}
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: COLORS.textSecondary }}>{t('suggested_presets', 'Suggested SRA Operations (Tap to fill)')}</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -14 }} contentContainerStyle={{ paddingHorizontal: 14, gap: 6 }}>
+                        {defaultStagesForCycle.map(tItem => {
+                          const preset = getTaskLabel(tItem);
+                          return (
+                            <TouchableOpacity
+                              key={tItem.id}
+                              style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5 }}
+                              onPress={() => setNewStageLabel(preset)}
+                            >
+                              <Text style={{ fontSize: 11, color: COLORS.textSecondary, fontWeight: '600' }}>+ {preset}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+
+                      <TextInput
+                        style={s.formInput}
+                        placeholder={t('stage_name_placeholder', 'Stage name (e.g. Weeding – Hilamon)')}
+                        placeholderTextColor={COLORS.textMuted}
+                        value={newStageLabel}
+                        onChangeText={setNewStageLabel}
+                      />
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: COLORS.textSecondary }}>{t('stage_color', 'Stage Color')}</Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                        {STAGE_COLORS.map(c => (
+                          <TouchableOpacity key={c} onPress={() => setNewStageColor(c)}
+                            style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c, borderWidth: newStageColor === c ? 3 : 0, borderColor: '#fff', ...SHADOW.card }}
+                          />
+                        ))}
+                      </View>
+                      <TouchableOpacity
+                        style={[s.submitBtn, { marginTop: 4, opacity: newStageLabel.trim() ? 1 : 0.45 }]}
+                        disabled={!newStageLabel.trim()}
+                        onPress={() => {
+                          const stage = {
+                            id: `CS${Date.now()}`,
+                            label: newStageLabel.trim(),
+                            phase: newStageLabel.trim(),
+                            color: newStageColor,
+                            done: false,
+                            active: false, // Starts as Pending until explicitly activated
+                          };
+                          setEditingStages(prev => [...prev, stage]);
+                          setNewStageLabel('');
+                        }}
+                      >
+                        <Ionicons name="add" size={16} color="#fff" />
+                        <Text style={s.submitBtnText}>{t('btn_add_stage', 'Add Stage')}</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Reset to SRA Default */}
                     <TouchableOpacity
-                      key={preset}
-                      style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5 }}
-                      onPress={() => setNewStageLabel(preset)}
+                      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md }}
+                      onPress={() => {
+                        Alert.alert(t('btn_reset', 'Reset to Default'), t('reset_sra_confirm_msg', 'Replace your custom stages with the official SRA template for this crop cycle?'), [
+                          { text: t('btn_cancel', 'Cancel'), style: 'cancel' },
+                          { text: t('btn_reset', 'Reset'), style: 'destructive', onPress: () => setEditingStages(defaultStagesForCycle.map((t) => ({ ...t, label: getTaskLabel(t), done: false, active: false }))) }
+                        ]);
+                      }}
                     >
-                      <Text style={{ fontSize: 11, color: COLORS.textSecondary, fontWeight: '600' }}>+ {preset}</Text>
+                      <Ionicons name="refresh-outline" size={14} color={COLORS.textMuted} />
+                      <Text style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: '600' }}>{t('btn_reset_sra_template', 'Reset to SRA Standard Template')}</Text>
                     </TouchableOpacity>
-                  ))}
-                </ScrollView>
-
-                <TextInput
-                  style={s.formInput}
-                  placeholder={t('stage_name_placeholder', 'Stage name (e.g. Weeding – Hilamon)')}
-                  placeholderTextColor={COLORS.textMuted}
-                  value={newStageLabel}
-                  onChangeText={setNewStageLabel}
-                />
-                <Text style={{ fontSize: 11, fontWeight: '600', color: COLORS.textSecondary }}>{t('stage_color', 'Stage Color')}</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                  {STAGE_COLORS.map(c => (
-                    <TouchableOpacity key={c} onPress={() => setNewStageColor(c)}
-                      style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c, borderWidth: newStageColor === c ? 3 : 0, borderColor: '#fff', ...SHADOW.card }}
-                    />
-                  ))}
-                </View>
-                <TouchableOpacity
-                  style={[s.submitBtn, { marginTop: 4, opacity: newStageLabel.trim() ? 1 : 0.45 }]}
-                  disabled={!newStageLabel.trim()}
-                  onPress={() => {
-                    const stage = {
-                      id: `CS${Date.now()}`,
-                      label: newStageLabel.trim(),
-                      phase: newStageLabel.trim(),
-                      color: newStageColor,
-                      done: false,
-                      active: false, // Starts as Pending until explicitly activated
-                    };
-                    setEditingStages(prev => [...prev, stage]);
-                    setNewStageLabel('');
-                  }}
-                >
-                  <Ionicons name="add" size={16} color="#fff" />
-                  <Text style={s.submitBtnText}>{t('btn_add_stage', 'Add Stage')}</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Reset to SRA Default */}
-              <TouchableOpacity
-                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md }}
-                onPress={() => {
-                  Alert.alert(t('btn_reset', 'Reset to Default'), t('reset_sra_confirm_msg', 'Replace your custom stages with the SRA standard 8-stage template?'), [
-                    { text: t('btn_cancel', 'Cancel'), style: 'cancel' },
-                    { text: t('btn_reset', 'Reset'), style: 'destructive', onPress: () => setEditingStages(CYCLE_TASKS.map((t) => ({ ...t, label: getTaskLabel(t), done: false, active: false }))) }
-                  ]);
-                }}
-              >
-                <Ionicons name="refresh-outline" size={14} color={COLORS.textMuted} />
-                <Text style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: '600' }}>{t('btn_reset_sra_template', 'Reset to SRA Standard Template')}</Text>
-              </TouchableOpacity>
+                  </>
+                );
+              })()}
 
               {/* Save */}
               <TouchableOpacity
@@ -2471,7 +3455,7 @@ export default function FieldOpsScreen({ navigation, route }) {
                   const currentLabel = activeTask 
                     ? getTaskLabel(activeTask) 
                     : (updatedStages.length > 0 
-                        ? (updatedStages.every(t => t.done) ? `${t('task_t8', 'Harvesting & Milling')} (${t('status_completed', 'Completed')})` : (updatedStages.some(t => t.done) ? t('status_pending', 'Waiting to Start Next Stage') : t('status_pending', 'Not Started'))) 
+                        ? (updatedStages.every(t => t.done) ? `${t('task_t11', 'Harvesting / Cutting')} (${t('status_completed', 'Completed')})` : (updatedStages.some(t => t.done) ? t('status_pending', 'Waiting to Start Next Stage') : t('status_pending', 'Not Started'))) 
                         : 'Not Started');
 
                   setSelectedField(prevF => ({ ...prevF, stage: currentLabel, customStages: updatedStages }));
@@ -2493,95 +3477,225 @@ export default function FieldOpsScreen({ navigation, route }) {
         </View>
       </Modal>
 
-      {/* ── Dedicated Full History & Ledger Modal ── */}
-      <Modal visible={showHistoryModal} transparent animationType="slide">
-        <View style={s.historyModalOverlay}>
-          <SafeAreaView style={s.historyModalContainer}>
-            {/* Modal Header */}
-            <View style={s.historyModalHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.historyModalTitle}>{t('ledger_title', 'Field History & Ledger')}</Text>
-                <Text style={s.historyModalSub}>{t('my_field', 'Field')} {selectedField.id} · {selectedField.member}</Text>
+      {/* ── Dedicated Full History & Ledger Modal (Full Screen) ── */}
+      <Modal visible={showHistoryModal} animationType="slide" onRequestClose={() => setShowHistoryModal(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+          {/* Modal Header */}
+          <View style={s.historyModalHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.historyModalTitle}>
+                {activeRole === 'SRA (Admin)' ? t('district_audit_records_title', 'District Audit History Records') : t('ledger_title', 'Field History & Ledger')}
+              </Text>
+              <Text style={s.historyModalSub}>
+                {activeRole === 'SRA (Admin)'
+                  ? t('sra_oversight_scope_sub', 'Silay SRA Regulatory Oversight Scope · District 3')
+                  : `${t('my_field', 'Field')} ${selectedField.id} · ${selectedField.member}`}
+              </Text>
+            </View>
+            <TouchableOpacity 
+              style={s.historyModalCloseBtn}
+              onPress={() => setShowHistoryModal(false)}
+            >
+              <Ionicons name="close" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Stat Summary Bar (Dynamic to Active Tab) */}
+          {(() => {
+            const scopedDrafts = draftLogs.filter(d => d.fieldId === selectedField.id);
+            const submittedTotalCost = fieldLogs.reduce((sum, l) => sum + Number(l.cost || 0), 0);
+            const draftsTotalCost = scopedDrafts.reduce((sum, d) => sum + Number(d.cost || 0), 0);
+            const pastTotalCost = pastLogs.reduce((sum, l) => sum + Number(l.cost || 0), 0);
+
+            let statCostLabel = t('stat_total_cost', 'Total Recorded Cost');
+            let statCostValue = `Php ${submittedTotalCost.toLocaleString()}`;
+            let statCostColor = COLORS.primary;
+            let statCountLabel = t('stat_records', 'Submitted Records');
+            let statCountValue = `${fieldLogs.length} ${t('total_records_lbl', 'Total Records')}`;
+
+            if (logTab === 'audit_history') {
+              const auditTotalCost = (MOCK_AUDIT_HISTORY || []).reduce((sum, a) => sum + Number(a.totalCost || 0), 0);
+              statCostLabel = t('compiled_audited_cost_lbl', 'Compiled Audited Cost');
+              statCostValue = `Php ${auditTotalCost.toLocaleString()}`;
+              statCostColor = COLORS.primary;
+              statCountLabel = t('verified_sra_audits_lbl', 'Verified SRA Audits');
+              statCountValue = `${(MOCK_AUDIT_HISTORY || []).length} ${t('monthly_reports_lbl', 'Monthly Reports')}`;
+            } else if (activeRole === 'Member') {
+              if (logTab === 'drafts') {
+                statCostLabel = t('estimated_draft_cost_lbl', 'Estimated Draft Cost');
+                statCostValue = `Php ${draftsTotalCost.toLocaleString()}`;
+                statCostColor = '#C97A00';
+                statCountLabel = t('pending_draft_pipeline_lbl', 'Pending Draft Pipeline');
+                statCountValue = `${scopedDrafts.length} ${t('draft_records_lbl', 'Draft Records')}`;
+              } else if (logTab === 'past') {
+                statCostLabel = t('past_cycles_cost_lbl', 'Past Cycles Total Cost');
+                statCostValue = `Php ${pastTotalCost.toLocaleString()}`;
+                statCostColor = '#64748B';
+                statCountLabel = t('archived_logs_lbl', 'Archived Logs');
+                statCountValue = `${pastLogs.length} ${t('past_records_lbl', 'Past Records')}`;
+              }
+            }
+
+            return (
+              <View style={[
+                s.historyStatBar,
+                activeRole === 'Member' && logTab === 'drafts' && { backgroundColor: '#FFFBF0', borderBottomColor: '#FDE68A' },
+                activeRole === 'Member' && logTab === 'past' && { backgroundColor: '#F8FAFC', borderBottomColor: '#E2E8F0' },
+              ]}>
+                <View style={s.historyStatItem}>
+                  <Text style={[s.historyStatLbl, activeRole === 'Member' && logTab === 'drafts' && { color: '#92400E' }]}>{statCostLabel}</Text>
+                  <Text style={[s.historyStatVal, { color: statCostColor }]}>{statCostValue}</Text>
+                </View>
+                <View style={[s.historyStatItem, { borderLeftWidth: 1, borderLeftColor: activeRole === 'Member' && logTab === 'drafts' ? '#FDE68A' : COLORS.border, paddingLeft: 12 }]}>
+                  <Text style={[s.historyStatLbl, activeRole === 'Member' && logTab === 'drafts' && { color: '#92400E' }]}>{statCountLabel}</Text>
+                  <Text style={[s.historyStatVal, { color: statCostColor }]}>{statCountValue}</Text>
+                </View>
               </View>
-              <TouchableOpacity 
-                style={s.historyModalCloseBtn}
-                onPress={() => setShowHistoryModal(false)}
-              >
-                <Ionicons name="close" size={22} color={COLORS.text} />
+            );
+          })()}
+
+          {/* Ledger Sub-tabs */}
+          {activeRole === 'Member' ? (
+            <View style={[s.logTabsRow, { paddingHorizontal: SPACING.lg, marginBottom: 8 }]}>
+              <TouchableOpacity style={[s.logTabBtn, logTab === 'submitted' && s.logTabBtnActive]} onPress={() => setLogTab('submitted')}>
+                <Text style={[s.logTabText, logTab === 'submitted' && s.logTabTextActive]}>{t('tab_submitted', 'Submitted')} ({fieldLogs.length})</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.logTabBtn, logTab === 'drafts' && s.logTabBtnActive]} onPress={() => setLogTab('drafts')}>
+                <Text style={[s.logTabText, logTab === 'drafts' && s.logTabTextActive]}>
+                  {t('tab_drafts', 'Drafts')} {draftLogs.filter(l => l.fieldId === selectedField.id).length > 0 && `(${draftLogs.filter(l => l.fieldId === selectedField.id).length})`}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.logTabBtn, logTab === 'past' && s.logTabBtnActive]} onPress={() => setLogTab('past')}>
+                <Text style={[s.logTabText, logTab === 'past' && s.logTabTextActive]}>{t('tab_past', 'Past Cycles')}</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Stat Summary Bar */}
-            <View style={s.historyStatBar}>
-              <View style={s.historyStatItem}>
-                <Text style={s.historyStatLbl}>{t('stat_total_cost', 'Total Operational Cost')}</Text>
-                <Text style={s.historyStatVal}>Php {fieldLogs.reduce((sum, l) => sum + Number(l.cost || 0), 0).toLocaleString()}</Text>
-              </View>
-              <View style={[s.historyStatItem, { borderLeftWidth: 1, borderLeftColor: COLORS.border, paddingLeft: 12 }]}>
-                <Text style={s.historyStatLbl}>{t('stat_records', 'Total Records')}</Text>
-                <Text style={s.historyStatVal}>{fieldLogs.length} {t('stat_records', 'entries')}</Text>
-              </View>
+          ) : activeRole === 'SRA (Admin)' ? (
+            <View style={[s.logTabsRow, { paddingHorizontal: SPACING.lg, marginBottom: 8 }]}>
+              <TouchableOpacity style={[s.logTabBtn, s.logTabBtnActive]}>
+                <Text style={[s.logTabText, s.logTabTextActive]}>{t('monthly_audit_history_tab', 'Monthly Audit History')}</Text>
+              </TouchableOpacity>
             </View>
+          ) : (
+            <View style={[s.logTabsRow, { paddingHorizontal: SPACING.lg, marginBottom: 8 }]}>
+              <TouchableOpacity style={[s.logTabBtn, logTab === 'submitted' && s.logTabBtnActive]} onPress={() => setLogTab('submitted')}>
+                <Text style={[s.logTabText, logTab === 'submitted' && s.logTabTextActive]}>{t('tab_submitted', 'Submitted Logs')} ({fieldLogs.length})</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.logTabBtn, logTab === 'audit_history' && s.logTabBtnActive]} onPress={() => setLogTab('audit_history')}>
+                <Text style={[s.logTabText, logTab === 'audit_history' && s.logTabTextActive]}>{t('monthly_audit_history_tab', 'Monthly Audit History')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
-            {/* If Member: Sub-tabs for Submitted vs Drafts vs Past */}
-            {activeRole === 'Member' && (
-              <View style={[s.logTabsRow, { paddingHorizontal: SPACING.lg, marginBottom: 8 }]}>
-                <TouchableOpacity style={[s.logTabBtn, logTab === 'submitted' && s.logTabBtnActive]} onPress={() => setLogTab('submitted')}>
-                  <Text style={[s.logTabText, logTab === 'submitted' && s.logTabTextActive]}>{t('tab_submitted', 'Submitted')} ({fieldLogs.length})</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[s.logTabBtn, logTab === 'drafts' && s.logTabBtnActive]} onPress={() => setLogTab('drafts')}>
-                  <Text style={[s.logTabText, logTab === 'drafts' && s.logTabTextActive]}>
-                    {t('tab_drafts', 'Drafts')} {draftLogs.filter(l => l.fieldId === selectedField.id).length > 0 && `(${draftLogs.filter(l => l.fieldId === selectedField.id).length})`}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[s.logTabBtn, logTab === 'past' && s.logTabBtnActive]} onPress={() => setLogTab('past')}>
-                  <Text style={[s.logTabText, logTab === 'past' && s.logTabTextActive]}>{t('tab_past', 'Past Cycles')}</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+          {/* Scrollable Modal Body */}
+          <ScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+            {activeRole === 'Member' ? (
+              logTab === 'drafts' ? (
+                renderCompactLogList(draftLogs.filter(l => l.fieldId === selectedField.id), true, false)
+              ) : logTab === 'past' ? (
+                <>
+                  {pastLogs.length > 0 && (
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        backgroundColor: '#FFF5F5',
+                        borderWidth: 1,
+                        borderColor: '#FED7D7',
+                        borderRadius: RADIUS.md,
+                        paddingVertical: 10,
+                        paddingHorizontal: 12,
+                        marginBottom: 12
+                      }}
+                      onPress={handleClearPastLogs}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="trash-outline" size={15} color="#E53E3E" />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#E53E3E' }}>
+                        {t('btn_delete_past_cycles', 'Delete All Past Cycles')} ({pastLogs.length})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {renderCompactLogList(pastLogs, false, false)}
+                </>
+              ) : (
+                renderCompactLogList(fieldLogs, false, false)
+              )
+            ) : logTab === 'audit_history' ? (
+              <View style={{ gap: SPACING.md }}>
+                <Text style={s.sectionLabel}>{t('compiled_monthly_audit_title', 'Compiled Monthly Audit History')}</Text>
+                {MOCK_AUDIT_HISTORY.map(audit => (
+                  <View key={audit.id} style={[s.auditCard, { marginBottom: 6 }]}>
+                    {/* Header: Audit ID & Status */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name="document-text" size={16} color={COLORS.primary} />
+                        <Text style={{ fontSize: 14.5, fontWeight: '900', color: COLORS.text }}>{formatPhaseMonth ? formatPhaseMonth(audit.month) : audit.month} {t('audit_report_suffix', 'Audit Report')}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primaryBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.xs }}>
+                        <Ionicons name="checkmark-done-circle" size={13} color={COLORS.primary} />
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: COLORS.primary }}>{t('verified_sra_badge', 'Verified SRA')}</Text>
+                      </View>
+                    </View>
 
-            {/* Scrollable Modal Body */}
-            <ScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-              {activeRole === 'Member' ? (
-                logTab === 'drafts' ? (
-                  renderCompactLogList(draftLogs.filter(l => l.fieldId === selectedField.id), true, false)
-                ) : logTab === 'past' ? (
-                  <>
-                    {pastLogs.length > 0 && (
+                    {/* Date & Time + QR Payload Signature */}
+                    <View style={{ backgroundColor: '#F8FAF5', padding: 10, borderRadius: RADIUS.sm, gap: 5, borderWidth: 1, borderColor: COLORS.border }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textMuted }}>{t('date_time_gen', 'Date & Time Generated:')}</Text>
+                        <Text style={{ fontSize: 11.5, fontWeight: '800', color: COLORS.text }}>{audit.dateGenerated}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textMuted }}>{t('qr_payload_id', 'QR Payload ID:')}</Text>
+                        <Text style={{ fontSize: 10.5, fontWeight: '800', color: COLORS.primary, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                          {audit.qrSignature}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textMuted }}>{t('summary_metrics_lbl', 'Summary Metrics:')}</Text>
+                        <Text style={{ fontSize: 11.5, fontWeight: '800', color: COLORS.text }}>
+                          {audit.fieldsReported} {t('plots_word', 'Plots')} · {audit.logsCount} {t('logs_unit', 'Logs')} · ₱{audit.totalCost.toLocaleString()}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textMuted }}>{t('inspector_verifier', 'Inspector Verifier:')}</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textSecondary }}>{audit.verifiedBy}</Text>
+                      </View>
+                    </View>
+
+                    {/* Actions: View QR & Export PDF */}
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 2 }}>
                       <TouchableOpacity
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 6,
-                          backgroundColor: '#FFF5F5',
-                          borderWidth: 1,
-                          borderColor: '#FED7D7',
-                          borderRadius: RADIUS.md,
-                          paddingVertical: 10,
-                          paddingHorizontal: 12,
-                          marginBottom: 12
-                        }}
-                        onPress={handleClearPastLogs}
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: COLORS.primary, paddingVertical: 10, borderRadius: RADIUS.md }}
+                        onPress={handleGenerateAudit}
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="trash-outline" size={15} color="#E53E3E" />
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#E53E3E' }}>
-                          {t('btn_delete_past_cycles', 'Delete All Past Cycles')} ({pastLogs.length})
-                        </Text>
+                        <Ionicons name="qr-code-outline" size={14} color="#fff" />
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>{t('view_qr_code_btn', 'View SRA QR Code')}</Text>
                       </TouchableOpacity>
-                    )}
-                    {renderCompactLogList(pastLogs, false, false)}
-                  </>
-                ) : (
-                  renderCompactLogList(fieldLogs, false, false)
-                )
-              ) : (
-                renderCompactLogList(fieldLogs, false, true)
-              )}
-            </ScrollView>
-          </SafeAreaView>
-        </View>
+
+                      <TouchableOpacity
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: COLORS.primaryBg, borderWidth: 1, borderColor: COLORS.primary + '40', paddingVertical: 10, borderRadius: RADIUS.md }}
+                        onPress={() => {
+                          Alert.alert('Exporting PDF', `Downloading official monthly audit report for ${audit.month}...`, [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Download', onPress: () => Alert.alert('Success', `HUGPONG_${audit.month.replace(' ', '_')}_Audit_Report.pdf saved to Downloads.`) }
+                          ]);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="download-outline" size={14} color={COLORS.primary} />
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.primary }}>{t('export_pdf_btn', 'Export PDF')}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              renderCompactLogList(fieldLogs, false, true)
+            )}
+          </ScrollView>
+        </SafeAreaView>
       </Modal>
 
     </SafeAreaView>
@@ -2606,22 +3720,22 @@ const s = StyleSheet.create({
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 
   // Field Card
-  fieldCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.lg, gap: 6, ...SHADOW.card, borderWidth: 1, borderColor: COLORS.border },
+  fieldCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: 18, gap: 8, ...SHADOW.card, borderWidth: 1, borderColor: COLORS.border },
   fieldCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  fieldIdBadge: { backgroundColor: COLORS.primaryBg, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
-  fieldIdText: { fontSize: 13, fontWeight: '800', color: COLORS.primary },
-  fieldHa: { fontSize: 13, fontWeight: '700', color: COLORS.textSecondary },
-  fieldMember: { fontSize: 13, fontWeight: '600', color: COLORS.text },
-  fieldStage: { fontSize: 12, color: COLORS.textMuted },
-  fieldStageVal: { fontWeight: '700', color: COLORS.text },
-  fieldSync: { fontSize: 11, color: COLORS.textMuted },
+  fieldIdBadge: { backgroundColor: COLORS.primaryBg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
+  fieldIdText: { fontSize: 15, fontWeight: '900', color: COLORS.primary },
+  fieldHa: { fontSize: 14, fontWeight: '800', color: COLORS.textSecondary },
+  fieldMember: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  fieldStage: { fontSize: 13, color: COLORS.textMuted },
+  fieldStageVal: { fontWeight: '800', color: COLORS.text },
+  fieldSync: { fontSize: 12, color: COLORS.textMuted },
 
-  // Field Chips (Manager)
-  fieldChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#fff' },
+  // Field Chips (Manager & Member)
+  fieldChip: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 9, backgroundColor: '#fff', minHeight: 42 },
   fieldChipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg },
-  fieldChipText: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
-  fieldChipTextActive: { color: COLORS.primary, fontWeight: '800' },
-  syncDot: { width: 7, height: 7, borderRadius: 4 },
+  fieldChipText: { fontSize: 13, fontWeight: '700', color: COLORS.textMuted },
+  fieldChipTextActive: { color: COLORS.primary, fontWeight: '900' },
+  syncDot: { width: 8, height: 8, borderRadius: 4 },
 
   // Sync Warning
   syncWarning: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#FFFBF0', borderRadius: RADIUS.md, padding: SPACING.md, borderWidth: 1, borderColor: '#FEF0D0' },
@@ -2656,11 +3770,11 @@ const s = StyleSheet.create({
   receiptId: { fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', color: COLORS.textMuted, fontWeight: '600' },
   receiptDivider: { height: 1, borderStyle: 'dashed', borderWidth: 1, borderColor: '#DCE8CC', borderRadius: 1, marginVertical: 4 },
   receiptBody: { gap: 8 },
-  receiptRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
-  receiptLabel: { fontSize: 13, color: COLORS.textMuted, fontWeight: '500' },
-  receiptValue: { fontSize: 13, color: COLORS.text, fontWeight: '600' },
-  receiptValueBold: { fontSize: 14, color: COLORS.text, fontWeight: '800', flex: 1, textAlign: 'right', paddingLeft: 12 },
-  receiptCostText: { fontSize: 16, color: COLORS.primary, fontWeight: '800' },
+  receiptRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 4, gap: 8 },
+  receiptLabel: { fontSize: 12.5, color: COLORS.textMuted, fontWeight: '600', width: 125, flexShrink: 0 },
+  receiptValue: { fontSize: 12.5, color: COLORS.text, fontWeight: '700', flex: 1, textAlign: 'right' },
+  receiptValueBold: { fontSize: 13.5, color: COLORS.text, fontWeight: '800', flex: 1, textAlign: 'right' },
+  receiptCostText: { fontSize: 15, color: COLORS.primary, fontWeight: '900', flex: 1, textAlign: 'right' },
   receiptStatusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   receiptStatusText: { fontSize: 11, fontWeight: '700' },
   receiptApproveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: COLORS.success, borderRadius: RADIUS.md, paddingVertical: 10, marginTop: 6 },
@@ -2730,13 +3844,13 @@ const s = StyleSheet.create({
   typeBtnActive: { backgroundColor: '#fff', ...SHADOW.card },
   typeBtnText: { fontSize: 13, color: COLORS.textMuted, fontWeight: '500' },
   typeBtnTextActive: { color: COLORS.primary, fontWeight: '700' },
-  formLabel: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
-  formInput: { backgroundColor: COLORS.background, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 12, paddingVertical: 12, fontSize: 14, color: COLORS.text },
+  formLabel: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginBottom: 4 },
+  formInput: { backgroundColor: '#F8FAF5', borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontWeight: '600', color: COLORS.text, minHeight: 48 },
   sheetFooter: { flexDirection: 'row', gap: 10, marginTop: SPACING.md },
   cancelBtn: { flex: 1, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingVertical: 13, alignItems: 'center' },
   cancelBtnText: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  submitBtn: { flex: 2, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 13, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
-  submitBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  submitBtn: { flex: 2, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
+  submitBtnText: { fontSize: 15, fontWeight: '800', color: '#fff' },
 
   // QR Modal
   qrOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: SPACING.xl },
@@ -2767,20 +3881,28 @@ const s = StyleSheet.create({
   scanCancelBtn: { paddingVertical: 10 },
   scanCancelText: { fontSize: 14, color: 'rgba(255,255,255,0.6)' },
 
-  // History Summary Card (Main Screen)
-  historySummaryCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.md, borderWidth: 1, borderColor: COLORS.border, gap: 4, ...SHADOW.card },
-  historySummaryTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-  historySummaryTitle: { fontSize: 13, fontWeight: '800', color: COLORS.text },
-  historySummarySub: { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
-  unplannedBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFFBF0', borderWidth: 1, borderColor: '#F5A623', borderRadius: RADIUS.sm, paddingHorizontal: 8, paddingVertical: 4 },
-  unplannedBtnText: { fontSize: 11, fontWeight: '700', color: '#C97A00' },
-  miniLogRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#F0F0F0', gap: 8 },
-  miniLogTitle: { fontSize: 12, fontWeight: '600', color: COLORS.text, flex: 1 },
-  miniLogCost: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
-  emptyMiniCard: { paddingVertical: 12, alignItems: 'center' },
-  emptyMiniText: { fontSize: 12, color: COLORS.textMuted },
-  openLedgerBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 10, marginTop: 6, ...SHADOW.card },
-  openLedgerBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  // Topbar Ledger Button
+  topbarLedgerBtn: {
+    position: 'relative',
+    padding: 6,
+  },
+  topbarLedgerBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: COLORS.primary,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  topbarLedgerBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#fff',
+  },
 
   // Dedicated Full History Modal
   historyModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

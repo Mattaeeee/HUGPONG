@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Animated, Easing, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme';
-import { subscribe, getIsSynced, getCurrentSession, setSynced } from '../data/mockData';
+import { subscribe, getIsSynced, getCurrentSession, setSynced } from '../data/dataStore';
 import { useTranslation } from '../services/i18n';
 
 const LOGO = require('../../assets/HUGPONG LOGO.png');
@@ -82,7 +82,7 @@ export default function AppHeader({ right }) {
             />
           </Animated.View>
           <Text style={[s.syncText, synced ? s.syncTextGreen : s.syncTextYellow]}>
-            {isSyncing ? 'Syncing...' : (synced ? 'Synced' : `Sync (${pendingCount})`)}
+            {isSyncing ? t('syncing_progress', 'Syncing...') : (synced ? t('synced', 'Synced') : `${t('btn_sync_now', 'Sync')} (${pendingCount})`)}
           </Text>
         </TouchableOpacity>
 

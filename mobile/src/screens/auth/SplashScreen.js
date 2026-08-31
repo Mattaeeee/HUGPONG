@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions, Image } from 'react-native';
 import { COLORS } from '../../theme';
+import { getItem } from '../../services/storageService';
 
 const LOGO = require('../../../assets/HUGPONG LOGO.png');
 
@@ -20,7 +21,23 @@ export default function SplashScreen({ navigation }) {
       Animated.timing(tagOpacity, { toValue: 1, duration: 400, delay: 200, useNativeDriver: true }),
     ]).start();
 
-    const timer = setTimeout(() => navigation.replace('Onboarding'), 2800);
+    const timer = setTimeout(async () => {
+      try {
+        const langChosen = await getItem('@hugpong_lang_chosen');
+        if (!langChosen) {
+          navigation.replace('LanguageSelect');
+        } else {
+          const onboarded = await getItem('@hugpong_onboarded');
+          if (!onboarded) {
+            navigation.replace('Onboarding');
+          } else {
+            navigation.replace('Login');
+          }
+        }
+      } catch (e) {
+        navigation.replace('Login');
+      }
+    }, 2000);
     return () => clearTimeout(timer);
   }, []);
 

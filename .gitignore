@@ -7,10 +7,17 @@ mobile/npm-debug.log*
 mobile/yarn-debug.log*
 mobile/yarn-error.log*
 
-# Admin / Web
-admin/node_modules/
+# Web Client
+web/node_modules/
 
-# OS Files
+# Backend Server & Secrets
+server/node_modules/
+server/serviceAccountKey.json
+*.serviceAccountKey.json
+
+# Environment & OS Files
 .DS_Store
 Thumbs.db
 .env
+.env.local
+.env.*.local

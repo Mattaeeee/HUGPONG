@@ -79,12 +79,21 @@
       </div>
     </section>
 
-    <!-- Admin Login Link -->
-    <section class="flex flex-col items-center gap-3">
-      <a href="login.html" class="inline-flex items-center gap-2 border-2 border-primary text-primary font-bold text-sm rounded-xl px-8 py-3.5 hover:bg-primary-bg transition-colors tracking-wide">
-        Login as Admin
-        <span class="text-base">→</span>
-      </a>
+    <!-- Secure Admin Portal Sign In -->
+    <section class="flex flex-col items-center gap-3 w-full max-w-md text-center">
+      <div class="w-full bg-white rounded-3xl border border-border p-6 shadow-xs flex flex-col items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-primary-bg flex items-center justify-center text-primary">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        </div>
+        <div>
+          <h2 class="text-base font-bold text-hug-text">Administrative Console</h2>
+          <p class="text-xs text-hug-muted mt-1">Super Admin, SRA Authority, and Farm Manager Access</p>
+        </div>
+        <a href="login.html" class="w-full inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-light text-white font-extrabold text-sm rounded-xl py-3 transition-colors shadow-xs">
+          Sign In with Authorized Credentials
+          <span class="text-base">→</span>
+        </a>
+      </div>
       <p class="text-xs text-hug-muted">Restricted access — authorized personnel only.</p>
     </section>
 

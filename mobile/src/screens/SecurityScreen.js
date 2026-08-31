@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
-import { getSecurityPreferences, updateSecurityPreferences, subscribe } from '../data/mockData';
+import { getSecurityPreferences, updateSecurityPreferences, subscribe } from '../data/dataStore';
 import { useTranslation } from '../services/i18n';
 
 export default function SecurityScreen({ navigation }) {

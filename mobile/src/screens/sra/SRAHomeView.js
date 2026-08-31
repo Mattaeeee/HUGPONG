@@ -1,0 +1,200 @@
+// ══════════════════════════════════════════════════════════════
+// HUGPONG Mobile — SRA Administrator Home View Component
+// Role: SRA (Admin) · Silay Sugar Regulatory Administration
+// ══════════════════════════════════════════════════════════════
+
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORS, SPACING, RADIUS, SHADOW } from '../../theme';
+import { useTranslation } from '../../services/i18n';
+
+function SRAHomeView({ session = {}, fields = [], navigation }) {
+  const { t } = useTranslation();
+  const totalDistrictHa = React.useMemo(() => {
+    return fields.reduce((sum, f) => sum + (Number(f.ha) || 0), 0);
+  }, [fields]);
+
+  const blockFarmsList = React.useMemo(() => [
+    { name: 'Nacayao Block Farm A',    manager: 'Jose Reyes',    plots: 5, ha: 11.5, status: 'SRA Verified ✓' },
+    { name: 'Hawaiian Block Farm B',   manager: 'Ramon Tan',     plots: 3, ha: 8.0,  status: 'Compliance Active' },
+    { name: 'Guimbalaon Block Farm C', manager: 'Teresa Gomez', plots: 2, ha: 5.5,  status: 'Compliance Active' },
+    { name: 'Patag Block Farm D',      manager: 'Carlos Lopez', plots: 2, ha: 4.5,  status: 'Compliance Active' },
+  ], []);
+
+  const totalPlots = React.useMemo(() => {
+    return blockFarmsList.reduce((s, f) => s + f.plots, 0);
+  }, [blockFarmsList]);
+
+  return (
+    <View style={s.container}>
+
+      {/* ── District Summary Card (matches Manager style) ── */}
+      <View style={s.summaryCard}>
+        <View style={s.summaryHeader}>
+          <View>
+            <Text style={s.districtName}>{t('district_name_title', 'District 3 · Silay')}</Text>
+            <Text style={s.adminTag}>{t('profile_admin_role', 'Administrator')}: {session?.name || 'Administrator'}</Text>
+          </View>
+          <View style={s.totalBadge}>
+            <Text style={s.totalHa}>{totalDistrictHa.toFixed(2)} Ha</Text>
+            <Text style={s.totalPlots}>{totalPlots} {t('member_plots_count', 'Member Plots')}</Text>
+          </View>
+        </View>
+
+        <View style={s.quickStatsRow}>
+          <View style={s.statBox}>
+            <Text style={s.statNumber}>{blockFarmsList.length}</Text>
+            <Text style={s.statLabel}>{t('block_farms_count_lbl', 'Block Farms')}</Text>
+          </View>
+          <TouchableOpacity
+            style={s.statBox}
+            onPress={() => navigation.navigate('Field Ops')}
+            activeOpacity={0.7}
+          >
+            <Text style={[s.statNumber, { color: COLORS.primary }]}>{totalPlots}</Text>
+            <Text style={s.statLabel}>{t('registered_plots_lbl', 'Registered Plots')}</Text>
+          </TouchableOpacity>
+          <View style={s.statBox}>
+            <Text style={[s.statNumber, { color: COLORS.success }]}>100%</Text>
+            <Text style={s.statLabel}>{t('compliance_lbl', 'Compliance')}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* ── Supervised Block Farms ── */}
+      <View style={s.sectionHeader}>
+        <View>
+          <Text style={s.sectionTitle}>{t('supervised_block_farms', 'Supervised Block Farms')}</Text>
+          <Text style={s.sectionSub}>{t('tap_farm_to_view', 'Tap a farm to view field operations')}</Text>
+        </View>
+        <TouchableOpacity onPress={() => navigation.navigate('Field Ops')}>
+          <Text style={s.seeAllText}>{t('audit_desk_link', 'Audit Desk →')}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={{ gap: 8, marginBottom: SPACING.md }}>
+        {blockFarmsList.map(farm => (
+          <TouchableOpacity
+            key={farm.name}
+            style={s.plotItem}
+            onPress={() => navigation.navigate('Field Ops', { farmName: farm.name })}
+            activeOpacity={0.7}
+          >
+            <View style={{ flex: 1 }}>
+              <View style={s.plotTopRow}>
+                <Text style={s.plotName}>{farm.name}</Text>
+                <View style={s.statusBadge}>
+                  <Text style={s.statusText}>{farm.status}</Text>
+                </View>
+              </View>
+              <Text style={s.plotManager}>{t('manager_label', 'Manager')}: {farm.manager}</Text>
+              <Text style={s.plotMeta}>{farm.plots} {t('member_plots_count', 'Member Plots')} · {farm.ha} Ha</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* ── Compliance Notice ── */}
+      <View style={s.complianceCard}>
+        <Ionicons name="shield-checkmark" size={20} color={COLORS.primary} />
+        <View style={{ flex: 1 }}>
+          <Text style={s.complianceTitle}>{t('official_sra_desk', 'Official SRA Compliance Desk')}</Text>
+          <Text style={s.complianceBody}>
+            {t('sra_compliance_desk_body', 'Audit field operations, issue verified QR compliance certificates, and monitor district price benchmarks.')}
+          </Text>
+        </View>
+      </View>
+
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  container: { marginTop: 0 },
+
+  // ── Summary Card ──
+  summaryCard: {
+    backgroundColor: '#FFF',
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: SPACING.md,
+    ...SHADOW.card,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
+  },
+  districtName:  { fontSize: 16, fontWeight: '800', color: COLORS.text },
+  adminTag:      { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  totalBadge: {
+    alignItems: 'flex-end',
+    backgroundColor: COLORS.primaryBg,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: RADIUS.md,
+  },
+  totalHa:    { fontSize: 13, fontWeight: '800', color: COLORS.primary },
+  totalPlots: { fontSize: 10, fontWeight: '600', color: COLORS.primaryLight },
+
+  quickStatsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAF5',
+    borderRadius: RADIUS.lg,
+    padding: SPACING.sm,
+  },
+  statBox:    { flex: 1, alignItems: 'center' },
+  statNumber: { fontSize: 18, fontWeight: '800', color: COLORS.text },
+  statLabel:  { fontSize: 10, color: COLORS.textMuted, fontWeight: '600', marginTop: 2 },
+
+  // ── Section Header ──
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  sectionSub:   { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
+  seeAllText:   { fontSize: 12, fontWeight: '700', color: COLORS.primary },
+
+  // ── Farm / Plot Items ──
+  plotItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF',
+    padding: SPACING.md,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOW.card,
+  },
+  plotTopRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  plotName:     { fontSize: 14, fontWeight: '800', color: COLORS.text, flex: 1, marginRight: 8 },
+  statusBadge:  { backgroundColor: COLORS.primaryBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: RADIUS.xs },
+  statusText:   { fontSize: 10, fontWeight: '800', color: COLORS.primary },
+  plotManager:  { fontSize: 12, color: COLORS.textSecondary, marginTop: 1, fontWeight: '600' },
+  plotMeta:     { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+
+  // ── Compliance Banner ──
+  complianceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    backgroundColor: '#F0F8EC',
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: '#C2E0B4',
+  },
+  complianceTitle: { fontSize: 13, fontWeight: '800', color: COLORS.primary },
+  complianceBody:  { fontSize: 11, color: COLORS.textSecondary, marginTop: 2 },
+});
+
+export default React.memo(SRAHomeView);

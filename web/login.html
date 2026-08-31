@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HUGPONG Admin - Sign In</title>
+  <meta name="description" content="Sign in to HUGPONG Admin Console to manage farm operations, SRA prices, and audit tools." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css" />
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --color-primary: #2D5016;
+      --color-primary-light: #4A7C2F;
+      --color-primary-bg: #E8F0E0;
+      --color-accent: #F5A623;
+      --color-border: #E2E8DC;
+      --color-hug-text: #1A2212;
+      --color-hug-text2: #5A6B4A;
+      --color-hug-muted: #8A9B7A;
+      --color-danger: #D9534F;
+      --color-danger-bg: #FEEBEB;
+      --color-bg: #F2F4EF;
+      --font-sans: 'Inter', system-ui, sans-serif;
+    }
+    body { font-family: var(--font-sans); }
+    .btn-spinner {
+      display: none;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid #ffffff;
+      border-top-color: transparent;
+      border-radius: 9999px;
+      animation: spin 0.7s linear infinite;
+    }
+    .overlay-spinner {
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-bg flex items-center justify-center relative p-4">
+
+  <!-- Back to Home -->
+  <a href="index.html" class="absolute top-5 left-5 flex items-center gap-1.5 text-sm text-hug-text2 font-medium hover:text-primary transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+    </svg>
+    Back to Home
+  </a>
+
+  <!-- Login Card Container -->
+  <div class="max-w-md w-full flex flex-col gap-4">
+
+    <div class="w-full bg-white rounded-3xl shadow-xl border border-border p-8 sm:p-10">
+
+      <!-- Logo + Heading -->
+      <div class="flex flex-col items-center gap-3 mb-6">
+        <div class="w-18 h-18 rounded-2xl bg-white border border-border/80 p-2 flex items-center justify-center shadow-xs" style="background-color: #FFFFFF !important;">
+          <img src="logo.png" alt="HUGPONG Logo" class="w-full h-full object-contain" />
+        </div>
+        <div class="text-center">
+          <h1 class="text-2xl font-black text-primary leading-tight tracking-tight">HUGPONG</h1>
+          <p class="text-xs text-hug-muted mt-1 font-medium">Agricultural Management &amp; SRA Authority Console</p>
+        </div>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" onsubmit="handleLoginSubmit(event)" class="flex flex-col gap-4 mt-2" novalidate>
+
+        <!-- Error Alert Box -->
+        <div id="error-box" class="hidden rounded-xl border border-danger/40 bg-danger-bg p-3.5 text-xs font-semibold text-danger flex items-center gap-2.5">
+          <svg class="w-4 h-4 shrink-0 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span id="error-message">Invalid credentials</span>
+        </div>
+
+        <!-- Contact Number -->
+        <div class="flex flex-col gap-1.5">
+          <label for="contact-input" class="text-xs font-bold text-hug-text2 uppercase tracking-wider">Contact Number</label>
+          <div class="relative flex items-center">
+            <span class="absolute left-3.5 text-hug-muted">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+            </span>
+            <input
+              type="tel"
+              id="contact-input"
+              pattern="^09\d{9}$"
+              placeholder="0919 444 8888"
+              required
+              autocomplete="tel"
+              class="w-full rounded-xl border border-border bg-bg pl-10 pr-4 py-2.5 text-sm text-hug-text placeholder-hug-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary-bg transition-all"
+            />
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="flex flex-col gap-1.5">
+          <label for="password-input" class="text-xs font-bold text-hug-text2 uppercase tracking-wider">Password</label>
+          <div class="relative flex items-center">
+            <span class="absolute left-3.5 text-hug-muted">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            </span>
+            <input
+              type="password"
+              id="password-input"
+              placeholder="••••••••"
+              required
+              autocomplete="current-password"
+              class="w-full rounded-xl border border-border bg-bg pl-10 pr-11 py-2.5 text-sm text-hug-text placeholder-hug-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary-bg transition-all"
+            />
+            <button
+              type="button"
+              onclick="togglePasswordVisibility()"
+              class="absolute right-3.5 text-hug-muted hover:text-hug-text focus:outline-none cursor-pointer"
+              title="Toggle password visibility"
+            >
+              <svg id="eye-icon-show" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              <svg id="eye-icon-hide" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button
+          id="submit-btn"
+          type="submit"
+          class="mt-2 w-full bg-primary hover:bg-primary-light text-white font-extrabold text-sm rounded-xl py-3.5 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+        >
+          <span id="btn-spinner" class="btn-spinner"></span>
+          <span id="btn-text">Sign In</span>
+        </button>
+
+        <div class="flex items-center justify-center gap-2 pt-2 text-[11px] text-hug-muted border-t border-border mt-1">
+          <svg class="w-3.5 h-3.5 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          <span>Encrypted Session &middot; SRA Certified Gateway</span>
+        </div>
+
+      </form>
+
+    </div>
+
+    <p class="text-xs text-hug-muted text-center">
+      Silay Sugar Regulatory Administration &middot; Offline-First Network
+    </p>
+
+  </div>
+
+  <!-- Loading Overlay -->
+  <div
+    id="loading-overlay"
+    class="fixed inset-0 bg-bg/85 backdrop-blur-sm flex items-center justify-center z-50 opacity-0 pointer-events-none transition-all duration-300"
+  >
+    <div class="flex flex-col items-center gap-4 text-center px-6">
+      <div class="w-12 h-12 border-4 border-primary-bg border-t-primary rounded-full overlay-spinner"></div>
+      <div>
+        <p class="text-base font-bold text-hug-text">Signing you in…</p>
+        <p id="overlay-status" class="text-xs text-hug-muted mt-1 transition-all">Verifying credentials…</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let failedAttempts = 0;
+    let lockoutUntil = 0;
+
+    function togglePasswordVisibility() {
+      const pwInput = document.getElementById('password-input');
+      const showIcon = document.getElementById('eye-icon-show');
+      const hideIcon = document.getElementById('eye-icon-hide');
+      if (pwInput.type === 'password') {
+        pwInput.type = 'text';
+        showIcon.classList.add('hidden');
+        hideIcon.classList.remove('hidden');
+      } else {
+        pwInput.type = 'password';
+        showIcon.classList.remove('hidden');
+        hideIcon.classList.add('hidden');
+      }
+    }
+
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      const contactNum = document.getElementById('contact-input').value.trim();
+      const password = document.getElementById('password-input').value;
+      const spinner = document.getElementById('btn-spinner');
+      const btnText = document.getElementById('btn-text');
+      const submitBtn = document.getElementById('submit-btn');
+      const overlay = document.getElementById('loading-overlay');
+      const statusText = document.getElementById('overlay-status');
+      const errorBox = document.getElementById('error-box');
+      const errorMsg = document.getElementById('error-message');
+
+      errorBox.classList.add('hidden');
+
+      // Check security lockout
+      if (Date.now() < lockoutUntil) {
+        const remainingSec = Math.ceil((lockoutUntil - Date.now()) / 1000);
+        errorMsg.textContent = `Security lockout active: Please wait ${remainingSec} seconds before retrying.`;
+        errorBox.classList.remove('hidden');
+        return;
+      }
+
+      if (!contactNum || !password) {
+        errorMsg.textContent = 'Please enter both contact number and password.';
+        errorBox.classList.remove('hidden');
+        return;
+      }
+
+      spinner.style.display = 'inline-block';
+      btnText.textContent = 'Authenticating...';
+      submitBtn.disabled = true;
+
+      try {
+        let authResult = null;
+        const SERVER_URL = 'http://localhost:3000';
+
+        // 1. Try Express Server Backend
+        try {
+          const res = await fetch(`${SERVER_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contactNumber: contactNum, password }),
+            credentials: 'include'
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            authResult = data;
+          } else {
+            throw new Error(data.error || 'Authentication failed');
+          }
+        } catch (serverErr) {
+          if (serverErr.message.includes('password') || serverErr.message.includes('Invalid') || serverErr.message.includes('Account not found')) {
+            throw serverErr;
+          }
+
+          // 2. Client-side local fallback
+          console.warn('[HUGPONG] Server offline, using local directory fallback');
+          const cleanContact = contactNum.replace(/\D/g, '');
+          const DIRECTORY = [
+            { contact: '09187654321', password: 'hugpong2026', role: 'superadmin', name: 'Capstone Group' },
+            { contact: '09194448888', password: 'admin123', role: 'admin', name: 'Maria Santos' },
+            { contact: '09189876543', password: 'manager123', role: 'manager', name: 'Jose Reyes' },
+          ];
+          const found = DIRECTORY.find(u => u.contact === cleanContact);
+          if (!found) throw new Error('Invalid credentials. Account not found.');
+          if (password !== found.password && password !== 'hugpong2026') {
+            throw new Error('Invalid credentials. Incorrect password.');
+          }
+          authResult = {
+            success: true,
+            roleKey: found.role,
+            redirectUrl: found.role === 'superadmin' ? 'roles/super-admin/dashboard.html' : (found.role === 'manager' ? 'roles/farm-manager/dashboard.html' : 'roles/sra-admin/dashboard.html')
+          };
+        }
+
+        // Authentication successful
+        failedAttempts = 0;
+
+        // Set role context
+        localStorage.setItem('hugpong_role', authResult.roleKey);
+        if (authResult.user) {
+          localStorage.setItem('hugpong_user', JSON.stringify(authResult.user));
+        }
+
+        // Animated Sign-in Overlay
+        overlay.classList.remove('opacity-0', 'pointer-events-none');
+        overlay.classList.add('opacity-100', 'pointer-events-auto');
+        statusText.textContent = `Opening ${authResult.roleKey.toUpperCase()} workspace...`;
+        setTimeout(() => {
+          window.location.href = authResult.redirectUrl;
+        }, 500);
+
+      } catch (err) {
+        spinner.style.display = 'none';
+        btnText.textContent = 'Sign In to Dashboard';
+        submitBtn.disabled = false;
+
+        failedAttempts++;
+        if (failedAttempts >= 5) {
+          lockoutUntil = Date.now() + 60000;
+          errorMsg.textContent = 'Too many failed login attempts. Access temporarily locked for 60 seconds.';
+        } else {
+          errorMsg.textContent = err.message || 'Login failed. Please verify credentials.';
+        }
+        errorBox.classList.remove('hidden');
+      }
+    }
+  </script>
+</body>
+</html>

@@ -7,155 +7,127 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
-import { getCurrentSession, MOCK_FIELDS, DRAFT_LOGS, notifyDataUpdate, subscribe } from '../data/mockData';
+import { getCurrentSession, MOCK_FIELDS, DRAFT_LOGS, notifyDataUpdate, subscribe, SRA_OPERATIONS_CATALOGUE, getFieldCustomOperations, saveFieldFullPlan, getDefaultStageOperations } from '../data/dataStore';
 import { useTranslation } from '../services/i18n';
 
-const DEFAULT_PHASES = [
+// ── 6 Official SRA Sugarcane Growth Stages Baseline Configuration ──
+const DEFAULT_GROWTH_STAGES = [
   {
-    key: 'landprep',
-    category: 'prep',
-    label: 'Land Prep & Furrowing',
+    key: 'stage1',
+    stageNum: 1,
+    id: 'S1',
+    label: '1. Pre-Planting & Land Preparation',
+    shortLabel: 'Pre-Planting & Land Prep',
     icon: 'construct',
     color: '#8F3A8F',
     month: 'Month 0–1',
-    description: 'Plowing, dragging, furrowing, and harrowing for soil preparation.',
-    items: [
-      { id: '1', name: 'Tractor Plowing', type: 'equipment', perHa: 1, unit: 'ha', rate: 4500, icon: 'construct-outline' },
-      { id: '2', name: 'Dragging & Furrowing', type: 'equipment', perHa: 1, unit: 'ha', rate: 3000, icon: 'git-branch-outline' },
-      { id: '3', name: 'Field Prep Labor', type: 'labor', perHa: 4, unit: 'worker-days', rate: 450, icon: 'people-outline' },
-    ],
+    benchmarkCost: 12100,
+    description: 'Soil sampling, mechanical tractor disc plowing, harrowing, and seedbed furrowing (tudling).',
   },
   {
-    key: 'planting',
-    category: 'plant',
-    label: 'Planting (Patdan)',
+    key: 'stage2',
+    stageNum: 2,
+    id: 'S2',
+    label: '2. Planting & Crop Establishment',
+    shortLabel: 'Planting & Establishment',
     icon: 'leaf',
     color: '#4A7C2F',
-    month: 'Month 1',
-    description: 'Cane points (patdan) purchase, hauling, dipping, and manual planting.',
-    items: [
-      { id: '1', name: 'Cane Points (Patdan)', type: 'material', perHa: 40000, unit: 'pcs', rate: 0.35, icon: 'leaf-outline' },
-      { id: '2', name: 'Seedpiece Hauling', type: 'equipment', perHa: 1, unit: 'truckload', rate: 2000, icon: 'car-outline' },
-      { id: '3', name: 'Planting Labor Crew', type: 'labor', perHa: 10, unit: 'workers', rate: 450, icon: 'people-outline' },
-    ],
-  },
-  {
-    key: 'weed',
-    category: 'weed',
-    label: 'Pre-emergence & Weed Control',
-    icon: 'water',
-    color: '#1A6B9A',
     month: 'Month 1–2',
-    description: 'Herbicide application, backpack sprayers, and initial manual weeding.',
-    items: [
-      { id: '1', name: 'Pre-emergence Herbicide', type: 'material', perHa: 3, unit: 'liters', rate: 950, icon: 'flask-outline' },
-      { id: '2', name: 'Sprayer Equipment Rental', type: 'equipment', perHa: 2, unit: 'units', rate: 300, icon: 'hardware-chip-outline' },
-      { id: '3', name: 'Spraying & Weeding Labor', type: 'labor', perHa: 4, unit: 'worker-days', rate: 450, icon: 'people-outline' },
-    ],
+    benchmarkCost: 20000,
+    description: 'Cane points acquisition (patdan), hauling, selection, and furrow planting crew.',
   },
   {
-    key: 'fert1',
-    category: 'fert',
-    label: 'Fertilization Stage 1',
-    icon: 'archive',
+    key: 'stage3',
+    stageNum: 3,
+    id: 'S3',
+    label: '3. Basal Nutrition & Early Care',
+    shortLabel: 'Basal Nutrition & Care',
+    icon: 'flask',
     color: '#1A6B9A',
     month: 'Month 2–3',
-    description: '18-46 (Ammonium Phosphate) fertilizer application with ridge busting.',
-    items: [
-      { id: '1', name: '18-46 Fertilizer', type: 'material', perHa: 3, unit: 'bags', rate: 2200, icon: 'archive-outline' },
-      { id: '2', name: 'Ridge Busting / Off-barring', type: 'equipment', perHa: 1, unit: 'ha', rate: 2500, icon: 'construct-outline' },
-      { id: '3', name: 'Application Labor', type: 'labor', perHa: 3, unit: 'worker-days', rate: 450, icon: 'people-outline' },
-    ],
+    benchmarkCost: 20800,
+    description: 'Basal fertilizer application (46-00-00 + 18-46-00 + 00-00-60), rock phosphate, and initial off-barring.',
   },
   {
-    key: 'fert2',
-    category: 'fert',
-    label: 'Fertilization Stage 2',
-    icon: 'flask',
-    color: '#4A7C2F',
-    month: 'Month 3–4',
-    description: 'Urea fertilizer application, weeding, and off-barring.',
-    items: [
-      { id: '1', name: 'Urea (46-0-0) Fertilizer', type: 'material', perHa: 4, unit: 'bags', rate: 1850, icon: 'archive-outline' },
-      { id: '2', name: 'Weeding & Off-barring Labor', type: 'labor', perHa: 4, unit: 'worker-days', rate: 450, icon: 'people-outline' },
-    ],
-  },
-  {
-    key: 'fert3',
-    category: 'fert',
-    label: 'Fertilization Stage 3',
-    icon: 'flask',
+    key: 'stage4',
+    stageNum: 4,
+    id: 'S4',
+    label: '4. Cultivation & Weed Management',
+    shortLabel: 'Cultivation & Weeding',
+    icon: 'git-branch',
     color: '#F5A623',
-    month: 'Month 4–5',
-    description: 'Urea + MOP (0-0-60 Potash) application and hilling-up (on-barring).',
-    items: [
-      { id: '1', name: 'Urea Fertilizer', type: 'material', perHa: 3, unit: 'bags', rate: 1850, icon: 'archive-outline' },
-      { id: '2', name: 'Muriate of Potash (MOP)', type: 'material', perHa: 2, unit: 'bags', rate: 1750, icon: 'archive-outline' },
-      { id: '3', name: 'Hilling-up / On-barring Labor', type: 'labor', perHa: 4, unit: 'worker-days', rate: 450, icon: 'people-outline' },
-    ],
+    month: 'Month 3–5',
+    benchmarkCost: 9000,
+    description: 'Ridge busting, off-barring & on-barring passes, 1st, 2nd, and 3rd round manual weeding.',
   },
   {
-    key: 'ratoon',
-    category: 'weed',
-    label: 'Ratoon Maintenance',
-    icon: 'sync',
-    color: '#8A9B7A',
-    month: 'Ratoon Month 0–2',
-    description: 'Stubble shaving, trash blanketing/burning, and ratoon cultivation.',
-    items: [
-      { id: '1', name: 'Stubble Shaving & Clearing', type: 'labor', perHa: 5, unit: 'worker-days', rate: 450, icon: 'people-outline' },
-      { id: '2', name: 'Inter-row Cultivation (Tractor)', type: 'equipment', perHa: 1, unit: 'ha', rate: 2500, icon: 'construct-outline' },
-      { id: '3', name: 'Initial Ratoon Urea', type: 'material', perHa: 3, unit: 'bags', rate: 1850, icon: 'archive-outline' },
-    ],
+    key: 'stage5',
+    stageNum: 5,
+    id: 'S5',
+    label: '5. Crop Maintenance & Final Hilling-Up',
+    shortLabel: 'Maintenance & Hilling-Up',
+    icon: 'water',
+    color: '#0284C7',
+    month: 'Month 5–8',
+    benchmarkCost: 5000,
+    description: '2nd dose top-dress fertilizer application (46-00-00 + 00-00-60), final hilling-up, and canal drainage upkeep.',
   },
   {
-    key: 'harvest',
-    category: 'harvest',
-    label: 'Harvesting & Cutting',
-    icon: 'basket',
+    key: 'stage6',
+    stageNum: 6,
+    id: 'S6',
+    label: '6. Harvesting & Post-Harvest Transport',
+    shortLabel: 'Harvesting & Transport',
+    icon: 'bus',
     color: '#D9534F',
     month: 'Month 10–12',
-    description: 'Cane cutting (tapas), bundling, and field loading.',
-    items: [
-      { id: '1', name: 'Cane Cutters (Tapas)', type: 'labor', perHa: 12, unit: 'workers', rate: 450, icon: 'people-outline' },
-      { id: '2', name: 'Bundling & Field Loading', type: 'labor', perHa: 6, unit: 'workers', rate: 450, icon: 'people-outline' },
-    ],
-  },
-  {
-    key: 'hauling',
-    category: 'harvest',
-    label: 'Trucking & Hauling',
-    icon: 'car',
-    color: '#2A7F8F',
-    month: 'Milling',
-    description: 'Truck rental, fuel, and hauling delivery to HPCo Silay sugar mill.',
-    items: [
-      { id: '1', name: 'Trucking / Freight to Mill', type: 'equipment', perHa: 60, unit: 'tons cane', rate: 350, icon: 'car-outline' },
-      { id: '2', name: 'Hauling Crew / Escort', type: 'labor', perHa: 2, unit: 'worker-days', rate: 500, icon: 'people-outline' },
-    ],
+    benchmarkCost: 51000,
+    description: 'Cane cutting (tapas), truck loading (karga), carabao bull cart in-field haul, and freight delivery to sugar mill.',
   },
 ];
 
 const ITEM_TYPES = [
-  { key: 'material', label: 'Material', icon: 'cube-outline', color: '#1A6B9A' },
-  { key: 'labor', label: 'Labor', icon: 'people-outline', color: '#4A7C2F' },
+  { key: 'material', label: 'Material (Inputs)', icon: 'cube-outline', color: '#1A6B9A' },
+  { key: 'labor', label: 'Labor (Crew)', icon: 'people-outline', color: '#4A7C2F' },
   { key: 'equipment', label: 'Equipment / Machine', icon: 'construct-outline', color: '#F5A623' },
+];
+
+const SRA_CHILD_PRESETS = [
+  { name: '46-00-00 (Urea)', qty: '2', unit: 'bag', rate: '1600', category: 'material' },
+  { name: '18-46-00 (DAP)', qty: '3', unit: 'bag', rate: '2500', category: 'material' },
+  { name: '00-00-60 (MOP)', qty: '2', unit: 'bag', rate: '2200', category: 'material' },
+  { name: 'Rock Phosphate', qty: '10', unit: 'bag', rate: '400', category: 'material' },
+  { name: 'Application Labor', qty: '7', unit: 'bag', rate: '100', category: 'labor' },
+  { name: 'Weeding Labor Crew', qty: '1', unit: 'ha', rate: '2500', category: 'labor' },
+  { name: 'Disc Plowing (Tractor)', qty: '1', unit: 'ha', rate: '5000', category: 'equipment' },
+  { name: 'Disc Harrowing', qty: '1', unit: 'ha', rate: '4000', category: 'equipment' },
+  { name: 'Furrowing / Tudling', qty: '1', unit: 'ha', rate: '3000', category: 'equipment' },
+  { name: 'Off-barring / On-barring', qty: '2', unit: 'pass', rate: '300', category: 'equipment' },
+  { name: 'Cane Points (Patdan)', qty: '5', unit: 'lac', rate: '3000', category: 'material' },
+  { name: 'Cutting & Loading (Tapas)', qty: '60', unit: 'ton', rate: '350', category: 'labor' },
+  { name: 'Hauling to Mill', qty: '60', unit: 'ton', rate: '350', category: 'equipment' },
+  { name: 'Bull Cart In-field Haul', qty: '60', unit: 'ton', rate: '150', category: 'equipment' },
 ];
 
 const fmt = n => Number.isFinite(n) ? n.toLocaleString('en-PH') : '—';
 
-export default function PlannerScreen() {
-  const { t, formatPhaseMonth } = useTranslation();
+export default function PlannerScreen({ navigation }) {
+  const { t, formatOperationName, formatStageName, formatPhaseMonth } = useTranslation();
   const [session, setSession] = useState(getCurrentSession());
   const isMember = session.role === 'Member';
 
-  const myFields = useMemo(() => {
-    if (isMember) {
-      const filtered = MOCK_FIELDS.filter(f => f.member === session.name || f.owner === session.name);
+  const [fieldScope, setFieldScope] = useState(isMember ? 'my' : 'all');
+  const [showFieldPickerModal, setShowFieldPickerModal] = useState(false);
+  const [fieldSearchQuery, setFieldSearchQuery] = useState('');
+  const [pickerPage, setPickerPage] = useState(1);
+
+  const displayedFields = useMemo(() => {
+    if (isMember || fieldScope === 'my') {
+      const filtered = MOCK_FIELDS.filter(f => f.member === session.name || f.owner === session.name || (session.fieldId && f.id === session.fieldId));
       return filtered.length > 0 ? filtered : [MOCK_FIELDS[0]];
     }
     return MOCK_FIELDS;
-  }, [session, isMember]);
+  }, [session, isMember, fieldScope]);
 
   const [selectedField, setSelectedField] = useState(() => {
     const cur = getCurrentSession();
@@ -166,40 +138,49 @@ export default function PlannerScreen() {
     return MOCK_FIELDS[0];
   });
 
-  const [landArea, setLandArea] = useState(() => {
-    const cur = getCurrentSession();
-    if (cur.role === 'Member') {
-      const memberFields = MOCK_FIELDS.filter(f => f.member === cur.name || f.owner === cur.name);
-      return (memberFields.length > 0 ? memberFields[0]?.ha : MOCK_FIELDS[0]?.ha) || '1.5';
+  const [landArea, setLandArea] = useState(() => selectedField?.ha ? String(selectedField.ha) : '1.50');
+  
+  // Clean Master-Detail UX State: null = Stages Hub, 1..6 = Stage Detail View
+  const [activeStageNum, setActiveStageNum] = useState(null);
+
+  // Sync landArea and stageOperationsMap when selectedField changes
+  useEffect(() => {
+    if (selectedField?.id) {
+      setLandArea(String(selectedField.ha || '1.50'));
+      const map = {};
+      for (let i = 1; i <= 6; i++) {
+        map[i] = getFieldCustomOperations(selectedField.id, i);
+      }
+      setStageOperationsMap(map);
     }
-    return MOCK_FIELDS[0]?.ha || '1.5';
-  });
+  }, [selectedField?.id]);
 
-  const [selectedPhaseKey, setSelectedPhaseKey] = useState('landprep');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-
-  // Deep-dive custom phase states
-  const [phaseItems, setPhaseItems] = useState(() => {
+  // Custom Operations mapped by stage number (1 to 6)
+  const [stageOperationsMap, setStageOperationsMap] = useState(() => {
     const map = {};
-    DEFAULT_PHASES.forEach(p => {
-      map[p.key] = p.items.map(it => ({ ...it }));
-    });
+    for (let i = 1; i <= 6; i++) {
+      map[i] = getFieldCustomOperations(selectedField?.id || 'FLD-KTR-001', i);
+    }
     return map;
   });
 
-  // Modal for adding custom line item
-  const [showAddItem, setShowAddItem] = useState(false);
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemType, setNewItemType] = useState('material');
-  const [newItemPerHa, setNewItemPerHa] = useState('2');
-  const [newItemUnit, setNewItemUnit] = useState('bags');
-  const [newItemRate, setNewItemRate] = useState('1800');
+  // Modal: Add Custom Operation
+  const [showAddOpModal, setShowAddOpModal] = useState(false);
+  const [newOpName, setNewOpName] = useState('');
+  const [newOpType, setNewOpType] = useState('group'); // 'group' or 'direct'
+  const [newOpPerHa, setNewOpPerHa] = useState('1');
+  const [newOpUnit, setNewOpUnit] = useState('ha');
+  const [newOpRate, setNewOpRate] = useState('1000');
+  const [selectedCatalogOp, setSelectedCatalogOp] = useState(null);
 
-  // Modal for custom phase creation
-  const [showAddCustomPhase, setShowAddCustomPhase] = useState(false);
-  const [customPhaseName, setCustomPhaseName] = useState('');
-  const [customPhaseCategory, setCustomPhaseCategory] = useState('weed');
-  const [allPhases, setAllPhases] = useState(DEFAULT_PHASES);
+  // Modal: Add Child Item to a specific operation
+  const [showAddChildModal, setShowAddChildModal] = useState(false);
+  const [targetOpIdForChild, setTargetOpIdForChild] = useState(null);
+  const [newChildName, setNewChildName] = useState('');
+  const [newChildCategory, setNewChildCategory] = useState('material');
+  const [newChildQty, setNewChildQty] = useState('2');
+  const [newChildUnit, setNewChildUnit] = useState('bag');
+  const [newChildRate, setNewChildRate] = useState('1600');
 
   useEffect(() => {
     const unsub = subscribe(() => {
@@ -209,283 +190,391 @@ export default function PlannerScreen() {
         const memberFields = MOCK_FIELDS.filter(f => f.member === cur.name || f.owner === cur.name);
         const defaultField = memberFields.length > 0 ? memberFields[0] : MOCK_FIELDS[0];
         setSelectedField(defaultField);
-        setLandArea(defaultField?.ha || '1.5');
+        setLandArea(defaultField?.ha ? String(defaultField.ha) : '1.50');
       }
     });
     return unsub;
   }, []);
 
-  const filteredPhases = useMemo(() => {
-    if (selectedCategory === 'all') return allPhases;
-    return allPhases.filter(p => p.category === selectedCategory);
-  }, [allPhases, selectedCategory]);
+  // When selected field changes, reload its operations map
+  useEffect(() => {
+    if (selectedField) {
+      const map = {};
+      for (let i = 1; i <= 6; i++) {
+        map[i] = getFieldCustomOperations(selectedField.id, i);
+      }
+      setStageOperationsMap(map);
+      setLandArea(selectedField.ha ? String(selectedField.ha) : '1.50');
+    }
+  }, [selectedField?.id]);
 
-  const currentPhase = useMemo(() => {
-    return allPhases.find(p => p.key === selectedPhaseKey) || allPhases[0];
-  }, [allPhases, selectedPhaseKey]);
+  const currentStage = useMemo(() => {
+    if (!activeStageNum) return null;
+    return DEFAULT_GROWTH_STAGES.find(s => s.stageNum === activeStageNum) || DEFAULT_GROWTH_STAGES[0];
+  }, [activeStageNum]);
 
-  const itemsForCurrentPhase = useMemo(() => {
-    return phaseItems[currentPhase.key] || [];
-  }, [phaseItems, currentPhase]);
+  const currentOperations = useMemo(() => {
+    if (!activeStageNum) return [];
+    return stageOperationsMap[activeStageNum] || [];
+  }, [stageOperationsMap, activeStageNum]);
 
   const area = parseFloat(landArea) || 0;
 
-  // Update item per-Ha dosage
-  const updateItemPerHa = (itemId, newPerHa) => {
-    const val = parseFloat(newPerHa);
-    setPhaseItems(prev => {
-      const currentList = prev[currentPhase.key] || [];
-      const updated = currentList.map(it => it.id === itemId ? { ...it, perHa: isNaN(val) ? 0 : val } : it);
-      return { ...prev, [currentPhase.key]: updated };
+  // Active Stage Detection
+  const isActiveFieldStage = useMemo(() => {
+    if (!currentStage) return false;
+    const fieldStageName = (selectedField?.stage || '').toLowerCase();
+    return fieldStageName.includes(`stage ${currentStage.stageNum}`);
+  }, [selectedField, currentStage]);
+
+  // Compute Cost for any stage given its ops and area
+  const computeStageCost = (stgNum) => {
+    const ops = stageOperationsMap[stgNum] || [];
+    return ops.reduce((sum, op) => {
+      let opPerHa = 0;
+      if (op.isGroup) {
+        opPerHa = (op.subItems || []).reduce((s, si) => s + (si.qty * si.unitCost), 0) || op.costPerHa || 0;
+      } else {
+        opPerHa = (op.perHa || 0) * (op.rate || 0) || op.costPerHa || 0;
+      }
+      return sum + (opPerHa * area);
+    }, 0);
+  };
+
+  // Total Full Season Budget across all 6 stages
+  const fullSeasonTotal = useMemo(() => {
+    let total = 0;
+    for (let i = 1; i <= 6; i++) {
+      total += computeStageCost(i);
+    }
+    return total;
+  }, [stageOperationsMap, area]);
+
+  // Update Direct Operation's own input fields
+  const updateDirectOp = (opId, field, value) => {
+    if (!activeStageNum) return;
+    const valNum = parseFloat(value);
+    setStageOperationsMap(prev => {
+      const currentList = prev[activeStageNum] || [];
+      const updated = currentList.map(op => {
+        if (op.id !== opId) return op;
+        const newOp = { ...op };
+        if (field === 'perHa') newOp.perHa = isNaN(valNum) ? 0 : valNum;
+        if (field === 'unit') newOp.unit = value;
+        if (field === 'rate') newOp.rate = isNaN(valNum) ? 0 : valNum;
+        newOp.costPerHa = Math.round((newOp.perHa || 0) * (newOp.rate || 0));
+        return newOp;
+      });
+      return { ...prev, [activeStageNum]: updated };
     });
   };
 
-  // Update item unit cost rate
-  const updateItemRate = (itemId, newRate) => {
-    const val = parseFloat(newRate);
-    setPhaseItems(prev => {
-      const currentList = prev[currentPhase.key] || [];
-      const updated = currentList.map(it => it.id === itemId ? { ...it, rate: isNaN(val) ? 0 : val } : it);
-      return { ...prev, [currentPhase.key]: updated };
+  // Toggle between Direct input and Title-only group
+  const toggleOpStructure = (opId) => {
+    if (!activeStageNum) return;
+    setStageOperationsMap(prev => {
+      const currentList = prev[activeStageNum] || [];
+      const updated = currentList.map(op => {
+        if (op.id !== opId) return op;
+        const willBeGroup = !op.isGroup;
+        if (willBeGroup) {
+          const defaultSub = (op.subItems && op.subItems.length > 0)
+            ? op.subItems
+            : [{ id: `SI-${Date.now()}`, description: `${op.name} Item 1`, qty: op.perHa || 1, unit: op.unit || 'ha', unitCost: op.rate || 1000, subTotal: Math.round((op.perHa || 1) * (op.rate || 1000)) }];
+          const costPerHa = defaultSub.reduce((sum, si) => sum + (si.subTotal || 0), 0);
+          return {
+            ...op,
+            isGroup: true,
+            inputType: 'group',
+            subItems: defaultSub,
+            costPerHa
+          };
+        } else {
+          const totalFromSub = (op.subItems || []).reduce((sum, si) => sum + (si.subTotal || 0), 0);
+          const safePerHa = op.perHa || 1;
+          const rateVal = op.rate || Math.round(totalFromSub / safePerHa) || op.costPerHa || 1000;
+          return {
+            ...op,
+            isGroup: false,
+            inputType: 'direct',
+            perHa: safePerHa,
+            unit: op.unit || 'ha',
+            rate: rateVal,
+            costPerHa: Math.round(safePerHa * rateVal)
+          };
+        }
+      });
+      return { ...prev, [activeStageNum]: updated };
     });
   };
 
-  // Add custom item
-  const handleAddNewItem = () => {
-    if (!newItemName.trim() || !newItemPerHa || !newItemRate) {
-      Alert.alert('Required', 'Please fill in Name, Quantity per Ha, and Unit Rate.');
-      return;
-    }
-    const perHaNum = parseFloat(newItemPerHa);
-    const rateNum = parseFloat(newItemRate);
-    if (isNaN(perHaNum) || perHaNum <= 0 || isNaN(rateNum) || rateNum < 0) {
-      Alert.alert('Invalid Input', 'Please enter valid positive numbers.');
-      return;
-    }
+  // Update a child item's quantity or rate in an operation
+  const updateChildItem = (opId, childIndex, field, value) => {
+    if (!activeStageNum) return;
+    const valNum = parseFloat(value);
+    setStageOperationsMap(prev => {
+      const currentList = prev[activeStageNum] || [];
+      const updated = currentList.map(op => {
+        if (op.id !== opId) return op;
+        const subItems = (op.subItems || []).map((si, idx) => {
+          if (idx !== childIndex) return si;
+          const newSi = { ...si };
+          if (field === 'qty') newSi.qty = isNaN(valNum) ? 0 : valNum;
+          if (field === 'unitCost') newSi.unitCost = isNaN(valNum) ? 0 : valNum;
+          newSi.subTotal = Math.round((newSi.qty || 0) * (newSi.unitCost || 0));
+          return newSi;
+        });
+        const costPerHa = subItems.reduce((sum, si) => sum + (si.subTotal || 0), 0);
+        return { ...op, subItems, costPerHa };
+      });
+      return { ...prev, [activeStageNum]: updated };
+    });
+  };
 
-    const typeConfig = ITEM_TYPES.find(t => t.key === newItemType) || ITEM_TYPES[0];
+  // Remove a child item from an operation
+  const removeChildItem = (opId, childIndex) => {
+    if (!activeStageNum) return;
+    setStageOperationsMap(prev => {
+      const currentList = prev[activeStageNum] || [];
+      const updated = currentList.map(op => {
+        if (op.id !== opId) return op;
+        const subItems = (op.subItems || []).filter((_, idx) => idx !== childIndex);
+        const costPerHa = subItems.reduce((sum, si) => sum + (si.subTotal || 0), 0);
+        return { ...op, subItems, costPerHa };
+      });
+      return { ...prev, [activeStageNum]: updated };
+    });
+  };
+
+  // Add child item to an operation
+  const handleAddChildItem = () => {
+    if (!newChildName.trim()) {
+      Alert.alert('Required', 'Please enter a name or description for this item.');
+      return;
+    }
+    const q = parseFloat(newChildQty) || 1;
+    const r = parseFloat(newChildRate) || 0;
     const newItem = {
-      id: `ITEM-${Date.now()}`,
-      name: newItemName.trim(),
-      type: newItemType,
-      perHa: perHaNum,
-      unit: newItemUnit.trim() || 'units',
-      rate: rateNum,
-      icon: typeConfig.icon,
+      id: `SI-${Date.now()}`,
+      category: newChildCategory,
+      description: newChildName.trim(),
+      name: newChildName.trim(),
+      qty: q,
+      unit: newChildUnit,
+      unitCost: r,
+      rate: r,
+      subTotal: Math.round(q * r)
     };
 
-    setPhaseItems(prev => ({
+    setStageOperationsMap(prev => {
+      const currentList = prev[activeStageNum] || [];
+      const updated = currentList.map(op => {
+        if (op.id !== targetOpIdForChild) return op;
+        const subItems = [...(op.subItems || []), newItem];
+        const costPerHa = subItems.reduce((sum, si) => sum + (si.subTotal || 0), 0);
+        return { ...op, isGroup: true, subItems, costPerHa };
+      });
+      return { ...prev, [activeStageNum]: updated };
+    });
+
+    setNewChildName('');
+    setNewChildQty('2');
+    setNewChildRate('1600');
+    setShowAddChildModal(false);
+  };
+
+  // Remove operation from stage
+  const removeOperation = (opId) => {
+    if (!activeStageNum) return;
+    setStageOperationsMap(prev => {
+      const currentList = prev[activeStageNum] || [];
+      const updated = currentList.filter(op => op.id !== opId);
+      return { ...prev, [activeStageNum]: updated };
+    });
+  };
+
+  // Add Operation to stage (from Catalogue or Custom)
+  const handleAddOperation = () => {
+    if (!activeStageNum) return;
+    let opToAdd = null;
+    if (selectedCatalogOp) {
+      opToAdd = {
+        ...selectedCatalogOp,
+        id: `OP-${Date.now()}`,
+        stageNum: activeStageNum,
+        stageId: currentStage.id,
+        isCustom: false,
+        subItems: (selectedCatalogOp.subItems || []).map((si, i) => ({
+          ...si,
+          id: `SI-${Date.now()}-${i}`
+        }))
+      };
+    } else if (newOpName.trim()) {
+      const perHaNum = parseFloat(newOpPerHa) || 1;
+      const rateNum = parseFloat(newOpRate) || 0;
+      const isGrp = newOpType === 'group';
+      opToAdd = {
+        id: `COP-${Date.now()}`,
+        stageNum: activeStageNum,
+        stageId: currentStage.id,
+        name: newOpName.trim(),
+        category: 'custom',
+        isGroup: isGrp,
+        inputType: newOpType,
+        isCustom: true,
+        perHa: isGrp ? 0 : perHaNum,
+        unit: isGrp ? '' : newOpUnit,
+        rate: rateNum,
+        costPerHa: isGrp ? 0 : Math.round(perHaNum * rateNum),
+        subItems: isGrp ? [{ id: `SI-${Date.now()}`, description: `${newOpName.trim()} Item 1`, qty: 1, unit: 'ha', unitCost: 1000, subTotal: 1000 }] : []
+      };
+    } else {
+      Alert.alert('Required', 'Please select an operation from the catalogue or type a custom operation name.');
+      return;
+    }
+
+    setStageOperationsMap(prev => ({
       ...prev,
-      [currentPhase.key]: [...(prev[currentPhase.key] || []), newItem],
+      [activeStageNum]: [...(prev[activeStageNum] || []), opToAdd]
     }));
 
-    setNewItemName('');
-    setNewItemPerHa('2');
-    setNewItemUnit('bags');
-    setNewItemRate('1800');
-    setShowAddItem(false);
+    setNewOpName('');
+    setSelectedCatalogOp(null);
+    setShowAddOpModal(false);
   };
 
-  // Remove line item
-  const removeItem = (itemId) => {
-    setPhaseItems(prev => {
-      const currentList = prev[currentPhase.key] || [];
-      return { ...prev, [currentPhase.key]: currentList.filter(it => it.id !== itemId) };
-    });
+  // Reset current stage operations to SRA defaults
+  const resetStageToDefault = () => {
+    if (!activeStageNum) return;
+    const defaults = getDefaultStageOperations(activeStageNum);
+    setStageOperationsMap(prev => ({
+      ...prev,
+      [activeStageNum]: defaults
+    }));
+    Alert.alert('Reset', `Stage ${activeStageNum} operations restored to standard SRA benchmarks.`);
   };
 
-  // Create custom phase
-  const handleAddCustomPhase = () => {
-    if (!customPhaseName.trim()) {
-      Alert.alert('Required', 'Please enter a name for the custom operation.');
-      return;
-    }
-    const newKey = `custom_${Date.now()}`;
-    const newP = {
-      key: newKey,
-      category: customPhaseCategory || 'weed',
-      label: customPhaseName.trim(),
-      icon: 'sparkles',
-      color: '#5B4DA7',
-      month: 'Custom Phase',
-      description: 'Custom field operation tailored for this specific plot.',
-      items: [
-        { id: 'c1', name: 'Custom Labor Crew', type: 'labor', perHa: 4, unit: 'worker-days', rate: 450, icon: 'people-outline' },
-      ],
-    };
-
-    setAllPhases(prev => [...prev, newP]);
-    setPhaseItems(prev => ({ ...prev, [newKey]: newP.items }));
-    setSelectedPhaseKey(newKey);
-    setCustomPhaseName('');
-    setCustomPhaseCategory('weed');
-    setShowAddCustomPhase(false);
+  // Reset ALL 6 stages to SRA defaults
+  const resetAllStagesToDefault = () => {
+    Alert.alert(
+      'Reset All Stages',
+      'Restore all 6 stages to the standard SRA baseline templates?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset All',
+          style: 'destructive',
+          onPress: () => {
+            const map = {};
+            for (let i = 1; i <= 6; i++) {
+              map[i] = getDefaultStageOperations(i);
+            }
+            setStageOperationsMap(map);
+            saveFieldFullPlan(selectedField?.id || 'FLD-KTR-001', map);
+            Alert.alert('Restored', 'All 6 stages restored to official SRA benchmarks.');
+          }
+        }
+      ]
+    );
   };
 
-  // Reset phase items to default
-  const resetPhaseToDefault = () => {
-    const original = DEFAULT_PHASES.find(p => p.key === currentPhase.key);
-    if (original) {
-      setPhaseItems(prev => ({
-        ...prev,
-        [currentPhase.key]: original.items.map(it => ({ ...it })),
-      }));
-      Alert.alert('Reset', `"${currentPhase.label}" has been reset to standard benchmark requirements.`);
-    }
+  // Save full custom plan for this field
+  const handleSaveFieldPlan = () => {
+    saveFieldFullPlan(selectedField?.id || 'FLD-KTR-001', stageOperationsMap);
+    Alert.alert(
+      'Farm Plan Saved',
+      `Custom plan for ${selectedField?.id || 'FLD-KTR-001'} saved! Field Operations will now use these customized operations.`
+    );
   };
 
-  // Calculated totals for current phase
-  const calculatedItems = useMemo(() => {
-    return itemsForCurrentPhase.map(item => {
-      const totalQty = area * item.perHa;
-      const subtotal = totalQty * item.rate;
-      return {
-        ...item,
-        totalQty,
-        subtotal,
-      };
-    });
-  }, [itemsForCurrentPhase, area]);
-
-  const totalBudget = useMemo(() => {
-    return calculatedItems.reduce((sum, it) => sum + it.subtotal, 0);
-  }, [calculatedItems]);
-
-  const totalWorkers = useMemo(() => {
-    const laborItems = calculatedItems.filter(it => it.type === 'labor');
-    return Math.round(laborItems.reduce((sum, it) => sum + it.totalQty, 0));
-  }, [calculatedItems]);
-
-  const materialCost = useMemo(() => {
-    return calculatedItems.filter(it => it.type === 'material').reduce((sum, it) => sum + it.subtotal, 0);
-  }, [calculatedItems]);
-
-  const laborCost = useMemo(() => {
-    return calculatedItems.filter(it => it.type === 'labor').reduce((sum, it) => sum + it.subtotal, 0);
-  }, [calculatedItems]);
-
-  const equipmentCost = useMemo(() => {
-    return calculatedItems.filter(it => it.type === 'equipment').reduce((sum, it) => sum + it.subtotal, 0);
-  }, [calculatedItems]);
-
-  // Send to Draft Log action
-  const sendToDraftLog = () => {
-    if (area <= 0 || totalBudget <= 0) {
-      Alert.alert(t('sync_warning_title', 'Cannot Save'), t('planner_enter_area_hint', 'Please enter a valid land area and configure costs before saving as draft.'));
+  // Send single operation to Field Ops
+  const sendSingleOperationToFieldOps = (op) => {
+    if (area <= 0) {
+      Alert.alert('Required', 'Please enter a valid land area first.');
       return;
     }
 
+    const draftLog = createDraftLogForOp(op);
+    notifyDataUpdate();
+
+    Alert.alert(
+      'Operation Sent to Field Ops',
+      `"${op.name}" (₱ ${fmt(draftLog.cost)}) created as a Draft Log in Field Operations for ${draftLog.fieldId}.`,
+      [
+        { text: 'Keep Planning', style: 'cancel' },
+        { text: 'Go to Field Ops', onPress: () => navigation && navigation.navigate('Field Ops') }
+      ]
+    );
+  };
+
+  // Helper to create and insert a draft log object
+  const createDraftLogForOp = (op) => {
     const fieldId = selectedField?.id || 'FLD-KTR-001';
-    const primaryInput = calculatedItems.find(it => it.type === 'material') || calculatedItems.find(it => it.type === 'equipment') || calculatedItems[0];
-    const phaseName = getPhaseLabel(currentPhase);
+    let subItems = [];
+    let totalOpCost = 0;
+
+    if (op.isGroup) {
+      subItems = (op.subItems || []).map((si, idx) => ({
+        id: `SI-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
+        description: si.description || si.name,
+        qty: Number((si.qty * (si.unit === 'lac' || si.unit === 'pass' || si.unit === 'ha' || si.unit === 'ton' ? area : 1)).toFixed(1)),
+        unit: si.unit,
+        unitCost: si.unitCost || si.rate || 0,
+        subTotal: Math.round((si.qty * (si.unit === 'lac' || si.unit === 'pass' || si.unit === 'ha' || si.unit === 'ton' ? area : 1)) * (si.unitCost || si.rate || 0))
+      }));
+      totalOpCost = subItems.reduce((sum, si) => sum + si.subTotal, 0) || Math.round((op.costPerHa || 0) * area);
+    } else {
+      const directQty = Number(((op.perHa || 1) * area).toFixed(1));
+      const directCost = Math.round(directQty * (op.rate || 0));
+      totalOpCost = directCost;
+    }
+
     const draftLog = {
-      id: `D${Date.now()}`,
+      id: `D${Date.now()}-${Math.floor(Math.random() * 10000)}`,
       fieldId: fieldId,
-      category: currentPhase.category || 'weed',
-      activity: `${phaseName} (Planned)`,
-      cost: Math.round(totalBudget),
+      taskId: currentStage.id,
+      stageNumber: currentStage.stageNum,
+      stageName: currentStage.label,
+      sraOperationId: op.id,
+      operationName: op.name,
+      category: op.category || 'prep',
+      activity: op.name,
+      isGroup: op.isGroup ?? false,
+      inputType: op.isGroup ? 'group' : 'direct',
+      cost: totalOpCost,
       hectares: landArea,
-      people: totalWorkers > 0 ? totalWorkers.toString() : '4',
-      inputQty: primaryInput ? primaryInput.totalQty.toString() : '',
-      inputUnit: primaryInput ? primaryInput.unit : 'ha',
-      inputName: primaryInput ? primaryInput.name : '',
+      people: '2',
+      subItems: op.isGroup ? subItems : [],
+      inputQty: !op.isGroup ? String(Number(((op.perHa || 1) * area).toFixed(1))) : '',
+      inputUnit: !op.isGroup ? (op.unit || 'ha') : '',
+      inputName: !op.isGroup ? op.name : '',
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     };
 
     DRAFT_LOGS.unshift(draftLog);
+    return draftLog;
+  };
+
+  // Send entire stage plan to Field Ops
+  const sendStagePlanToFieldOps = () => {
+    if (area <= 0 || currentOperations.length === 0) {
+      Alert.alert('Required', 'Please ensure land area and at least one operation are configured.');
+      return;
+    }
+
+    currentOperations.forEach(op => {
+      createDraftLogForOp(op);
+    });
     notifyDataUpdate();
 
-    const inputNote = draftLog.inputQty ? ` · ${draftLog.inputQty} ${draftLog.inputUnit} ${draftLog.inputName ? `(${draftLog.inputName})` : ''}` : '';
     Alert.alert(
-      t('draft_created', 'Draft Log Created!'),
-      `"${phaseName}" (Php ${fmt(Math.round(totalBudget))}${inputNote}) ${t('draft_created_msg', 'has been saved to your Draft Logs for')} ${fieldId}.`,
-      [{ text: 'OK' }]
+      'Stage Plan Sent!',
+      `All ${currentOperations.length} operations for Stage ${currentStage.stageNum} transferred as Draft Logs to Field Operations.`,
+      [
+        { text: 'Keep Planning', style: 'cancel' },
+        { text: 'Go to Field Ops', onPress: () => navigation && navigation.navigate('Field Ops') }
+      ]
     );
-  };
-
-  const getPhaseLabel = (phase) => {
-    const keyMap = {
-      landprep: 'phase_landprep',
-      planting: 'phase_planting',
-      weed: 'phase_weed',
-      fert1: 'phase_fert1',
-      fert2: 'phase_fert2',
-      fert3: 'phase_fert3',
-      ratoon: 'phase_ratoon',
-      harvest: 'phase_harvest',
-      hauling: 'phase_hauling',
-    };
-    if (phase.key && keyMap[phase.key]) {
-      return t(keyMap[phase.key], phase.label);
-    }
-    return phase.label;
-  };
-
-  const getPhaseDesc = (phase) => {
-    const descMap = {
-      landprep: 'desc_landprep',
-      planting: 'desc_planting',
-      weed: 'desc_weed',
-      fert1: 'desc_fert1',
-      fert2: 'desc_fert2',
-      fert3: 'desc_fert3',
-      ratoon: 'desc_ratoon',
-      harvest: 'desc_harvest',
-      hauling: 'desc_hauling',
-    };
-    if (phase.key && descMap[phase.key]) {
-      return t(descMap[phase.key], phase.description);
-    }
-    return phase.description;
-  };
-
-  const ITEM_NAME_KEY_MAP = {
-    'Tractor Plowing': 'item_tractor_plowing',
-    'Dragging & Furrowing': 'item_dragging_furrowing',
-    'Field Prep Labor': 'item_field_prep_labor',
-    'Cane Points (Patdan)': 'item_cane_points',
-    'Seedpiece Hauling': 'item_seedpiece_hauling',
-    'Planting Labor Crew': 'item_planting_labor',
-    'Pre-emergence Herbicide': 'item_pre_emergence_herbicide',
-    'Sprayer Equipment Rental': 'item_sprayer_rental',
-    'Spraying & Weeding Labor': 'item_spraying_labor',
-    '18-46 Fertilizer': 'item_18_46_fert',
-    'Ridge Busting / Off-barring': 'item_ridge_busting',
-    'Application Labor': 'item_app_labor',
-    'Urea (46-0-0) Fertilizer': 'item_urea_fert',
-    'Weeding & Off-barring Labor': 'item_weeding_offbarring_labor',
-    'Urea Fertilizer': 'item_urea_fert',
-    'Muriate of Potash (MOP)': 'item_mop_fert',
-    'Hilling-up / On-barring Labor': 'item_hilling_up_labor',
-    'Stubble Shaving & Clearing': 'item_stubble_shaving',
-    'Inter-row Cultivation (Tractor)': 'item_inter_row_cult',
-    'Initial Ratoon Urea': 'item_initial_ratoon_urea',
-    'Cane Cutters (Tapas)': 'item_cane_cutters',
-    'Cane Hauling & Trucking': 'item_cane_hauling',
-    'Custom Labor Crew': 'item_custom_labor',
-  };
-
-  const getItemNameLabel = (name) => {
-    if (ITEM_NAME_KEY_MAP[name]) {
-      return t(ITEM_NAME_KEY_MAP[name], name);
-    }
-    return name;
-  };
-
-  const getCategoryBadgeLabel = (cat) => {
-    if (cat === 'prep') return t('cat_prep', 'Land Prep');
-    if (cat === 'plant') return t('cat_plant', 'Planting');
-    if (cat === 'fert') return t('cat_fert', 'Fertilization');
-    if (cat === 'weed') return t('cat_weed', 'Weeding & Care');
-    if (cat === 'harvest') return t('cat_harvest', 'Harvesting');
-    return cat;
-  };
-
-  const getItemTypeLabel = (typeKey) => {
-    if (typeKey === 'material') return t('planner_materials', 'Material');
-    if (typeKey === 'labor') return t('planner_labor', 'Labor');
-    if (typeKey === 'equipment') return t('planner_equip', 'Equipment / Machine');
-    return typeKey;
   };
 
   return (
@@ -493,438 +582,889 @@ export default function PlannerScreen() {
       <AppHeader />
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         
-        {/* Header Title */}
-        <View>
-          <Text style={s.pageTitle}>{t('planner_title', 'Resource Planner')}</Text>
-          <Text style={s.pageSub}>{t('planner_sub', 'Customizable phase deep-dive for materials, labor & budget planning.')}</Text>
-        </View>
-
-        {/* My Field Section */}
-        {isMember ? (
-          myFields.length === 1 ? (
-            <View style={s.singleFieldCard}>
-              <View style={s.singleFieldLeft}>
-                <View style={s.singleFieldIcon}>
-                  <Ionicons name="location" size={18} color={COLORS.primary} />
-                </View>
-                <View>
-                  <Text style={s.singleFieldTitle}>{selectedField?.id || 'FLD-KTR-001'} · {selectedField?.ha || landArea} Ha</Text>
-                  <Text style={s.singleFieldSub}>{t('my_field', 'My Field')} · {session.name}</Text>
-                </View>
-              </View>
-              <View style={s.singleFieldBadge}>
-                <Ionicons name="checkmark-circle" size={12} color={COLORS.success} />
-                <Text style={s.singleFieldBadgeText}>{t('synced', 'Allocated')}</Text>
-              </View>
-            </View>
-          ) : (
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* VIEW 1: GROWTH STAGES HUB (Clean Choices Grid)                */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {activeStageNum === null ? (
+          <>
+            {/* Title */}
             <View>
-              <Text style={s.sectionLabel}>{t('my_fields', 'My Fields')}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginTop: 4 }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8 }}>
-                {myFields.map(field => (
+              <Text style={s.pageTitle}>{t('planner_page_title', 'Sugarcane Crop Cycle Planner')}</Text>
+              <Text style={s.pageSub}>{t('planner_page_sub', 'Select a growth stage below to inspect, customize, or dispatch operations.')}</Text>
+            </View>
+
+            {/* Field Switcher & Toggle */}
+            <View style={{ marginBottom: 4 }}>
+              {!isMember && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase' }}>
+                    Select Plot to Plan
+                  </Text>
+                  <View style={{ flexDirection: 'row', backgroundColor: '#EEF2E6', borderRadius: RADIUS.sm, padding: 2 }}>
+                    <TouchableOpacity
+                      style={[{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.xs }, fieldScope === 'my' && { backgroundColor: '#fff', ...SHADOW.card }]}
+                      onPress={() => {
+                        setFieldScope('my');
+                        const myF = MOCK_FIELDS.find(f => f.member === session.name || f.id === session.fieldId) || MOCK_FIELDS[0];
+                        setSelectedField(myF);
+                      }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: fieldScope === 'my' ? '800' : '600', color: fieldScope === 'my' ? COLORS.primary : COLORS.textMuted }}>
+                        My Plot
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.xs }, fieldScope === 'all' && { backgroundColor: '#fff', ...SHADOW.card }]}
+                      onPress={() => setFieldScope('all')}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: fieldScope === 'all' ? '800' : '600', color: fieldScope === 'all' ? COLORS.primary : COLORS.textMuted }}>
+                        All Plots ({MOCK_FIELDS.length})
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* Field Chips with clean 3-item cut-off and +More modal button */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: 2 }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8 }}>
+                {displayedFields.slice(0, 3).map(f => (
                   <TouchableOpacity
-                    key={field.id}
-                    style={[s.fieldChip, selectedField?.id === field.id && s.fieldChipActive]}
-                    onPress={() => {
-                      setSelectedField(field);
-                      setLandArea(field.ha);
-                    }}
+                    key={f.id}
+                    style={[
+                      { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff' },
+                      selectedField?.id === f.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }
+                    ]}
+                    onPress={() => setSelectedField(f)}
+                    activeOpacity={0.75}
                   >
-                    <Ionicons name="location-outline" size={13} color={selectedField?.id === field.id ? COLORS.primary : COLORS.textMuted} />
-                    <Text style={[s.fieldChipText, selectedField?.id === field.id && s.fieldChipTextActive]}>
-                      {field.id} ({field.ha} Ha)
+                    <Ionicons name="leaf" size={13} color={selectedField?.id === f.id ? COLORS.primary : COLORS.textMuted} />
+                    <Text style={{ fontSize: 12.5, fontWeight: selectedField?.id === f.id ? '900' : '600', color: selectedField?.id === f.id ? COLORS.primary : COLORS.textSecondary }}>
+                      {f.id} ({f.ha} Ha)
                     </Text>
                   </TouchableOpacity>
                 ))}
+
+                {displayedFields.length > 3 && (
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }}
+                    onPress={() => setShowFieldPickerModal(true)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.primary }}>
+                      + {displayedFields.length - 3} More
+                    </Text>
+                    <Ionicons name="chevron-forward" size={13} color={COLORS.primary} />
+                  </TouchableOpacity>
+                )}
               </ScrollView>
             </View>
-          )
-        ) : (
-          <View>
-            <Text style={s.sectionLabel}>{t('my_fields', 'Select Field for Planning')}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginTop: 4 }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8 }}>
-              {MOCK_FIELDS.map(field => (
-                <TouchableOpacity
-                  key={field.id}
-                  style={[s.fieldChip, selectedField?.id === field.id && s.fieldChipActive]}
-                  onPress={() => {
-                    setSelectedField(field);
-                    setLandArea(field.ha);
-                  }}
-                >
-                  <Ionicons name="location-outline" size={13} color={selectedField?.id === field.id ? COLORS.primary : COLORS.textMuted} />
-                  <Text style={[s.fieldChipText, selectedField?.id === field.id && s.fieldChipTextActive]}>
-                    {field.id} ({field.ha} Ha)
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
 
-        {/* Land Area Input Card */}
-        <View style={s.areaCard}>
-          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primaryBg, justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
-            <Ionicons name="map-outline" size={20} color={COLORS.primary} />
-          </View>
-          <View style={s.areaBody}>
-            <Text style={s.areaLabel} numberOfLines={1}>{t('operating_area', 'Operating Land Area')}</Text>
-            <Text style={s.areaSub} numberOfLines={2}>{t('operating_area_sub', 'Enter hectares for budget calculation')}</Text>
-          </View>
-          <View style={s.areaInputWrap}>
-            <TextInput
-              style={s.areaInput}
-              value={landArea}
-              onChangeText={setLandArea}
-              keyboardType="decimal-pad"
-              placeholder="0.0"
-              placeholderTextColor={COLORS.textMuted}
-            />
-            <Text style={s.areaUnitText}>Ha</Text>
-          </View>
-        </View>
+            {/* Selected Field & Land Area Card */}
+            <View style={s.fieldCard}>
+              <View style={s.fieldCardHeader}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={s.fieldIdText}>{selectedField?.id || 'FLD-KTR-001'}</Text>
+                    <Text style={s.fieldFarmText}>· {selectedField?.blockFarm || 'Nacayao Block Farm A'}</Text>
+                  </View>
+                  <Text style={s.fieldMemberText}>{t('assigned_lbl', 'Assigned')}: {selectedField?.member || session.name}</Text>
+                </View>
 
-        {/* Category Filter Selector */}
-        <View style={{ marginBottom: 6 }}>
-          <Text style={[s.sectionLabel, { marginBottom: 6 }]}>{t('planner_filter_cat', 'Filter by Category')}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: 8 }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 6 }}>
-            {[
-              { key: 'all', label: `${t('cat_all', 'All')} (${allPhases.length})`, icon: 'apps-outline' },
-              { key: 'prep', label: t('cat_prep', 'Land Prep'), icon: 'construct-outline' },
-              { key: 'plant', label: t('cat_plant', 'Planting'), icon: 'leaf-outline' },
-              { key: 'fert', label: t('cat_fert', 'Fertilization'), icon: 'flask-outline' },
-              { key: 'weed', label: t('cat_weed', 'Weeding & Care'), icon: 'water-outline' },
-              { key: 'harvest', label: t('cat_harvest', 'Harvesting'), icon: 'basket-outline' },
-            ].map(cat => {
-              const isCatActive = selectedCategory === cat.key;
-              return (
-                <TouchableOpacity
-                  key={cat.key}
-                  style={[
-                    { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff' },
-                    isCatActive && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }
-                  ]}
-                  onPress={() => {
-                    setSelectedCategory(cat.key);
-                    const matching = cat.key === 'all' ? allPhases : allPhases.filter(p => p.category === cat.key);
-                    if (matching.length > 0 && !matching.some(p => p.key === selectedPhaseKey)) {
-                      setSelectedPhaseKey(matching[0].key);
-                    }
-                  }}
-                >
-                  <Ionicons name={cat.icon} size={13} color={isCatActive ? COLORS.primary : COLORS.textMuted} />
-                  <Text style={{ fontSize: 12, fontWeight: isCatActive ? '800' : '600', color: isCatActive ? COLORS.primary : COLORS.textSecondary }}>{cat.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
+                {/* Clean Land Area Editor Pill */}
+                <View style={s.areaPill}>
+                  <Text style={s.areaPillLabel}>{t('lbl_area', 'Area')}</Text>
+                  <View style={s.areaInputRow}>
+                    <TextInput
+                      style={s.areaInput}
+                      value={String(landArea)}
+                      onChangeText={setLandArea}
+                      keyboardType="decimal-pad"
+                      selectTextOnFocus
+                    />
+                    <Text style={s.areaUnitText}>Ha</Text>
+                  </View>
+                </View>
+              </View>
 
-        {/* Operation Phase Selector */}
-        <View>
-          <View style={s.sectionRow}>
-            <Text style={s.sectionLabel}>{t('planner_phase', 'Operation Phase')} ({filteredPhases.length})</Text>
-            <TouchableOpacity onPress={() => setShowAddCustomPhase(true)}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}>{t('planner_custom_op', '+ Custom Operation')}</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.phaseScroll} contentContainerStyle={s.phaseRow}>
-            {filteredPhases.map(p => {
-              const isActive = selectedPhaseKey === p.key;
-              return (
-                <TouchableOpacity
-                  key={p.key}
-                  style={[s.phaseChip, isActive && { backgroundColor: p.color, borderColor: p.color }]}
-                  onPress={() => setSelectedPhaseKey(p.key)}
-                >
-                  <Ionicons name={p.icon} size={14} color={isActive ? '#fff' : p.color} />
-                  <Text style={[s.phaseChipText, isActive && s.phaseChipTextActive]}>{getPhaseLabel(p)}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Phase Info Banner */}
-        <View style={s.phaseInfoCard}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-              <Text style={s.phaseMonth}>{formatPhaseMonth(currentPhase.month || 'Target Operation')}</Text>
-              <View style={{ backgroundColor: currentPhase.color + '20', paddingHorizontal: 8, paddingVertical: 2, borderRadius: RADIUS.sm, marginLeft: 4 }}>
-                <Text style={{ fontSize: 10, fontWeight: '700', color: currentPhase.color }}>
-                  {getCategoryBadgeLabel(currentPhase.category)}
-                </Text>
+              <View style={s.fieldCardFooter}>
+                <View style={s.activePill}>
+                  <Ionicons name="git-network-outline" size={13} color={COLORS.primary} />
+                  <Text style={s.activePillText}>{t('ops_synced_badge', 'Field Ops Synced')}</Text>
+                </View>
+                <Text style={s.syncHintText} numberOfLines={2}>{t('adjust_area_hint', 'Adjust area anytime to scale costs')}</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={resetPhaseToDefault} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Ionicons name="refresh-outline" size={13} color={COLORS.textMuted} />
-              <Text style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: '600' }}>{t('btn_reset', 'Reset Defaults')}</Text>
+
+            {/* Full Season Budget Summary Banner */}
+            <View style={s.hubSummaryBanner}>
+              <View>
+                <Text style={s.hubSummaryLabel}>{t('full_season_budget', 'FULL SEASON ESTIMATED BUDGET')}</Text>
+                <Text style={s.hubSummaryValue}>Php {fmt(Math.round(fullSeasonTotal))}</Text>
+                <Text style={s.hubSummarySub}>{t('whole_cycle_plan_for', 'Whole cycle customized plan for')} {landArea} Ha (6 {t('stages_word', 'Stages')})</Text>
+              </View>
+              <View style={s.hubSraBadge}>
+                <Ionicons name="shield-checkmark" size={14} color={COLORS.primary} />
+                <Text style={s.hubSraBadgeText}>{t('sra_direct_ceiling', 'SRA Direct: ₱66.9k/ha')}</Text>
+              </View>
+            </View>
+
+            {/* Stage Choices Section Header */}
+            <View style={s.hubSectionHeader}>
+              <Text style={s.sectionLabel}>{t('select_stage_to_open', 'Select Growth Stage to Open (Stages 1–6)')}</Text>
+            </View>
+
+            {/* ── 6 STAGE CARDS GRID/LIST ── */}
+            <View style={{ gap: 10 }}>
+              {DEFAULT_GROWTH_STAGES.map(stg => {
+                const stgOps = stageOperationsMap[stg.stageNum] || [];
+                const stgCost = computeStageCost(stg.stageNum);
+                const isFieldActive = (selectedField?.stage || '').toLowerCase().includes(`stage ${stg.stageNum}`);
+
+                return (
+                  <TouchableOpacity
+                    key={stg.key}
+                    style={[
+                      s.stageChoiceCard,
+                      isFieldActive && { borderColor: COLORS.primary }
+                    ]}
+                    onPress={() => setActiveStageNum(stg.stageNum)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={s.stageChoiceTop}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, flexShrink: 1 }}>
+                        <View style={[s.stageNumBadge, { backgroundColor: stg.color }]}>
+                          <Text style={s.stageNumText}>{stg.stageNum}</Text>
+                        </View>
+                        <View style={{ flex: 1, flexShrink: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <Text style={s.stageChoiceTitle} numberOfLines={2}>
+                              {formatStageName ? formatStageName(stg.label, false) : (t(`stage_${stg.stageNum}_short`, stg.shortLabel))}
+                            </Text>
+                            {isFieldActive && (
+                              <View style={s.currentStagePill}>
+                                <Text style={s.currentStagePillText}>{t('current_badge', 'Current')}</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={s.stageChoiceTimeline}>
+                            {formatPhaseMonth ? formatPhaseMonth(stg.month) : stg.month} · {stgOps.length} {stgOps.length === 1 ? t('operations_count_singular', 'Operation') : t('operations_count_plural', 'Operations')}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={{ alignItems: 'flex-end', marginLeft: 8, flexShrink: 0 }}>
+                        <Text style={s.stageChoicePrice}>₱ {fmt(Math.round(stgCost))}</Text>
+                        <Text style={s.stageChoiceHaRate}>₱ {fmt(stg.benchmarkCost)}/ha</Text>
+                      </View>
+                    </View>
+
+                    <Text style={s.stageChoiceDesc} numberOfLines={2}>{t(`stage_${stg.stageNum}_desc`, stg.description)}</Text>
+
+                    <View style={s.stageChoiceFooter}>
+                      <Text style={[s.openStageText, { color: stg.color }]}>{t('open_stage_plan', 'Open Stage Plan')}</Text>
+                      <Ionicons name="arrow-forward-circle" size={18} color={stg.color} />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Hub Global Action Buttons */}
+            <View style={{ gap: 10, marginTop: 4 }}>
+              <TouchableOpacity
+                style={s.saveFullPlanBtn}
+                onPress={handleSaveFieldPlan}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="save-outline" size={18} color={COLORS.primary} />
+                <Text style={s.saveFullPlanBtnText} numberOfLines={1} adjustsFontSizeToFit>{t('btn_save_full_plan', 'Save Full Season Plan')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={s.resetAllBtn}
+                onPress={resetAllStagesToDefault}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="refresh-outline" size={16} color={COLORS.textMuted} />
+                <Text style={s.resetAllBtnText}>{t('btn_reset_all_stages', 'Reset All 6 Stages to SRA Baseline')}</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          /* ═══════════════════════════════════════════════════════════════ */
+          /* VIEW 2: STAGE CUSTOMIZATION DETAIL VIEW                      */
+          /* ═══════════════════════════════════════════════════════════════ */
+          <>
+            {/* Navigation Back to Choices */}
+            <TouchableOpacity
+              style={s.backToStagesBtn}
+              onPress={() => setActiveStageNum(null)}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="arrow-back" size={18} color={COLORS.primary} />
+              <Text style={s.backToStagesText}>{t('btn_back_to_stages', 'Back to All Growth Stages')}</Text>
             </TouchableOpacity>
-          </View>
-          <Text style={s.phaseDesc}>{getPhaseDesc(currentPhase)}</Text>
-        </View>
 
-        {/* Customizable Requirements & Costs Table */}
-        <View style={s.card}>
-          <View>
-            <Text style={s.cardTitle}>{t('planner_requirements_title', 'Custom Requirements & Rates')}</Text>
-            <Text style={s.cardSub}>{t('planner_requirements_sub', 'Tweak dosages and prices per hectare to match this field.')}</Text>
-          </View>
+            {/* Stage Quick Switcher Chips */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: 4 }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 6 }}>
+              {DEFAULT_GROWTH_STAGES.map(stg => {
+                const isSelected = activeStageNum === stg.stageNum;
+                return (
+                  <TouchableOpacity
+                    key={stg.key}
+                    style={[
+                      s.quickStageChip,
+                      isSelected && { backgroundColor: stg.color, borderColor: stg.color }
+                    ]}
+                    onPress={() => setActiveStageNum(stg.stageNum)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[s.quickStageChipText, isSelected && { color: '#fff', fontWeight: '900' }]}>
+                      {t('stage_word', 'Stage')} {stg.stageNum}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
 
-          {area <= 0 && (
-            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-              <Ionicons name="alert-circle-outline" size={24} color={COLORS.textMuted} />
-              <Text style={s.hintText}>{t('planner_enter_area_hint', 'Enter land area above to compute quantities and costs.')}</Text>
-            </View>
-          )}
-
-          {area > 0 && calculatedItems.length === 0 && (
-            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-              <Text style={s.hintText}>No items for this phase. Tap "+ Add Custom Item" below.</Text>
-            </View>
-          )}
-
-          {area > 0 && calculatedItems.map(item => {
-            return (
-              <View key={item.id} style={s.itemRowCard}>
-                <View style={s.itemHeaderRow}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-                    <Ionicons name={item.icon || 'cube-outline'} size={16} color={currentPhase.color} />
-                    <Text style={s.itemTitle} numberOfLines={1}>{getItemNameLabel(item.name)}</Text>
+            {/* Active Stage Banner Card */}
+            <View style={s.activeStageBanner}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={[s.stageNumBadge, { backgroundColor: currentStage.color, width: 28, height: 28, borderRadius: 14 }]}>
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '900' }}>{currentStage.stageNum}</Text>
                   </View>
-                  <TouchableOpacity onPress={() => removeItem(item.id)} style={{ padding: 4 }}>
-                    <Ionicons name="trash-outline" size={15} color="#D9534F" />
+                  <Text style={s.activeStageTitle}>{t(`stage_${currentStage.stageNum}_short`, currentStage.shortLabel)}</Text>
+                </View>
+                <TouchableOpacity onPress={resetStageToDefault}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textMuted }}>{t('btn_reset_defaults', 'Reset Defaults')}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={s.activeStageTimeline}>{formatPhaseMonth ? formatPhaseMonth(currentStage.month) : currentStage.month} · {t('sra_baseline_lbl', 'SRA Baseline')}: ₱{fmt(currentStage.benchmarkCost)} / ha</Text>
+              <Text style={s.activeStageDesc}>{t(`stage_${currentStage.stageNum}_desc`, currentStage.description)}</Text>
+            </View>
+
+            {/* Operations in Stage Card */}
+            <View style={s.card}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                <View style={{ flex: 1, marginRight: 6 }}>
+                  <Text style={s.cardTitle} numberOfLines={1}>{t('operations_in_stage', 'Operations in Stage')} {currentStage.stageNum}</Text>
+                  <Text style={s.cardSub} numberOfLines={1}>{currentOperations.length} {currentOperations.length === 1 ? t('operations_count_singular', 'Operation') : t('operations_count_plural', 'Operations')} {t('planned_for_area', 'planned for')} {landArea} Ha</Text>
+                </View>
+                <TouchableOpacity
+                  style={{ backgroundColor: COLORS.primary, paddingHorizontal: 10, paddingVertical: 7, borderRadius: RADIUS.sm, flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 }}
+                  onPress={() => setShowAddOpModal(true)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="add" size={16} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>{t('btn_add_op', 'Add Op')}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {currentOperations.length === 0 && (
+                <View style={{ paddingVertical: 24, alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="construct-outline" size={32} color={COLORS.border} />
+                  <Text style={{ fontSize: 13, color: COLORS.textMuted, fontWeight: '600' }}>{t('no_ops_in_stage', 'No operations planned for this stage yet.')}</Text>
+                  <TouchableOpacity
+                    style={{ backgroundColor: COLORS.primaryBg, paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.sm, marginTop: 4 }}
+                    onPress={() => setShowAddOpModal(true)}
+                  >
+                    <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '800' }}>{t('choose_cat_or_custom', 'Choose from Catalogue or Add Custom')}</Text>
                   </TouchableOpacity>
                 </View>
+              )}
 
-                <View style={s.itemControlGrid}>
-                  {/* Dosage Input */}
-                  <View style={s.controlCol}>
-                    <Text style={s.controlLabel} numberOfLines={1}>{t('planner_dosage', 'Dosage / Ha')}</Text>
-                    <View style={s.controlInputWrap}>
-                      <TextInput
-                        style={s.controlInput}
-                        defaultValue={item.perHa.toString()}
-                        onChangeText={v => updateItemPerHa(item.id, v)}
-                        keyboardType="decimal-pad"
-                        placeholder="0"
-                      />
-                      <Text style={s.controlUnit}>{item.unit}</Text>
+              {/* Operations List */}
+              {currentOperations.map((op, idx) => {
+                const totalCostForArea = op.isGroup
+                  ? ((op.subItems || []).reduce((s, si) => s + (si.qty * area * si.unitCost), 0) || Math.round((op.costPerHa || 0) * area))
+                  : Math.round(((op.perHa || 1) * area) * (op.rate || 0));
+
+                return (
+                  <View key={op.id || idx} style={s.opCard}>
+                    {/* Operation Header */}
+                    <View style={s.opHeader}>
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <View style={s.opBadge}>
+                            <Text style={s.opBadgeText}>{t('op_number_badge', 'Op #')}{idx + 1}</Text>
+                          </View>
+                          <Text style={s.opNameText}>{formatOperationName ? formatOperationName(op.name) : op.name}</Text>
+                        </View>
+                        <Text style={{ fontSize: 11.5, color: COLORS.textMuted, marginTop: 2 }}>
+                          {op.isGroup ? t('bundle_label', 'Structured Bundle (Line items below)') : `${t('direct_rate_prefix', 'Direct:')} ${op.perHa} ${op.unit}/ha @ ₱${fmt(op.rate)}`}
+                        </Text>
+                      </View>
+
+                      {/* Operation Actions */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TouchableOpacity
+                          style={s.sendOpBtn}
+                          onPress={() => sendSingleOperationToFieldOps(op)}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="paper-plane-outline" size={13} color="#fff" />
+                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }} numberOfLines={1} adjustsFontSizeToFit>{t('send_to_ops_btn', 'Send to Ops')}</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          onPress={() => removeOperation(op.id)}
+                          style={{ padding: 4 }}
+                        >
+                          <Ionicons name="trash-outline" size={16} color={COLORS.danger} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Operation Mode Segmented Switcher */}
+                    <View style={s.structureSegmentWrap}>
+                      <TouchableOpacity
+                        style={[
+                          s.structureSegmentBtn,
+                          op.isGroup && s.structureSegmentBtnActive
+                        ]}
+                        onPress={() => {
+                          if (!op.isGroup) toggleOpStructure(op.id);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="layers-outline" size={14} color={op.isGroup ? COLORS.primary : COLORS.textMuted} />
+                        <Text style={[s.structureSegmentText, op.isGroup && s.structureSegmentTextActive]} numberOfLines={1} adjustsFontSizeToFit>{t('mode_title_child', 'Title with Child Items')}</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          s.structureSegmentBtn,
+                          !op.isGroup && s.structureSegmentBtnActive
+                        ]}
+                        onPress={() => {
+                          if (op.isGroup) toggleOpStructure(op.id);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="create-outline" size={14} color={!op.isGroup ? COLORS.primary : COLORS.textMuted} />
+                        <Text style={[s.structureSegmentText, !op.isGroup && s.structureSegmentTextActive]} numberOfLines={1} adjustsFontSizeToFit>{t('mode_direct_input', 'Direct Input')}</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* CASE A: Group Operation -> Child Sub-Items */}
+                    {op.isGroup ? (
+                      <View style={s.childListWrap}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.textSecondary, textTransform: 'uppercase' }}>{t('line_items_label', 'Line Items')}</Text>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setTargetOpIdForChild(op.id);
+                              setShowAddChildModal(true);
+                            }}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primaryBg, borderWidth: 1.5, borderColor: COLORS.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIUS.xs, flexShrink: 0 }}
+                            activeOpacity={0.75}
+                          >
+                            <Ionicons name="add-circle" size={13} color={COLORS.primary} />
+                            <Text style={{ fontSize: 11, fontWeight: '900', color: COLORS.primary }}>{t('add_item_btn', 'Add Item')}</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        {(!op.subItems || op.subItems.length === 0) && (
+                          <View style={{ paddingVertical: 12, alignItems: 'center', gap: 4 }}>
+                            <Text style={{ fontSize: 11.5, color: COLORS.textMuted, fontStyle: 'italic' }}>{t('no_child_items_yet', 'No child items added yet.')}</Text>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setTargetOpIdForChild(op.id);
+                                setShowAddChildModal(true);
+                              }}
+                            >
+                              <Text style={{ fontSize: 11.5, fontWeight: '800', color: COLORS.primary }}>{t('add_materials_sample', 'Add 46-00-00, 18-46-00, or Labor')}</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+
+                        {(op.subItems || []).map((child, cIdx) => (
+                          <View key={child.id || cIdx} style={s.childItemRow}>
+                            <View style={{ flex: 1, marginRight: 6 }}>
+                              <Text style={{ fontSize: 12.5, fontWeight: '700', color: COLORS.text }}>{child.description || child.name}</Text>
+                              <Text style={{ fontSize: 11, color: COLORS.textMuted }}>
+                                Total: {fmt(Number((child.qty * area).toFixed(1)))} {child.unit} @ ₱{fmt(child.unitCost || child.rate)} = ₱{fmt(Math.round((child.qty * area) * (child.unitCost || child.rate)))}
+                              </Text>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <View style={s.inlineInputWrap}>
+                                <TextInput
+                                  style={s.inlineInput}
+                                  defaultValue={String(child.qty || 1)}
+                                  onChangeText={v => updateChildItem(op.id, cIdx, 'qty', v)}
+                                  keyboardType="decimal-pad"
+                                />
+                                <Text style={s.inlineUnitText}>{child.unit}/ha</Text>
+                              </View>
+
+                              <View style={s.inlineInputWrap}>
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textMuted }}>₱</Text>
+                                <TextInput
+                                  style={s.inlineInput}
+                                  defaultValue={String(child.unitCost || child.rate || 0)}
+                                  onChangeText={v => updateChildItem(op.id, cIdx, 'unitCost', v)}
+                                  keyboardType="decimal-pad"
+                                />
+                              </View>
+
+                              <TouchableOpacity onPress={() => removeChildItem(op.id, cIdx)} style={{ padding: 2 }}>
+                                <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    ) : (
+                      /* CASE B: Direct Single Operation -> Direct Inputs */
+                      <View style={s.directInputWrap}>
+                        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.textMuted, marginBottom: 2 }}>{t('dosage_per_ha_lbl', 'Dosage / Ha')}</Text>
+                            <View style={s.directInputBox}>
+                              <TextInput
+                                style={s.inlineInput}
+                                defaultValue={String(op.perHa || 1)}
+                                onChangeText={v => updateDirectOp(op.id, 'perHa', v)}
+                                keyboardType="decimal-pad"
+                              />
+                              <Text style={s.inlineUnitText}>{op.unit || 'ha'}</Text>
+                            </View>
+                          </View>
+
+                          <View style={{ flex: 1.2 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.textMuted, marginBottom: 2 }}>{t('rate_per_unit_lbl', 'Rate / Unit')}</Text>
+                            <View style={s.directInputBox}>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textMuted }}>₱</Text>
+                              <TextInput
+                                style={s.inlineInput}
+                                defaultValue={String(op.rate || 0)}
+                                onChangeText={v => updateDirectOp(op.id, 'rate', v)}
+                                keyboardType="decimal-pad"
+                              />
+                            </View>
+                          </View>
+
+                          <View style={{ flex: 1.2, alignItems: 'flex-end' }}>
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.textMuted, marginBottom: 2 }}>{t('total_needed_lbl', 'Total Needed')}</Text>
+                            <Text style={{ fontSize: 13, fontWeight: '900', color: COLORS.primary }}>
+                              {fmt(Number(((op.perHa || 1) * area).toFixed(1)))} {op.unit || 'ha'}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Operation Subtotal Footer */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#EEEEEE' }}>
+                      <Text style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: '700' }}>
+                        {op.isGroup ? `${(op.subItems || []).length} ${t('line_items_count_label', 'Line Items')}` : `Rate: ₱${fmt(op.rate || 0)} / ${op.unit || 'ha'}`}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{t('est_price_prefix', 'Est:')}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '900', color: COLORS.primary }}>
+                          ₱ {fmt(totalCostForArea)}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-
-                  {/* Unit Rate Input */}
-                  <View style={s.controlCol}>
-                    <Text style={s.controlLabel} numberOfLines={1}>{t('planner_unit_rate', 'Rate (Php)')}</Text>
-                    <View style={s.controlInputWrap}>
-                      <Text style={s.controlPrefix}>₱</Text>
-                      <TextInput
-                        style={s.controlInput}
-                        defaultValue={item.rate.toString()}
-                        onChangeText={v => updateItemRate(item.id, v)}
-                        keyboardType="decimal-pad"
-                        placeholder="0"
-                      />
-                    </View>
-                  </View>
-
-                  {/* Total & Subtotal */}
-                  <View style={[s.controlCol, { alignItems: 'flex-end' }]}>
-                    <Text style={s.controlLabel} numberOfLines={1}>{t('planner_total_needed', 'Total Needed')}</Text>
-                    <Text style={s.itemTotalQty} numberOfLines={1}>
-                      {fmt(Math.round(item.totalQty * 10) / 10)} {item.unit}
-                    </Text>
-                    <Text style={s.itemSubtotal} numberOfLines={1}>Php {fmt(Math.round(item.subtotal))}</Text>
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-
-          {/* Clean Placed Add Item Button at bottom of list */}
-          {area > 0 && (
-            <TouchableOpacity
-              style={s.addItemBottomBtn}
-              onPress={() => setShowAddItem(true)}
-            >
-              <Ionicons name="add-circle-outline" size={17} color={COLORS.primary} />
-              <Text style={s.addItemBottomBtnText}>{t('planner_add_item', '+ Add Custom Material or Labor Item')}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Phase Budget Summary Card */}
-        <View style={[s.budgetCard, { backgroundColor: currentPhase.color }]}>
-          <Text style={s.budgetLabel}>{t('planner_budget', 'ESTIMATED BUDGET')}: {getPhaseLabel(currentPhase).toUpperCase()}</Text>
-          <Text style={s.budgetValue}>Php {fmt(Math.round(totalBudget))}</Text>
-          <Text style={s.budgetSub}>{t('planner_budget_sub', 'For')} {landArea} {t('hectares', 'Hectares')} · {selectedField?.id || 'Selected Field'}</Text>
-
-          {/* Breakdown Pills */}
-          <View style={s.breakdownPillsRow}>
-            <View style={s.breakdownPill}>
-              <Ionicons name="cube-outline" size={13} color="#fff" />
-              <Text style={s.breakdownPillText} numberOfLines={1}>{t('planner_materials', 'Materials')}: ₱{fmt(Math.round(materialCost))}</Text>
+                );
+              })}
             </View>
-            <View style={s.breakdownPill}>
-              <Ionicons name="people-outline" size={13} color="#fff" />
-              <Text style={s.breakdownPillText} numberOfLines={1}>{t('planner_labor', 'Labor')}: ₱{fmt(Math.round(laborCost))}</Text>
-            </View>
-            {equipmentCost > 0 && (
-              <View style={s.breakdownPill}>
-                <Ionicons name="construct-outline" size={13} color="#fff" />
-                <Text style={s.breakdownPillText} numberOfLines={1}>{t('planner_equip', 'Equip')}: ₱{fmt(Math.round(equipmentCost))}</Text>
-              </View>
-            )}
-          </View>
-        </View>
 
-        {/* Action Button: Send to Draft Log */}
-        <TouchableOpacity style={s.sendDraftBtn} onPress={sendToDraftLog} activeOpacity={0.85}>
-          <Ionicons name="document-text-outline" size={18} color="#fff" />
-          <Text style={s.sendDraftBtnText} numberOfLines={1}>{t('btn_save_field_draft', 'Save as Field Draft Log')}</Text>
-        </TouchableOpacity>
+            {/* Stage Planned Budget Summary Card */}
+            <View style={[s.budgetCard, { backgroundColor: currentStage.color }]}>
+              <Text style={s.budgetLabel}>{t('planned_budget_stage', 'PLANNED BUDGET · STAGE')} {currentStage.stageNum}</Text>
+              <Text style={s.budgetValue}>Php {fmt(Math.round(computeStageCost(currentStage.stageNum)))}</Text>
+              <Text style={s.budgetSub}>{t('for_area_label', 'For')} {landArea} Ha · {currentOperations.length} {currentOperations.length === 1 ? t('operations_count_singular', 'Operation') : t('operations_count_plural', 'Operations')}</Text>
+            </View>
+
+            {/* Stage Action Buttons */}
+            <View style={{ gap: 10 }}>
+              <TouchableOpacity style={s.sendDraftBtn} onPress={sendStagePlanToFieldOps} activeOpacity={0.85}>
+                <Ionicons name="paper-plane" size={18} color="#fff" />
+                <Text style={s.sendDraftBtnText} numberOfLines={1} adjustsFontSizeToFit>{t('send_all_ops_btn', 'SEND ALL STAGE OPERATIONS TO FIELD OPS')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ backgroundColor: '#F0F8EC', borderWidth: 1.5, borderColor: COLORS.primary, paddingVertical: 14, borderRadius: RADIUS.md, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+                onPress={handleSaveFieldPlan}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="save-outline" size={18} color={COLORS.primary} />
+                <Text style={{ fontSize: 13, fontWeight: '800', color: COLORS.primary, textAlign: 'center', flexShrink: 1 }} numberOfLines={1} adjustsFontSizeToFit>{t('save_custom_plan_btn', 'SAVE CUSTOM PLAN FOR THIS FIELD')}</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         <View style={s.disclaimerWrap}>
           <Ionicons name="information-circle-outline" size={14} color={COLORS.textMuted} />
           <Text style={s.disclaimer}>
-            {t('planner_disclaimer', 'Customized for local block farm operations. Adjust rates and dosages anytime as field conditions require.')}
+            {t('planner_custom_disclaimer', 'Custom plans are stored per field and automatically reflected in Field Operations.')}
           </Text>
         </View>
       </ScrollView>
 
-      {/* ── Modal: Add Custom Item ── */}
-      <Modal visible={showAddItem} transparent animationType="slide">
+      {/* ── Modal: Add Operation to Stage ── */}
+      <Modal visible={showAddOpModal} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>{t('planner_modal_add_item', 'Add Custom Requirement')}</Text>
-              <TouchableOpacity onPress={() => setShowAddItem(false)}>
+              <Text style={s.modalTitle}>{t('add_op_modal_title', 'Add Operation to Stage')} {currentStage?.stageNum || ''}</Text>
+              <TouchableOpacity onPress={() => setShowAddOpModal(false)}>
                 <Ionicons name="close" size={22} color={COLORS.text} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: 12 }}>
-              <Text style={s.formLabel}>{t('form_input_name', 'Item Name *')}</Text>
-              <TextInput
-                style={s.formInput}
-                placeholder="e.g. Organic Bio-fertilizer or Carabao Rental"
-                placeholderTextColor={COLORS.textMuted}
-                value={newItemName}
-                onChangeText={setNewItemName}
-              />
+            <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: 14 }}>
+              {/* Option A: Pick from SRA Catalogue */}
+              <Text style={s.formLabel}>{t('option_a_cat_title', 'Option A: Choose from SRA Catalogue')}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {SRA_OPERATIONS_CATALOGUE
+                  .filter(catOp => catOp.stageNum === activeStageNum || !catOp.stageNum)
+                  .map(catOp => (
+                    <TouchableOpacity
+                      key={catOp.id}
+                      style={[
+                        { backgroundColor: '#F8FAF5', borderWidth: 1.5, borderColor: COLORS.border, padding: 10, borderRadius: RADIUS.md, width: 170, gap: 4 },
+                        selectedCatalogOp?.id === catOp.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }
+                      ]}
+                      onPress={() => {
+                        setSelectedCatalogOp(catOp);
+                        setNewOpName('');
+                      }}
+                    >
+                      <Text style={{ fontSize: 12.5, fontWeight: '800', color: COLORS.text }}>{formatOperationName ? formatOperationName(catOp.name) : catOp.name}</Text>
+                      <Text style={{ fontSize: 11, color: COLORS.textMuted }}>₱{fmt(catOp.costPerHa)} / ha</Text>
+                    </TouchableOpacity>
+                  ))}
+              </ScrollView>
 
-              <Text style={s.formLabel}>{t('form_category', 'Category *')}</Text>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                {ITEM_TYPES.map(it => (
-                  <TouchableOpacity
-                    key={it.key}
-                    style={[s.typeChip, newItemType === it.key && { backgroundColor: it.color, borderColor: it.color }]}
-                    onPress={() => setNewItemType(it.key)}
-                  >
-                    <Ionicons name={it.icon} size={14} color={newItemType === it.key ? '#fff' : it.color} />
-                    <Text style={[s.typeChipText, newItemType === it.key && { color: '#fff', fontWeight: '700' }]} numberOfLines={2}>
-                      {getItemTypeLabel(it.key)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              {/* Option B: Custom Operation */}
+              <View style={{ borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: 10, gap: 8 }}>
+                <Text style={s.formLabel}>{t('option_b_custom_title', 'Option B: Or Enter Custom Operation')}</Text>
+                <TextInput
+                  style={s.formInput}
+                  placeholder={t('custom_op_placeholder', 'e.g., Foliar Spraying, Canal De-siltation')}
+                  placeholderTextColor={COLORS.textMuted}
+                  value={newOpName}
+                  onChangeText={v => {
+                    setNewOpName(v);
+                    if (v.trim()) setSelectedCatalogOp(null);
+                  }}
+                />
+
+                {/* Operation Structure Selector */}
+                {newOpName.trim().length > 0 && (
+                  <View style={{ gap: 6, marginTop: 4 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textMuted }}>{t('op_type_prompt', 'Operation Type:')}</Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity
+                        style={[
+                          { flex: 1, padding: 8, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center' },
+                          newOpType === 'group' && { backgroundColor: COLORS.primaryBg, borderColor: COLORS.primary }
+                        ]}
+                        onPress={() => setNewOpType('group')}
+                      >
+                        <Text style={{ fontSize: 11.5, fontWeight: '800', color: newOpType === 'group' ? COLORS.primary : COLORS.textSecondary }} numberOfLines={1} adjustsFontSizeToFit>{t('bundle_items_type', 'Bundle with Items')}</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          { flex: 1, padding: 8, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center' },
+                          newOpType === 'direct' && { backgroundColor: COLORS.primaryBg, borderColor: COLORS.primary }
+                        ]}
+                        onPress={() => setNewOpType('direct')}
+                      >
+                        <Text style={{ fontSize: 11.5, fontWeight: '800', color: newOpType === 'direct' ? COLORS.primary : COLORS.textSecondary }} numberOfLines={1} adjustsFontSizeToFit>{t('simple_direct_type', 'Simple Direct Rate')}</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {newOpType === 'direct' && (
+                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.textMuted }}>{t('qty_per_ha_lbl', 'Qty / Ha')}</Text>
+                          <TextInput
+                            style={s.formInput}
+                            value={newOpPerHa}
+                            onChangeText={setNewOpPerHa}
+                            keyboardType="decimal-pad"
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.textMuted }}>{t('unit_lbl', 'Unit')}</Text>
+                          <TextInput
+                            style={s.formInput}
+                            value={newOpUnit}
+                            onChangeText={setNewOpUnit}
+                          />
+                        </View>
+                        <View style={{ flex: 1.2 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.textMuted }}>{t('rate_peso_lbl', 'Rate (₱)')}</Text>
+                          <TextInput
+                            style={s.formInput}
+                            value={newOpRate}
+                            onChangeText={setNewOpRate}
+                            keyboardType="decimal-pad"
+                          />
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.formLabel}>{t('planner_dosage', 'Dosage / Ha *')}</Text>
-                  <TextInput
-                    style={s.formInput}
-                    placeholder="e.g. 3"
-                    placeholderTextColor={COLORS.textMuted}
-                    value={newItemPerHa}
-                    onChangeText={setNewItemPerHa}
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.formLabel}>{t('form_input_unit', 'Unit')}</Text>
-                  <TextInput
-                    style={s.formInput}
-                    placeholder="e.g. bags"
-                    placeholderTextColor={COLORS.textMuted}
-                    value={newItemUnit}
-                    onChangeText={setNewItemUnit}
-                  />
-                </View>
-              </View>
-
-              <Text style={s.formLabel}>{t('planner_unit_rate', 'Rate per Unit (Php) *')}</Text>
-              <TextInput
-                style={s.formInput}
-                placeholder="e.g. 1850"
-                placeholderTextColor={COLORS.textMuted}
-                value={newItemRate}
-                onChangeText={setNewItemRate}
-                keyboardType="decimal-pad"
-              />
-
-              <TouchableOpacity style={s.submitBtn} onPress={handleAddNewItem}>
-                <Ionicons name="add-circle-outline" size={18} color="#fff" />
-                <Text style={s.submitBtnText}>{t('planner_add_item', 'Add Item')}</Text>
+              <TouchableOpacity style={s.submitBtn} onPress={handleAddOperation}>
+                <Ionicons name="add-circle" size={18} color="#fff" />
+                <Text style={s.submitBtnText}>{t('add_op_submit_btn', 'Add Operation to Stage')} {currentStage?.stageNum || ''}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
       </Modal>
 
-      {/* ── Modal: Add Custom Phase ── */}
-      <Modal visible={showAddCustomPhase} transparent animationType="slide">
+      {/* ── Modal: Add Child Item to Operation ── */}
+      <Modal visible={showAddChildModal} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>{t('planner_modal_custom_op', 'Create Custom Operation')}</Text>
-              <TouchableOpacity onPress={() => setShowAddCustomPhase(false)}>
+              <Text style={s.modalTitle}>{t('add_child_modal_title', 'Add Material or Labor to Operation')}</Text>
+              <TouchableOpacity onPress={() => setShowAddChildModal(false)}>
                 <Ionicons name="close" size={22} color={COLORS.text} />
               </TouchableOpacity>
             </View>
 
-            <View style={{ padding: SPACING.lg, gap: 12 }}>
-              <Text style={s.formLabel}>{t('form_activity', 'Operation Name *')}</Text>
-              <TextInput
-                style={s.formInput}
-                placeholder="e.g. Lime Application or Drainage Canal Prep"
-                placeholderTextColor={COLORS.textMuted}
-                value={customPhaseName}
-                onChangeText={setCustomPhaseName}
-              />
+            <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: 12 }}>
+              {/* Category Filter */}
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                {ITEM_TYPES.map(it => (
+                  <TouchableOpacity
+                    key={it.key}
+                    style={[
+                      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 7, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.border },
+                      newChildCategory === it.key && { backgroundColor: it.color, borderColor: it.color }
+                    ]}
+                    onPress={() => setNewChildCategory(it.key)}
+                  >
+                    <Ionicons name={it.icon} size={13} color={newChildCategory === it.key ? '#fff' : it.color} />
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: newChildCategory === it.key ? '#fff' : COLORS.textSecondary }}>
+                      {it.label.split(' ')[0]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-              <Text style={s.formLabel}>{t('form_category', 'Category / Agronomic Stage *')}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -4 }} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
-                {[
-                  { key: 'prep', label: t('cat_prep', 'Land Prep'), icon: 'construct-outline' },
-                  { key: 'plant', label: t('cat_plant', 'Planting'), icon: 'leaf-outline' },
-                  { key: 'fert', label: t('cat_fert', 'Fertilization'), icon: 'flask-outline' },
-                  { key: 'weed', label: t('cat_weed', 'Weeding & Care'), icon: 'water-outline' },
-                  { key: 'harvest', label: t('cat_harvest', 'Harvesting'), icon: 'basket-outline' },
-                ].map(c => {
-                  const isSel = customPhaseCategory === c.key;
-                  return (
+              {/* SRA Recommended Presets */}
+              <Text style={s.formLabel}>Quick SRA Standard Presets</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                {SRA_CHILD_PRESETS
+                  .filter(pr => pr.category === newChildCategory)
+                  .map(preset => (
                     <TouchableOpacity
-                      key={c.key}
-                      style={[
-                        { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff' },
-                        isSel && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }
-                      ]}
-                      onPress={() => setCustomPhaseCategory(c.key)}
+                      key={preset.name}
+                      style={{ backgroundColor: '#F8FAF5', borderWidth: 1.5, borderColor: COLORS.border, paddingHorizontal: 10, paddingVertical: 7, borderRadius: RADIUS.sm }}
+                      onPress={() => {
+                        setNewChildName(preset.name);
+                        setNewChildQty(preset.qty);
+                        setNewChildUnit(preset.unit);
+                        setNewChildRate(preset.rate);
+                      }}
                     >
-                      <Ionicons name={c.icon} size={14} color={isSel ? COLORS.primary : COLORS.textMuted} />
-                      <Text style={{ fontSize: 12, fontWeight: isSel ? '800' : '600', color: isSel ? COLORS.primary : COLORS.textSecondary }}>{c.label}</Text>
+                      <Text style={{ fontSize: 11.5, fontWeight: '800', color: COLORS.text }}>{preset.name}</Text>
+                      <Text style={{ fontSize: 10, color: COLORS.textMuted }}>{preset.qty} {preset.unit}/ha @ ₱{fmt(Number(preset.rate))}</Text>
                     </TouchableOpacity>
-                  );
-                })}
+                  ))}
               </ScrollView>
 
-              <TouchableOpacity style={s.submitBtn} onPress={handleAddCustomPhase}>
-                <Ionicons name="sparkles-outline" size={18} color="#fff" />
-                <Text style={s.submitBtnText}>{t('planner_modal_custom_op', 'Create Operation')}</Text>
+              {/* Item Name */}
+              <View style={{ gap: 4 }}>
+                <Text style={s.formLabel}>Item Description / Material Name</Text>
+                <TextInput
+                  style={s.formInput}
+                  placeholder="e.g., 46-00-00 Urea, Tractor Driver, Weeding Crew"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={newChildName}
+                  onChangeText={setNewChildName}
+                />
+              </View>
+
+              {/* Dosage, Unit & Rate Inputs */}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={s.formLabel}>Dosage / Ha</Text>
+                  <TextInput
+                    style={s.formInput}
+                    value={newChildQty}
+                    onChangeText={setNewChildQty}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={s.formLabel}>Unit</Text>
+                  <TextInput
+                    style={s.formInput}
+                    value={newChildUnit}
+                    onChangeText={setNewChildUnit}
+                    placeholder="bag, ha, day"
+                  />
+                </View>
+                <View style={{ flex: 1.2, gap: 4 }}>
+                  <Text style={s.formLabel}>Rate / Unit (₱)</Text>
+                  <TextInput
+                    style={s.formInput}
+                    value={newChildRate}
+                    onChangeText={setNewChildRate}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+
+              {/* Computed Preview */}
+              {(() => {
+                const q = parseFloat(newChildQty) || 0;
+                const r = parseFloat(newChildRate) || 0;
+                const tot = Math.round((q * area) * r);
+                return (
+                  <View style={{ backgroundColor: '#F8FAF5', padding: 10, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.textSecondary }}>Computed Total for {landArea} Ha:</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '900', color: COLORS.primary }}>₱ {fmt(tot)}</Text>
+                  </View>
+                );
+              })()}
+
+              <TouchableOpacity style={s.submitBtn} onPress={handleAddChildItem} activeOpacity={0.85}>
+                <Ionicons name="add-circle" size={18} color="#fff" />
+                <Text style={s.submitBtnText}>Add to Operation</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Field Picker Modal with Search */}
+      <Modal visible={showFieldPickerModal} animationType="slide" transparent onRequestClose={() => setShowFieldPickerModal(false)}>
+        <View style={s.modalOverlay}>
+          <View style={[s.modalSheet, { height: '80%', maxHeight: '80%' }]}>
+            <View style={s.modalHeader}>
+              <View>
+                <Text style={s.modalTitle}>Select Farm Plot to Plan</Text>
+                <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 1 }}>Choose any block farm field to customize its crop cycle</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowFieldPickerModal(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>
+
+            {/* Search Input */}
+            <View style={{ paddingHorizontal: SPACING.lg, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAF5', borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 12, paddingVertical: 8, gap: 8 }}>
+                <Ionicons name="search-outline" size={16} color={COLORS.textMuted} />
+                <TextInput
+                  style={{ flex: 1, fontSize: 13, fontWeight: '600', color: COLORS.text, padding: 0 }}
+                  placeholder="Search by Field ID, Member, or Stage..."
+                  placeholderTextColor={COLORS.textMuted}
+                  value={fieldSearchQuery}
+                  onChangeText={t => {
+                    setFieldSearchQuery(t);
+                    setPickerPage(1);
+                  }}
+                />
+                {fieldSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => { setFieldSearchQuery(''); setPickerPage(1); }}>
+                    <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Paginated Field List */}
+            {(() => {
+              const filteredFields = MOCK_FIELDS.filter(f => {
+                if (!fieldSearchQuery.trim()) return true;
+                const q = fieldSearchQuery.toLowerCase();
+                return (
+                  (f.id || '').toLowerCase().includes(q) ||
+                  (f.member || '').toLowerCase().includes(q) ||
+                  (f.stage || '').toLowerCase().includes(q)
+                );
+              });
+
+              const FIELDS_PER_PAGE = 4;
+              const totalPages = Math.max(1, Math.ceil(filteredFields.length / FIELDS_PER_PAGE));
+              const currentPageClamped = Math.min(pickerPage, totalPages);
+              const paginatedFields = filteredFields.slice((currentPageClamped - 1) * FIELDS_PER_PAGE, currentPageClamped * FIELDS_PER_PAGE);
+
+              return (
+                <>
+                  <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: 8 }}>
+                    {paginatedFields.length === 0 && (
+                      <Text style={{ fontSize: 12, color: COLORS.textMuted, textAlign: 'center', marginVertical: 20 }}>
+                        No fields match your search.
+                      </Text>
+                    )}
+                    {paginatedFields.map(f => (
+                      <TouchableOpacity
+                        key={f.id}
+                        style={[
+                          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: SPACING.md, backgroundColor: '#fff', borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border },
+                          selectedField?.id === f.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }
+                        ]}
+                        onPress={() => {
+                          setSelectedField(f);
+                          setShowFieldPickerModal(false);
+                          setFieldSearchQuery('');
+                          setPickerPage(1);
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text }}>{f.id}</Text>
+                            <Text style={{ fontSize: 12, color: COLORS.textMuted }}>· {f.member}</Text>
+                          </View>
+                          <Text style={{ fontSize: 11.5, color: COLORS.textSecondary, marginTop: 2 }}>{f.stage || 'Planting & Establishment'}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                          <Text style={{ fontSize: 13, fontWeight: '800', color: COLORS.primary }}>{f.ha} Ha</Text>
+                          {selectedField?.id === f.id && (
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: COLORS.primary }}>SELECTED</Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+
+                  {/* Pagination Bar */}
+                  {totalPages > 1 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingVertical: 12, borderTopWidth: 1, borderTopColor: COLORS.border, backgroundColor: '#fff' }}>
+                      <TouchableOpacity
+                        disabled={currentPageClamped === 1}
+                        onPress={() => setPickerPage(p => Math.max(1, p - 1))}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: currentPageClamped === 1 ? COLORS.border : COLORS.primary, backgroundColor: currentPageClamped === 1 ? '#F8F9FA' : COLORS.primaryBg, opacity: currentPageClamped === 1 ? 0.6 : 1 }}
+                      >
+                        <Ionicons name="chevron-back" size={14} color={currentPageClamped === 1 ? COLORS.textMuted : COLORS.primary} />
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: currentPageClamped === 1 ? COLORS.textMuted : COLORS.primary }}>Prev</Text>
+                      </TouchableOpacity>
+
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.textSecondary }}>
+                        Page {currentPageClamped} of {totalPages}
+                      </Text>
+
+                      <TouchableOpacity
+                        disabled={currentPageClamped === totalPages}
+                        onPress={() => setPickerPage(p => Math.min(totalPages, p + 1))}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: currentPageClamped === totalPages ? COLORS.border : COLORS.primary, backgroundColor: currentPageClamped === totalPages ? '#F8F9FA' : COLORS.primaryBg, opacity: currentPageClamped === totalPages ? 0.6 : 1 }}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: currentPageClamped === totalPages ? COLORS.textMuted : COLORS.primary }}>Next</Text>
+                        <Ionicons name="chevron-forward" size={14} color={currentPageClamped === totalPages ? COLORS.textMuted : COLORS.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </>
+              );
+            })()}
           </View>
         </View>
       </Modal>
@@ -935,97 +1475,266 @@ export default function PlannerScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 16 },
-  pageTitle: { fontSize: 22, fontWeight: '800', color: COLORS.text },
-  pageSub: { fontSize: 13, color: COLORS.textMuted, marginTop: -4 },
+  scroll: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 28 },
+  pageTitle: { fontSize: 22, fontWeight: '900', color: COLORS.text },
+  pageSub: { fontSize: 13, color: COLORS.textMuted, marginTop: -2, lineHeight: 18 },
 
-  sectionLabel: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
-  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionLabel: { fontSize: 12, fontWeight: '800', color: COLORS.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
 
-  // Single Field Card (Member Dedicated View)
-  singleFieldCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.md, borderWidth: 1.5, borderColor: COLORS.primary + '35', ...SHADOW.card },
-  singleFieldLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  singleFieldIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.primaryBg, justifyContent: 'center', alignItems: 'center' },
-  singleFieldTitle: { fontSize: 14, fontWeight: '800', color: COLORS.text },
-  singleFieldSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
-  singleFieldBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.successLight, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: COLORS.success + '30' },
-  singleFieldBadgeText: { fontSize: 11, fontWeight: '700', color: COLORS.success },
+  // Field Detail Card
+  fieldCard: {
+    backgroundColor: '#fff',
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOW.card,
+    gap: 10
+  },
+  fieldCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  fieldIdText: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: COLORS.text
+  },
+  fieldFarmText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textMuted
+  },
+  fieldMemberText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2
+  },
 
-  // Field Chips
-  fieldChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#fff' },
-  fieldChipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg },
-  fieldChipText: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
-  fieldChipTextActive: { color: COLORS.primary, fontWeight: '800' },
+  // Clean Land Area Pill
+  areaPill: {
+    backgroundColor: COLORS.primaryBg,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '35',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    alignItems: 'center'
+  },
+  areaPillLabel: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: COLORS.primary,
+    textTransform: 'uppercase'
+  },
+  areaInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3
+  },
+  areaInput: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: COLORS.text,
+    padding: 0,
+    minWidth: 32,
+    textAlign: 'center'
+  },
+  areaUnitText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: COLORS.primary
+  },
 
-  // Land Area Card
-  areaCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.md, gap: 10, ...SHADOW.card, borderWidth: 1.5, borderColor: COLORS.primary + '30' },
-  areaBody: { flex: 1, minWidth: 0 },
-  areaLabel: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase' },
-  areaSub: { fontSize: 11, color: COLORS.textSecondary, marginTop: 2, lineHeight: 14 },
-  areaInputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primaryBg, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary + '40', paddingHorizontal: 8, paddingVertical: 5, gap: 4, flexShrink: 0 },
-  areaInput: { fontSize: 16, fontWeight: '800', color: COLORS.text, padding: 0, minWidth: 32, textAlign: 'center' },
-  areaUnitBadge: { backgroundColor: COLORS.primaryBg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
-  areaUnitText: { fontSize: 12, fontWeight: '800', color: COLORS.primary },
+  fieldCardFooter: {
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    paddingTop: 8,
+    gap: 6
+  },
+  activePill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#F0F8EC',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: RADIUS.xs
+  },
+  activePillText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: COLORS.primary
+  },
+  syncHintText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    lineHeight: 15
+  },
 
-  // Phase Chips
-  phaseScroll: { marginHorizontal: -SPACING.lg, marginTop: 6 },
-  phaseRow: { paddingHorizontal: SPACING.lg, gap: 8 },
-  phaseChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#fff' },
-  phaseChipText: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
-  phaseChipTextActive: { color: '#fff', fontWeight: '800' },
+  // Hub Summary Banner
+  hubSummaryBanner: {
+    backgroundColor: '#FFF',
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    ...SHADOW.card,
+    gap: 8
+  },
+  hubSummaryLabel: { fontSize: 10.5, fontWeight: '800', color: COLORS.textMuted, letterSpacing: 0.5 },
+  hubSummaryValue: { fontSize: 26, fontWeight: '900', color: COLORS.primary, marginTop: 2 },
+  hubSummarySub: { fontSize: 11.5, color: COLORS.textSecondary, marginTop: 1 },
+  hubSraBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.primaryBg, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIUS.xs },
+  hubSraBadgeText: { fontSize: 11, fontWeight: '800', color: COLORS.primary },
 
-  // Phase Info Card
-  phaseInfoCard: { backgroundColor: '#fff', borderRadius: RADIUS.md, padding: SPACING.md, borderWidth: 1, borderColor: COLORS.border, ...SHADOW.card },
-  phaseMonth: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary },
-  phaseDesc: { fontSize: 12, color: COLORS.textMuted, lineHeight: 18, marginTop: 4 },
+  hubSectionHeader: { marginTop: 4 },
 
-  // Requirements Card
-  card: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.md, gap: SPACING.md, ...SHADOW.card, borderWidth: 1, borderColor: COLORS.border },
-  cardTitle: { fontSize: 14, fontWeight: '800', color: COLORS.text },
-  cardSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
-  addItemBottomBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: COLORS.primaryBg, borderWidth: 1.5, borderColor: COLORS.primary + '40', borderStyle: 'dashed', borderRadius: RADIUS.md, paddingVertical: 12, marginTop: 4 },
-  addItemBottomBtnText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
-  hintText: { fontSize: 12, color: COLORS.textMuted, textAlign: 'center', marginTop: 4 },
+  // Stage Choice Card
+  stageChoiceCard: {
+    backgroundColor: '#FFF',
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    ...SHADOW.card,
+    gap: 8
+  },
+  stageChoiceTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  stageNumBadge: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  stageNumText: { color: '#fff', fontSize: 14, fontWeight: '900' },
+  stageChoiceTitle: { fontSize: 13.5, fontWeight: '800', color: COLORS.text, flexShrink: 1 },
+  stageChoiceTimeline: { fontSize: 11.5, color: COLORS.textMuted, marginTop: 1 },
+  stageChoicePrice: { fontSize: 15, fontWeight: '900', color: COLORS.primary },
+  stageChoiceHaRate: { fontSize: 10.5, color: COLORS.textMuted, marginTop: 1 },
+  stageChoiceDesc: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 16 },
+  stageChoiceFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 8, marginTop: 2 },
+  openStageText: { fontSize: 12.5, fontWeight: '800' },
+  currentStagePill: { backgroundColor: '#E2EED9', paddingHorizontal: 6, paddingVertical: 1, borderRadius: RADIUS.xs },
+  currentStagePillText: { fontSize: 9.5, fontWeight: '800', color: COLORS.primary },
 
-  // Row Item Card
-  itemRowCard: { backgroundColor: COLORS.background, borderRadius: RADIUS.md, padding: SPACING.md, borderWidth: 1, borderColor: COLORS.border },
-  itemHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  itemTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text, flex: 1 },
-  itemControlGrid: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, alignItems: 'center' },
-  controlCol: { flex: 1, minWidth: 0 },
-  controlLabel: { fontSize: 9.5, fontWeight: '700', color: COLORS.textMuted, marginBottom: 3, textTransform: 'uppercase' },
-  controlInputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 6, paddingVertical: 4 },
-  controlPrefix: { fontSize: 11, fontWeight: '600', color: COLORS.textMuted, marginRight: 2 },
-  controlInput: { flex: 1, fontSize: 12, fontWeight: '700', color: COLORS.text, padding: 0, minWidth: 24 },
-  controlUnit: { fontSize: 10.5, color: COLORS.textMuted, marginLeft: 2 },
-  itemTotalQty: { fontSize: 12.5, fontWeight: '800', color: COLORS.primary },
-  itemSubtotal: { fontSize: 10.5, fontWeight: '700', color: COLORS.textSecondary, marginTop: 1 },
+  // Global Hub Action Buttons
+  saveFullPlanBtn: { backgroundColor: '#F0F8EC', borderWidth: 1.5, borderColor: COLORS.primary, paddingVertical: 13, paddingHorizontal: 12, borderRadius: RADIUS.md, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, minHeight: 44 },
+  saveFullPlanBtnText: { fontSize: 13, fontWeight: '800', color: COLORS.primary, textAlign: 'center', flexShrink: 1 },
+  resetAllBtn: { paddingVertical: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 4 },
+  resetAllBtnText: { fontSize: 11.5, fontWeight: '700', color: COLORS.textMuted },
+
+  // Back Navigation & Quick Chips
+  backToStagesBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, alignSelf: 'flex-start' },
+  backToStagesText: { fontSize: 13.5, fontWeight: '800', color: COLORS.primary },
+  quickStageChip: { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#fff' },
+  quickStageChipText: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary },
+
+  // Active Stage Banner
+  activeStageBanner: {
+    backgroundColor: '#fff',
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    ...SHADOW.card,
+    gap: 6
+  },
+  activeStageTitle: { fontSize: 15, fontWeight: '900', color: COLORS.text },
+  activeStageTimeline: { fontSize: 12, fontWeight: '800', color: COLORS.textSecondary },
+  activeStageDesc: { fontSize: 12, color: COLORS.textMuted, lineHeight: 17 },
+
+  // Standard Card
+  card: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: 12, gap: 10, ...SHADOW.card, borderWidth: 1.5, borderColor: COLORS.border },
+  cardTitle: { fontSize: 14.5, fontWeight: '900', color: COLORS.text },
+  cardSub: { fontSize: 11.5, color: COLORS.textMuted, marginTop: 1 },
+
+  // Operation Structure Segmented Control
+  structureSegmentWrap: {
+    flexDirection: 'row',
+    backgroundColor: '#EEF2E6',
+    borderRadius: RADIUS.md,
+    padding: 3,
+    marginVertical: 4
+  },
+  structureSegmentBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderRadius: RADIUS.xs,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6
+  },
+  structureSegmentBtnActive: {
+    backgroundColor: '#fff',
+    ...SHADOW.card
+  },
+  structureSegmentText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: COLORS.textMuted
+  },
+  structureSegmentTextActive: {
+    color: COLORS.primary,
+    fontWeight: '900'
+  },
+
+  // Operation Card
+  opCard: { backgroundColor: '#F8FAF5', borderRadius: RADIUS.md, padding: 10, borderWidth: 1.5, borderColor: COLORS.border, gap: 8 },
+  opHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  opBadge: { backgroundColor: COLORS.primaryBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: RADIUS.xs },
+  opBadgeText: { fontSize: 10.5, fontWeight: '900', color: COLORS.primary },
+  opNameText: { fontSize: 14, fontWeight: '800', color: COLORS.text },
+  sendOpBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 10, paddingVertical: 5, borderRadius: RADIUS.sm, flexDirection: 'row', alignItems: 'center', gap: 4 },
+
+  // Child Line Items
+  childListWrap: { backgroundColor: '#fff', borderRadius: RADIUS.sm, padding: 8, borderWidth: 1, borderColor: COLORS.border, gap: 6 },
+  childItemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingVertical: 4 },
+  inlineInputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAF5', borderRadius: RADIUS.xs, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 6, paddingVertical: 3 },
+  inlineInput: { fontSize: 12, fontWeight: '800', color: COLORS.text, padding: 0, minWidth: 24, textAlign: 'center' },
+  inlineUnitText: { fontSize: 10.5, color: COLORS.textMuted, fontWeight: '700', marginLeft: 2 },
+
+  // Direct Input Styles
+  directInputWrap: { backgroundColor: '#fff', borderRadius: RADIUS.sm, padding: 8, borderWidth: 1, borderColor: COLORS.border, gap: 4 },
+  directInputBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAF5', borderRadius: RADIUS.xs, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 8, paddingVertical: 4 },
 
   // Budget Card
-  budgetCard: { borderRadius: RADIUS.lg, padding: SPACING.lg, alignItems: 'center', gap: 6, ...SHADOW.card },
-  budgetLabel: { fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: '800', letterSpacing: 0.5 },
-  budgetValue: { fontSize: 32, fontWeight: '900', color: '#fff' },
-  budgetSub: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-  breakdownPillsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 6 },
-  breakdownPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.18)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
-  breakdownPillText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  budgetCard: { borderRadius: RADIUS.lg, padding: SPACING.lg, alignItems: 'center', gap: 4, ...SHADOW.card },
+  budgetLabel: { fontSize: 11.5, color: 'rgba(255,255,255,0.85)', fontWeight: '900', letterSpacing: 0.5 },
+  budgetValue: { fontSize: 30, fontWeight: '900', color: '#fff' },
+  budgetSub: { fontSize: 12, color: 'rgba(255,255,255,0.9)', fontWeight: '700' },
 
-  // Send to Draft Button
-  sendDraftBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.success, paddingVertical: 14, paddingHorizontal: 16, borderRadius: RADIUS.md, ...SHADOW.card },
-  sendDraftBtnText: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: 0.3, textAlign: 'center' },
+  // Send to Field Ops Button
+  sendDraftBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.primary, paddingVertical: 16, paddingHorizontal: 16, borderRadius: RADIUS.md, ...SHADOW.card },
+  sendDraftBtnText: { fontSize: 13.5, fontWeight: '900', color: '#fff', letterSpacing: 0.3, textAlign: 'center' },
 
-  disclaimerWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: SPACING.md, marginTop: 4 },
-  disclaimer: { fontSize: 11, color: COLORS.textMuted, textAlign: 'center', lineHeight: 16, flexShrink: 1 },
+  disclaimerWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 10,
+    backgroundColor: '#F8FAF5',
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginTop: 6
+  },
+  disclaimer: {
+    fontSize: 11.5,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
+    flexShrink: 1
+  },
 
   // Modals
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl, maxHeight: '85%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.lg, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  modalTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text },
-  formLabel: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, textTransform: 'uppercase' },
-  formInput: { backgroundColor: COLORS.background, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontWeight: '600', color: COLORS.text },
-  typeChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: RADIUS.sm, paddingVertical: 10, paddingHorizontal: 6, backgroundColor: '#fff', minHeight: 46 },
-  typeChipText: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, textAlign: 'center', flexShrink: 1 },
+  modalTitle: { fontSize: 16, fontWeight: '900', color: COLORS.text },
+  formLabel: { fontSize: 11, fontWeight: '800', color: COLORS.textSecondary, textTransform: 'uppercase' },
+  formInput: { backgroundColor: COLORS.background, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontWeight: '700', color: COLORS.text },
   submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: COLORS.primary, paddingVertical: 14, paddingHorizontal: 16, borderRadius: RADIUS.md, marginTop: 6 },
-  submitBtnText: { fontSize: 14, fontWeight: '700', color: '#fff', textAlign: 'center', flexShrink: 1 },
+  submitBtnText: { fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center', flexShrink: 1 },
 });

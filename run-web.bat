@@ -1,0 +1,6 @@
+@echo off
+setlocal
+set "ROOT=%~dp0"
+title Opening HUGPONG Web Console...
+echo Opening HUGPONG Web Console in your browser...
+start "" "%ROOT%web\login.html"

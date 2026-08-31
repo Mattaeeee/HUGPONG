@@ -22,6 +22,60 @@ function notifySyncEngine() {
 }
 
 /**
+ * ── HUGPONG ASYNC CONFLICT RESOLUTION POLICY ─────────────────────────
+ * 
+ * 1. Event Stream Logs: Append-Only Immutable Model
+ *    - All field operations (fertilizer, weeding, harvest) are immutable event records.
+ *    - Deterministic Client UUIDs (LOG-{fieldId}-{timestamp}-{rand}) ensure idempotent retries.
+ *    - Multiple workers logging activities on the same plot are all preserved in the field history.
+ *
+ * 2. Crop Growth Stages: Monotonic Hierarchy + Timestamp Vector
+ *    - Biological sugarcane growth moves forward through Stages 1 to 6.
+ *    - Higher stages supersede lower stages when flushing delayed offline queues.
+ *    - Accidental regression (e.g. outbox flush attempting to push Stage 2 onto Stage 4)
+ *      is automatically rejected to preserve advanced agronomic progress.
+ *
+ * 3. Assignments & Boundary State: Two-Phase SRA Authority & Collision Ticketing
+ *    - Central database holds authoritative state for field ownership and member plot claims.
+ *    - Irreconcilable offline collisions automatically generate an "Offline Sync Collision"
+ *      support ticket (category: 'Offline Sync Collision') flagged for Farm Manager / SRA triage.
+ */
+
+export const SRA_STAGE_HIERARCHY = {
+  'Stage 1: Land Preparation & Tillage': 1,
+  'Stage 2: Planting & Basal Nutrition': 2,
+  'Stage 3: Early Vegetative & Weed Control': 3,
+  'Stage 4: Top-Dressing & Earthing-Up': 4,
+  'Stage 5: Ripening & Stalk Maturation': 5,
+  'Stage 6: Harvest & Hauling': 6
+};
+
+/**
+ * Resolves conflict between current field stage and an incoming offline stage update
+ */
+export function resolveStageConflict(currentStage, incomingStage, currentUpdatedAt, incomingCreatedAt) {
+  if (!currentStage) return { stage: incomingStage, resolution: 'applied_initial' };
+  if (!incomingStage) return { stage: currentStage, resolution: 'retained_current' };
+
+  const currentLevel = SRA_STAGE_HIERARCHY[currentStage] || 0;
+  const incomingLevel = SRA_STAGE_HIERARCHY[incomingStage] || 0;
+
+  // Monotonic forward progression: higher stage takes natural precedence
+  if (incomingLevel > currentLevel) {
+    return { stage: incomingStage, resolution: 'applied_forward_progression' };
+  }
+
+  // Same stage: Last-Write-Wins based on physical activity timestamp
+  if (incomingLevel === currentLevel) {
+    const isNewer = new Date(incomingCreatedAt) >= new Date(currentUpdatedAt || 0);
+    return { stage: isNewer ? incomingStage : currentStage, resolution: isNewer ? 'applied_lww' : 'retained_existing' };
+  }
+
+  // Regression attempt (e.g. attempting to regress Stage 4 back to Stage 2 from an old offline queue):
+  return { stage: currentStage, resolution: 'rejected_regression_preserved_advanced_stage' };
+}
+
+/**
  * Generate a unique deterministic client ID for offline logs
  */
 export function generateDeterministicLogId(fieldId) {

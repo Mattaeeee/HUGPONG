@@ -1,6 +1,0 @@
-@echo off
-setlocal
-set "ROOT=%~dp0"
-title Opening HUGPONG Web Admin...
-echo Opening HUGPONG Web Admin Console in your browser...
-start "" "%ROOT%admin\login.html"

@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, TextInput,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
-import { subscribe, getCurrentSession, MOCK_FIELDS, getMemberSyncHealth, performMobileSync, updateSessionFieldId } from '../data/mockData';
+import { subscribe, getCurrentSession, MOCK_FIELDS, getMemberSyncHealth, performMobileSync, updateSessionFieldId } from '../data/dataStore';
 import { useTranslation } from '../services/i18n';
 
 export default function SyncMonitorScreen({ navigation }) {
@@ -12,6 +12,7 @@ export default function SyncMonitorScreen({ navigation }) {
   const [syncHealth, setSyncHealth] = useState(getMemberSyncHealth());
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState('attention'); // 'attention', 'all', 'active', 'warning', 'critical'
+  const [memberPage, setMemberPage] = useState(1);
 
   React.useEffect(() => {
     const unsubscribe = subscribe(() => {
@@ -24,65 +25,45 @@ export default function SyncMonitorScreen({ navigation }) {
   const isFarmManager = session.role === 'Farm Manager';
   const isSRA = session.role === 'SRA (Admin)';
 
-  // Member terminal telemetry mock list for Block Farm A
-  const memberTelemetry = [
-    {
-      id: 'FLD-KTR-001',
-      name: 'Mario Dimagiba',
-      contact: '0917-123-4567',
-      ha: '1.5',
-      stage: 'Planting',
-      lastSync: '3 hours ago',
-      lagDays: 0,
-      offlineLogsCount: 2,
-      battery: 88,
-      status: 'active',
-      statusLabel: 'Active & Synced',
-      device: 'Samsung Galaxy A14 (Android 13)'
-    },
-    {
-      id: 'FLD-KTR-002',
-      name: 'Jose Rizal',
-      contact: '0917-222-3344',
-      ha: '2.1',
-      stage: 'Tillering',
-      lastSync: '4 days ago',
-      lagDays: 4,
-      offlineLogsCount: 5,
-      battery: 42,
-      status: 'warning',
-      statusLabel: 'Lagging (4 days)',
-      device: 'Xiaomi Redmi 12 (Android 12)'
-    },
-    {
-      id: 'FLD-KTR-005',
-      name: 'Roberto Tan',
-      contact: '0917-555-6677',
-      ha: '1.8',
-      stage: 'Land Preparation',
-      lastSync: '8 days ago',
-      lagDays: 8,
-      offlineLogsCount: 7,
-      battery: 19,
-      status: 'critical',
-      statusLabel: 'Inactive (8 days)',
-      device: 'Infinix Hot 30i (Android 11)'
-    },
-    {
-      id: 'FLD-KTR-006',
-      name: 'Antonio Luna',
-      contact: '0917-888-2233',
-      ha: '1.2',
-      stage: 'Cane Growth',
-      lastSync: 'Yesterday',
-      lagDays: 1,
-      offlineLogsCount: 0,
-      battery: 76,
-      status: 'active',
-      statusLabel: 'Active & Synced',
-      device: 'Realme C55 (Android 13)'
-    }
-  ];
+  // Member terminal telemetry dynamically derived from MOCK_FIELDS
+  const memberTelemetry = React.useMemo(() => {
+    const devices = [
+      'Samsung Galaxy A14 (Android 13)',
+      'Xiaomi Redmi 12 (Android 12)',
+      'Realme C55 (Android 13)',
+      'Infinix Hot 30i (Android 11)',
+      'Oppo A58 (Android 13)'
+    ];
+    const contacts = [
+      '0917-123-4567',
+      '0918-987-6543',
+      '0919-444-8888',
+      '0917-555-1234',
+      '0918-666-7890'
+    ];
+    return MOCK_FIELDS.map((f, idx) => {
+      const isLagging = f.lastSync?.includes('days') || !f.synced;
+      const isCritical = f.lastSync?.includes('4 days') || f.lastSync?.includes('8 days');
+      const lagDays = isCritical ? 4 : (isLagging ? 2 : 0);
+      const status = isCritical ? 'critical' : (isLagging ? 'warning' : 'active');
+      const statusLabel = isCritical ? `Critical (${f.lastSync})` : (isLagging ? `Lagging (${f.lastSync})` : 'Active & Synced');
+      return {
+        id: f.id,
+        name: f.member || 'Member Farmer',
+        contact: contacts[idx % contacts.length],
+        ha: String(f.ha || '1.5'),
+        stage: f.stage ? f.stage.split(':')[0] : 'In Progress',
+        lastSync: f.lastSync || '1 hr ago',
+        lagDays,
+        offlineLogsCount: f.synced ? 0 : 3,
+        battery: 85 - (idx * 15),
+        status,
+        statusLabel,
+        device: devices[idx % devices.length],
+        blockFarm: f.blockFarm || 'Nacayao Block Farm A'
+      };
+    });
+  }, []);
 
   const attentionCount = memberTelemetry.filter(m => m.status === 'warning' || m.status === 'critical').length;
   const activeCount = memberTelemetry.filter(m => m.status === 'active').length;
@@ -112,34 +93,14 @@ export default function SyncMonitorScreen({ navigation }) {
 
   const handleContactMember = (member) => {
     const cleanPhone = (member.contact || '').replace(/[^0-9+]/g, '');
-    const smsMessage = `Hi ${member.name.split(' ')[0]}, this is ${session.name} (Farm Manager). Please open HUGPONG and tap Sync to upload your field logs for ${member.id}.`;
 
     Alert.alert(
-      `${t('action_send_sms', 'Contact')} ${member.name}`,
-      `${t('profile_mobile_contact', 'Mobile')}: ${member.contact}\n${t('field_plot', 'Field Plot')}: ${member.id} (${member.ha || 1.5} Ha)\n${t('status', 'Sync Status')}: ${formatSyncTime(member.lastSync)}\n\n`,
+      `${t('btn_call_member', 'Call Member')}: ${member.name}`,
+      `${t('profile_mobile_contact', 'Mobile')}: ${member.contact}\n${t('field_plot', 'Field Plot')}: ${member.id} (${member.ha || 1.5} Ha)\n${t('status', 'Sync Status')}: ${formatSyncTime(member.lastSync)}\n\nDirect carrier call via your device dialer (no SMS fees).`,
       [
         { text: t('btn_cancel', 'Cancel'), style: 'cancel' },
         {
-          text: t('action_send_sms', 'Send SMS Notice'),
-          onPress: async () => {
-            const smsUrl = `sms:${cleanPhone}?body=${encodeURIComponent(smsMessage)}`;
-            try {
-              const supported = await Linking.canOpenURL(smsUrl);
-              if (supported) {
-                await Linking.openURL(smsUrl);
-              } else {
-                Alert.alert(
-                  'SMS Notice Ready',
-                  `SMS recipient: ${member.contact}\nMessage: "${smsMessage}"`
-                );
-              }
-            } catch (err) {
-              Alert.alert('Error', 'Unable to open native SMS composer.');
-            }
-          }
-        },
-        {
-          text: t('btn_call_manager', 'Call Member'),
+          text: t('btn_call_now', 'Call Now'),
           onPress: async () => {
             const telUrl = `tel:${cleanPhone}`;
             try {
@@ -187,7 +148,7 @@ export default function SyncMonitorScreen({ navigation }) {
         </TouchableOpacity>
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={s.headerTitle}>{isFarmManager ? t('telemetry_title', 'Member Sync Monitor') : (isSRA ? 'SRA Terminal' : t('action_sync_hub', 'Sync Status'))}</Text>
-          <Text style={s.headerSub}>{isFarmManager ? t('profile_supervising_farm', 'Block Farm A Supervision') : (isSRA ? 'Administrative Authority' : 'Mobile Terminal Connection')}</Text>
+          <Text style={s.headerSub}>{isFarmManager ? `${session.farm || 'Nacayao Block Farm A'} Supervision` : (isSRA ? 'Administrative Authority' : 'Mobile Terminal Connection')}</Text>
         </View>
         <View style={{ width: 36 }} />
       </View>
@@ -255,7 +216,10 @@ export default function SyncMonitorScreen({ navigation }) {
                 <TouchableOpacity
                   key={chip.key}
                   style={[s.filterPill, filterMode === chip.key && s.filterPillActive]}
-                  onPress={() => setFilterMode(chip.key)}
+                  onPress={() => {
+                    setFilterMode(chip.key);
+                    setMemberPage(1);
+                  }}
                 >
                   <Text style={[s.filterPillText, filterMode === chip.key && s.filterPillTextActive]}>{chip.label}</Text>
                 </TouchableOpacity>
@@ -270,10 +234,13 @@ export default function SyncMonitorScreen({ navigation }) {
                 placeholder={t('search_members_placeholder', 'Search members or field ID...')}
                 placeholderTextColor={COLORS.textMuted}
                 value={searchQuery}
-                onChangeText={setSearchQuery}
+                onChangeText={(q) => {
+                  setSearchQuery(q);
+                  setMemberPage(1);
+                }}
               />
               {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <TouchableOpacity onPress={() => { setSearchQuery(''); setMemberPage(1); }}>
                   <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
                 </TouchableOpacity>
               )}
@@ -284,79 +251,115 @@ export default function SyncMonitorScreen({ navigation }) {
               {filterMode === 'attention' ? `Members Requiring Sync Attention (${filteredMembers.length})` : `Registered Block Farm Members (${filteredMembers.length})`}
             </Text>
 
-            {filteredMembers.length === 0 ? (
-              <View style={[s.emptyBox, { paddingVertical: 24, gap: 8, alignItems: 'center' }]}>
-                <Ionicons name="checkmark-circle-outline" size={40} color={COLORS.success} />
-                <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text }}>All Block Farm Members Synced</Text>
-                <Text style={[s.emptyText, { textAlign: 'center' }]}>No members have sync lag or offline buffer delays at this time.</Text>
-                <TouchableOpacity
-                  style={{ marginTop: 6, paddingHorizontal: 14, paddingVertical: 7, borderRadius: RADIUS.md, backgroundColor: COLORS.primaryBg }}
-                  onPress={() => setFilterMode('all')}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}>View All Members ({memberTelemetry.length})</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              filteredMembers.map(m => {
-                const isCritical = m.status === 'critical';
-                const isWarn = m.status === 'warning';
-                const badgeBg = isCritical ? '#FDF2F2' : (isWarn ? '#FFFBF0' : '#F0F9F0');
-                const badgeBorder = isCritical ? '#F8B4B4' : (isWarn ? '#FEF0D0' : '#D1F2D1');
-                const badgeColor = isCritical ? '#E02424' : (isWarn ? '#C97A00' : COLORS.success);
-                const badgeLabel = isCritical ? `${m.lagDays}d Offline (Critical)` : (isWarn ? `${m.lagDays}d Lag Warning` : 'Active / Synced');
+            {(() => {
+              const pageSize = 3;
+              const totalPages = Math.ceil(filteredMembers.length / pageSize) || 1;
+              const curPage = Math.min(memberPage, totalPages);
+              const paginatedMembers = filteredMembers.slice((curPage - 1) * pageSize, curPage * pageSize);
 
-                return (
-                  <View key={m.id} style={[s.memberCard, { borderColor: isCritical ? '#F8B4B4' : '#E2E8DC' }]}>
-                    <View style={s.memberTopRow}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <View style={s.memberAvatar}>
-                          <Text style={s.memberAvatarText}>{m.name.charAt(0)}</Text>
+              return filteredMembers.length === 0 ? (
+                <View style={[s.emptyBox, { paddingVertical: 24, gap: 8, alignItems: 'center' }]}>
+                  <Ionicons name="checkmark-circle-outline" size={40} color={COLORS.success} />
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: COLORS.text }}>{t('all_members_synced', 'All Block Farm Members Synced')}</Text>
+                  <Text style={[s.emptyText, { textAlign: 'center' }]}>{t('all_members_synced_sub', 'No members have sync lag or offline buffer delays at this time.')}</Text>
+                  <TouchableOpacity
+                    style={{ marginTop: 6, paddingHorizontal: 14, paddingVertical: 7, borderRadius: RADIUS.md, backgroundColor: COLORS.primaryBg }}
+                    onPress={() => { setFilterMode('all'); setMemberPage(1); }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}>{t('view_all_members', 'View All Members')} ({memberTelemetry.length})</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  {paginatedMembers.map(m => {
+                    const isCritical = m.status === 'critical';
+                    const isWarn = m.status === 'warning';
+                    const badgeBg = isCritical ? '#FDF2F2' : (isWarn ? '#FFFBF0' : '#F0F9F0');
+                    const badgeBorder = isCritical ? '#F8B4B4' : (isWarn ? '#FEF0D0' : '#D1F2D1');
+                    const badgeColor = isCritical ? '#E02424' : (isWarn ? '#C97A00' : COLORS.success);
+                    const badgeLabel = isCritical ? `${m.lagDays}d Offline (Critical)` : (isWarn ? `${m.lagDays}d Lag Warning` : 'Active / Synced');
+
+                    return (
+                      <View key={m.id} style={[s.memberCard, { borderColor: isCritical ? '#F8B4B4' : '#E2E8DC' }]}>
+                        <View style={s.memberTopRow}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <View style={s.memberAvatar}>
+                              <Text style={s.memberAvatarText}>{m.name.charAt(0)}</Text>
+                            </View>
+                            <View>
+                              <Text style={s.memberName}>{m.name}</Text>
+                              <Text style={s.memberFieldId}>{m.id} <Text style={{ color: COLORS.textMuted, fontWeight: '400' }}>({m.ha} Ha)</Text></Text>
+                            </View>
+                          </View>
+                          <View style={[s.healthBadge, { backgroundColor: badgeBg, borderColor: badgeBorder }]}>
+                            <View style={[s.healthDot, { backgroundColor: badgeColor }]} />
+                            <Text style={[s.healthBadgeText, { color: badgeColor }]}>{badgeLabel}</Text>
+                          </View>
                         </View>
-                        <View>
-                          <Text style={s.memberName}>{m.name}</Text>
-                          <Text style={s.memberFieldId}>{m.id} <Text style={{ color: COLORS.textMuted, fontWeight: '400' }}>({m.ha} Ha)</Text></Text>
+
+                        <View style={s.memberDetailsRow}>
+                          <View>
+                            <Text style={s.detailLabel}>{t('stage', 'Current Stage')}</Text>
+                            <Text style={s.detailValue}>{m.stage}</Text>
+                          </View>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={s.detailLabel}>{t('sync_info', 'Latest Sync')}</Text>
+                            <Text style={[s.detailValue, { color: badgeColor }]}>{formatSyncTime(m.lastSync)}</Text>
+                          </View>
+                        </View>
+
+                        <View style={s.memberActionRow}>
+                          <TouchableOpacity
+                            style={s.contactBtn}
+                            onPress={() => handleContactMember(m)}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="call-outline" size={14} color={COLORS.text} />
+                            <Text style={s.contactBtnText} numberOfLines={1}>{t('btn_call_member', 'Call Member')}</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={s.takeOverBtn}
+                            onPress={() => handleTakeOver(m)}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="navigate-outline" size={14} color={COLORS.primary} />
+                            <Text style={s.takeOverBtnText} numberOfLines={1}>{t('btn_take_over', 'Take Over Plot')}</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
-                      <View style={[s.healthBadge, { backgroundColor: badgeBg, borderColor: badgeBorder }]}>
-                        <View style={[s.healthDot, { backgroundColor: badgeColor }]} />
-                        <Text style={[s.healthBadgeText, { color: badgeColor }]}>{badgeLabel}</Text>
-                      </View>
-                    </View>
+                    );
+                  })}
 
-                    <View style={s.memberDetailsRow}>
-                      <View>
-                        <Text style={s.detailLabel}>{t('stage', 'Current Stage')}</Text>
-                        <Text style={s.detailValue}>{m.stage}</Text>
-                      </View>
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={s.detailLabel}>{t('sync_info', 'Latest Sync')}</Text>
-                        <Text style={[s.detailValue, { color: badgeColor }]}>{formatSyncTime(m.lastSync)}</Text>
-                      </View>
-                    </View>
-
-                    <View style={s.memberActionRow}>
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, marginTop: 4, borderTopWidth: 1, borderTopColor: COLORS.border }}>
                       <TouchableOpacity
-                        style={s.contactBtn}
-                        onPress={() => handleContactMember(m)}
-                        activeOpacity={0.8}
+                        disabled={curPage === 1}
+                        onPress={() => setMemberPage(p => Math.max(1, p - 1))}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 5, paddingHorizontal: 10, borderRadius: RADIUS.xs, borderWidth: 1, borderColor: curPage === 1 ? COLORS.border : COLORS.primary, backgroundColor: curPage === 1 ? '#F8F9FA' : COLORS.primaryBg, opacity: curPage === 1 ? 0.6 : 1 }}
                       >
-                        <Ionicons name="call-outline" size={14} color={COLORS.text} />
-                        <Text style={s.contactBtnText} numberOfLines={1}>{t('action_send_sms', 'Contact Member')}</Text>
+                        <Ionicons name="chevron-back" size={13} color={curPage === 1 ? COLORS.textMuted : COLORS.primary} />
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: curPage === 1 ? COLORS.textMuted : COLORS.primary }}>{t('btn_prev', 'Prev')}</Text>
                       </TouchableOpacity>
 
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textSecondary }}>
+                        {t('page_label', 'Page')} {curPage} {t('of_label', 'of')} {totalPages} ({filteredMembers.length} {t('members_label', 'Members')})
+                      </Text>
+
                       <TouchableOpacity
-                        style={s.takeOverBtn}
-                        onPress={() => handleTakeOver(m)}
-                        activeOpacity={0.8}
+                        disabled={curPage === totalPages}
+                        onPress={() => setMemberPage(p => Math.min(totalPages, p + 1))}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 5, paddingHorizontal: 10, borderRadius: RADIUS.xs, borderWidth: 1, borderColor: curPage === totalPages ? COLORS.border : COLORS.primary, backgroundColor: curPage === totalPages ? '#F8F9FA' : COLORS.primaryBg, opacity: curPage === totalPages ? 0.6 : 1 }}
                       >
-                        <Ionicons name="navigate-outline" size={14} color={COLORS.primary} />
-                        <Text style={s.takeOverBtnText} numberOfLines={1}>{t('btn_take_over', 'Take Over Plot')}</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: curPage === totalPages ? COLORS.textMuted : COLORS.primary }}>{t('btn_next', 'Next')}</Text>
+                        <Ionicons name="chevron-forward" size={13} color={curPage === totalPages ? COLORS.textMuted : COLORS.primary} />
                       </TouchableOpacity>
                     </View>
-                  </View>
-                );
-              })
-            )}
+                  )}
+                </>
+              );
+            })()}
           </>
         ) : isSRA ? (
           /* ── SRA ADMIN VIEW ── */
@@ -403,7 +406,7 @@ export default function SyncMonitorScreen({ navigation }) {
               <Ionicons name="shield-checkmark" size={28} color={COLORS.success} />
             </View>
             <Text style={{ fontSize: 16, fontWeight: '800', color: COLORS.text, textAlign: 'center' }}>
-              {t('sync_status_synced', 'Terminal Connected to')} {session.farm || 'Block Farm A'}
+              {t('sync_status_synced', 'Terminal Connected to')} {session.farm || 'Nacayao Block Farm A'}
             </Text>
             <Text style={{ fontSize: 12, color: COLORS.textMuted, textAlign: 'center', marginTop: 4, lineHeight: 18 }}>
               {t('sync_toast_synced', 'Your offline operation logs and resource entries are automatically synchronized when online connectivity is detected.')}
@@ -416,7 +419,7 @@ export default function SyncMonitorScreen({ navigation }) {
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{t('profile_supervising_farm', 'Supervising Manager')}:</Text>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.text }}>Jose Reyes ({session.farm || 'Block Farm A'})</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.text }}>Jose Reyes ({session.farm || 'Nacayao Block Farm A'})</Text>
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{t('sync_info', 'Latest Sync')}:</Text>
@@ -429,7 +432,7 @@ export default function SyncMonitorScreen({ navigation }) {
                 style={{ flex: 1, backgroundColor: COLORS.primary, paddingVertical: 12, paddingHorizontal: 6, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5 }}
                 onPress={() => {
                   performMobileSync();
-                  Alert.alert(t('sync_status_synced', 'Sync Successful'), t('sync_toast_complete', 'Your local logs are now fully synchronized with Block Farm A.'));
+                  Alert.alert(t('sync_status_synced', 'Sync Successful'), `Your local logs are now fully synchronized with ${session.farm || 'Nacayao Block Farm A'}.`);
                 }}
               >
                 <Ionicons name="sync" size={15} color="#FFF" />

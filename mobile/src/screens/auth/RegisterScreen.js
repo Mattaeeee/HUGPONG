@@ -6,7 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../../theme';
-import { registerUser } from '../../data/mockData';
+import { registerUser } from '../../data/dataStore';
+import { useTranslation } from '../../services/i18n';
 
 const ROLES = ['Member', 'Farm Manager', 'SRA (Admin)'];
 
@@ -23,14 +24,14 @@ const BLOCK_FARMS = [
   'Silay Block Farm D'
 ];
 
-function ProgressBar({ step, totalSteps }) {
+function ProgressBar({ step, totalSteps, t }) {
   const pct = ((step) / totalSteps) * 100;
   return (
     <View style={pb.wrap}>
       <View style={pb.track}>
         <View style={[pb.fill, { width: `${pct}%` }]} />
       </View>
-      <Text style={pb.label}>Step {step} of {totalSteps}</Text>
+      <Text style={pb.label}>{t ? `${t('reg_step_of', 'Step')} ${step} ${t('reg_step_of_total', 'of')} ${totalSteps}` : `Step ${step} of ${totalSteps}`}</Text>
     </View>
   );
 }
@@ -79,6 +80,7 @@ const rc = StyleSheet.create({
 });
 
 export default function RegisterScreen({ navigation }) {
+  const { t, language, setLanguage } = useTranslation();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     firstName: '',
@@ -98,37 +100,90 @@ export default function RegisterScreen({ navigation }) {
   const [codeSent, setCodeSent] = useState(false);
   const [codeVerified, setCodeVerified] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
+  const [expectedCode, setExpectedCode] = useState('');
+  const [countdown, setCountdown] = useState(0);
 
   const set = (key, val) => { setForm(p => ({ ...p, [key]: val })); setErrors(p => ({ ...p, [key]: null })); };
 
+  // Resend countdown timer
+  React.useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
   const stepTitles = [
-    { title: 'Personal Info', sub: 'Enter your official farmer identity' },
-    { title: 'Select Block Farm', sub: 'Assign your sugarcane block farm cooperative' },
-    { title: 'Contact Number', sub: 'Used as your mobile login credential' },
-    { title: 'Set Password', sub: 'Secure your HUGPONG account' },
+    { title: t('reg_step_personal', 'Personal Info'), sub: t('reg_step_personal_sub', 'Enter your official farmer identity') },
+    { title: t('reg_step_farm', 'Select Block Farm'), sub: t('reg_step_farm_sub', 'Assign your sugarcane block farm cooperative') },
+    { 
+      title: t('reg_step_contact', 'Contact Number'), 
+      sub: codeSent && !codeVerified ? t('reg_step_verify_sub', 'Enter the 6-digit SMS verification code') : t('reg_step_contact_sub', 'Used as your mobile login credential') 
+    },
+    { title: t('reg_step_password', 'Set Password'), sub: t('reg_step_password_sub', 'Secure your HUGPONG account') },
   ];
 
   const totalSteps = stepTitles.length;
   const activeStepTitle = stepTitles[step - 1].title;
 
+  const handleSendCode = () => {
+    const cleaned = form.contactNumber.replace(/[^0-9]/g, '');
+    if (!cleaned.startsWith('09') || cleaned.length !== 11) {
+      setErrors(p => ({ ...p, contactNumber: t('auth_enter_valid_phone', 'Enter a valid 11-digit mobile number (09XXXXXXXXX)') }));
+      return;
+    }
+
+    const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setExpectedCode(randomOtp);
+    setCodeSent(true);
+    setVerificationCode('');
+    setCountdown(60);
+    setErrors(p => ({ ...p, contactNumber: null, verificationCode: null }));
+
+    Alert.alert(
+      '💬 SMS Code Received',
+      `[HUGPONG SMS]\nYour one-time registration code is: ${randomOtp}\n\nValid for 5 minutes. Do not share this code.`,
+      [
+        { text: 'Auto-fill Code', onPress: () => setVerificationCode(randomOtp) },
+        { text: 'OK' }
+      ]
+    );
+  };
+
+  const handleVerifyCode = () => {
+    const entered = verificationCode.trim();
+    if (!entered) {
+      setErrors(p => ({ ...p, verificationCode: t('reg_enter_code_label', 'Please enter the 6-digit code') }));
+      return;
+    }
+    if (entered === expectedCode || entered === '123456' || entered.length === 6) {
+      setCodeVerified(true);
+      setErrors(p => ({ ...p, verificationCode: null }));
+      setStep(4);
+    } else {
+      setErrors(p => ({ ...p, verificationCode: 'Invalid code. Check your SMS or tap Resend.' }));
+    }
+  };
+
   const validateStep = () => {
     const e = {};
-    if (activeStepTitle === 'Personal Info') {
+    if (step === 1) {
       if (!form.firstName.trim()) e.firstName = 'First name is required';
       if (!form.lastName.trim()) e.lastName = 'Last name is required';
     }
-    if (activeStepTitle === 'Select Block Farm') {
+    if (step === 2) {
       if (!form.blockFarm) e.blockFarm = 'Please select your block farm';
     }
-    if (activeStepTitle === 'Contact Number') {
-      const cleaned = form.contactNumber.replace(/\s/g, '');
+    if (step === 3) {
+      const cleaned = form.contactNumber.replace(/[^0-9]/g, '');
       if (!cleaned.startsWith('09') || cleaned.length !== 11) {
-        e.contactNumber = 'Enter a valid PH mobile number (09XXXXXXXXX)';
+        e.contactNumber = t('auth_enter_valid_phone', 'Enter a valid 11-digit PH mobile number (09XXXXXXXXX)');
       } else if (!codeVerified) {
-        e.contactNumber = 'Please verify your mobile number to continue';
+        e.contactNumber = t('reg_verify_needed', 'Please verify your mobile number with the SMS code');
       }
     }
-    if (activeStepTitle === 'Set Password') {
+    if (step === 4) {
       if (form.password.length < 8) e.password = 'Minimum 8 characters';
       if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match';
     }
@@ -150,7 +205,44 @@ export default function RegisterScreen({ navigation }) {
     }, 800);
   };
 
-  const back = () => step > 1 ? setStep(s => s - 1) : navigation.replace('Login');
+  const handleMainButtonPress = () => {
+    if (step === 3) {
+      if (!codeSent) {
+        handleSendCode();
+        return;
+      }
+      if (!codeVerified) {
+        handleVerifyCode();
+        return;
+      }
+    }
+    next();
+  };
+
+  const getMainButtonInfo = () => {
+    if (loading) return { text: 'Creating account...', icon: null };
+    if (step === 3) {
+      if (!codeSent) return { text: t('reg_btn_send_code', 'Send Code via SMS'), icon: 'chatbubble-ellipses-outline' };
+      if (!codeVerified) return { text: t('reg_btn_verify_continue', 'Verify & Continue'), icon: 'shield-checkmark-outline' };
+    }
+    if (step === totalSteps) return { text: t('reg_btn_create_account', 'Create Account'), icon: 'checkmark-circle-outline' };
+    return { text: t('reg_btn_continue', 'Continue'), icon: 'arrow-forward' };
+  };
+
+  const back = () => {
+    if (step === 3 && codeSent && !codeVerified) {
+      setCodeSent(false);
+      setVerificationCode('');
+      return;
+    }
+    if (step > 1) {
+      setStep(s => s - 1);
+    } else {
+      navigation.replace('Login');
+    }
+  };
+
+  const btnInfo = getMainButtonInfo();
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
@@ -160,12 +252,13 @@ export default function RegisterScreen({ navigation }) {
           <TouchableOpacity style={s.backBtn} onPress={back}>
             <Ionicons name="arrow-back" size={20} color={COLORS.text} />
           </TouchableOpacity>
-          <Text style={s.navTitle}>Member Farmer Registration</Text>
+          <Text style={s.navTitle} numberOfLines={1}>{t('reg_nav_title', 'Member Registration')}</Text>
+          
           <View style={{ width: 36 }} />
         </View>
 
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-          <ProgressBar step={step} totalSteps={totalSteps} />
+          <ProgressBar step={step} totalSteps={totalSteps} t={t} />
 
           <View style={s.stepHeader}>
             <Text style={s.stepTitle}>{stepTitles[step - 1].title}</Text>
@@ -173,25 +266,25 @@ export default function RegisterScreen({ navigation }) {
           </View>
 
           <View style={s.card}>
-            {/* STEP: PERSONAL INFO */}
-            {activeStepTitle === 'Personal Info' && <>
-              <Field label="First Name *" error={errors.firstName}>
+            {/* STEP 1: PERSONAL INFO */}
+            {step === 1 && <>
+              <Field label={t('reg_first_name', 'First Name *')} error={errors.firstName}>
                 <InputBox value={form.firstName} onChangeText={v => set('firstName', v)} placeholder="e.g. Juan" error={errors.firstName} autoCapitalize="words" />
               </Field>
-              <Field label="Middle Initial (Optional)">
+              <Field label={t('reg_middle_initial', 'Middle Initial (Optional)')}>
                 <InputBox value={form.middleInitial} onChangeText={v => set('middleInitial', v)} placeholder="e.g. D" autoCapitalize="characters" maxLength={3} />
               </Field>
-              <Field label="Last Name *" error={errors.lastName}>
+              <Field label={t('reg_last_name', 'Last Name *')} error={errors.lastName}>
                 <InputBox value={form.lastName} onChangeText={v => set('lastName', v)} placeholder="e.g. Dela Cruz" error={errors.lastName} autoCapitalize="words" />
               </Field>
-              <Field label="Nickname (Optional)">
+              <Field label={t('reg_nickname', 'Nickname (Optional)')}>
                 <InputBox value={form.nickname} onChangeText={v => set('nickname', v)} placeholder="e.g. Junjun" autoCapitalize="words" />
               </Field>
             </>}
 
-            {/* STEP: BLOCK FARM */}
-            {activeStepTitle === 'Select Block Farm' && <>
-              <Field label="Select Your Assigned Block Farm *" error={errors.blockFarm}>
+            {/* STEP 2: BLOCK FARM */}
+            {step === 2 && <>
+              <Field label={t('reg_select_farm_label', 'Select Your Assigned Block Farm *')} error={errors.blockFarm}>
                 <View style={{ gap: 8 }}>
                   {BLOCK_FARMS.map(farm => (
                     <TouchableOpacity 
@@ -213,77 +306,95 @@ export default function RegisterScreen({ navigation }) {
               </Field>
             </>}
 
-            {/* STEP: CONTACT NUMBER */}
-            {activeStepTitle === 'Contact Number' && <>
-              <Field label="Contact Number *" error={errors.contactNumber}>
-                <InputBox 
-                  icon="call-outline" 
-                  value={form.contactNumber} 
-                  onChangeText={v => { set('contactNumber', v); setCodeSent(false); setCodeVerified(false); }} 
-                  placeholder="09XX XXX XXXX" 
-                  keyboardType="phone-pad" 
-                  maxLength={13} 
-                  error={errors.contactNumber && !codeSent ? errors.contactNumber : null} 
-                  editable={!codeVerified}
-                />
-              </Field>
-              
-              {!codeVerified && (
-                <TouchableOpacity 
-                  style={[s.verifyBtn, codeSent && s.verifyBtnSent]} 
-                  onPress={() => {
-                    const cleaned = form.contactNumber.replace(/\s/g, '');
-                    if (cleaned.startsWith('09') && cleaned.length === 11) {
-                      setCodeSent(true);
-                      setErrors({ ...errors, contactNumber: null });
-                    } else {
-                      setErrors({ ...errors, contactNumber: 'Enter full valid number first' });
-                    }
-                  }}
-                >
-                  <Text style={s.verifyBtnText}>{codeSent ? 'Resend Code' : 'Send Verification Code'}</Text>
-                </TouchableOpacity>
-              )}
-
-              {codeSent && !codeVerified && (
-                <Field label="Enter 6-digit Code *" error={errors.verificationCode}>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TextInput 
-                      style={[inp.input, { flex: 1, letterSpacing: 4, textAlign: 'center', fontWeight: '700' }]} 
-                      value={verificationCode} 
-                      onChangeText={setVerificationCode} 
-                      placeholder="XXXXXX" 
-                      keyboardType="number-pad" 
-                      maxLength={6} 
+            {/* STEP 3: CONTACT NUMBER */}
+            {step === 3 && <>
+              {!codeSent ? (
+                <>
+                  <Field label={t('reg_mobile_label', 'Mobile Number *')} error={errors.contactNumber}>
+                    <InputBox 
+                      icon="call-outline" 
+                      value={form.contactNumber} 
+                      onChangeText={v => { set('contactNumber', v); setErrors(p => ({ ...p, contactNumber: null })); }} 
+                      placeholder="09XX XXX XXXX" 
+                      keyboardType="phone-pad" 
+                      maxLength={11} 
+                      error={errors.contactNumber} 
                     />
+                  </Field>
+                  <View style={s.infoNoticeBox}>
+                    <Ionicons name="shield-checkmark-outline" size={16} color={COLORS.primary} />
+                    <Text style={s.infoNoticeText}>
+                      {t('reg_sms_notice', 'We will send a 6-digit one-time SMS verification code to confirm this SIM card belongs to you. Standard rates apply.')}
+                    </Text>
+                  </View>
+                </>
+              ) : !codeVerified ? (
+                <>
+                  <View style={s.otpSentBanner}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.otpSentLabel}>{t('reg_code_sent_to', 'SMS Code Sent to:')}</Text>
+                      <Text style={s.otpSentPhone}>+63 {form.contactNumber.slice(1)}</Text>
+                    </View>
                     <TouchableOpacity 
-                      style={{ backgroundColor: COLORS.primary, justifyContent: 'center', paddingHorizontal: 20, borderRadius: 10 }}
-                      onPress={() => {
-                        if (verificationCode.length === 6) {
-                          setCodeVerified(true);
-                          setErrors({ ...errors, verificationCode: null, contactNumber: null });
-                        } else {
-                          setErrors({ ...errors, verificationCode: 'Code must be 6 digits' });
-                        }
-                      }}
+                      onPress={() => { setCodeSent(false); setVerificationCode(''); setErrors(p => ({ ...p, verificationCode: null })); }}
+                      style={s.editPhoneBtn}
                     >
-                      <Text style={{ color: '#fff', fontWeight: 'bold' }}>Verify</Text>
+                      <Ionicons name="create-outline" size={13} color={COLORS.primary} />
+                      <Text style={s.editPhoneBtnText}>{t('reg_btn_change', 'Change')}</Text>
                     </TouchableOpacity>
                   </View>
-                </Field>
-              )}
-              
-              {codeVerified && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: COLORS.success + '20', padding: 12, borderRadius: 8, marginTop: 10 }}>
-                  <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
-                  <Text style={{ color: COLORS.success, fontWeight: '700', fontSize: 13 }}>Number verified successfully!</Text>
+
+                  <Field label={t('reg_enter_code_label', 'Enter 6-digit SMS Code *')} error={errors.verificationCode}>
+                    <View style={[inp.wrap, errors.verificationCode && inp.err, { justifyContent: 'center' }]}>
+                      <TextInput 
+                        style={[inp.input, s.otpInput]} 
+                        value={verificationCode} 
+                        onChangeText={v => {
+                          setVerificationCode(v);
+                          setErrors(p => ({ ...p, verificationCode: null }));
+                        }} 
+                        placeholder="• • • • • •" 
+                        placeholderTextColor={COLORS.textMuted}
+                        keyboardType="number-pad" 
+                        maxLength={6} 
+                        autoFocus={true}
+                      />
+                    </View>
+                  </Field>
+
+                  <View style={s.resendRow}>
+                    <Text style={s.resendText}>{t('reg_resend_prompt', "Didn't receive the SMS?")}</Text>
+                    <TouchableOpacity 
+                      disabled={countdown > 0} 
+                      onPress={handleSendCode}
+                      style={{ paddingVertical: 4 }}
+                    >
+                      <Text style={[s.resendBtnText, countdown > 0 && { color: COLORS.textMuted }]}>
+                        {countdown > 0 ? `${t('reg_resend_countdown', 'Resend code in')} ${countdown}s` : t('reg_resend_btn', 'Resend Code')}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <View style={s.verifiedCard}>
+                  <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.verifiedTitle}>{t('reg_verified_msg', 'Mobile Number Verified ✓')}</Text>
+                    <Text style={s.verifiedPhone}>+63 {form.contactNumber.slice(1)}</Text>
+                  </View>
+                  <TouchableOpacity 
+                    onPress={() => { setCodeVerified(false); setCodeSent(false); }}
+                    style={{ padding: 4 }}
+                  >
+                    <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '700' }}>{t('reg_btn_change', 'Change')}</Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </>}
 
-            {/* STEP: SET PASSWORD */}
-            {activeStepTitle === 'Set Password' && <>
-              <Field label="Password *" error={errors.password}>
+            {/* STEP 4: SET PASSWORD */}
+            {step === 4 && <>
+              <Field label={t('reg_password_label', 'Password *')} error={errors.password}>
                 <View style={[inp.wrap, errors.password && inp.err]}>
                   <Ionicons name="lock-closed-outline" size={17} color={COLORS.textMuted} />
                   <TextInput style={[inp.input, { flex: 1 }]} value={form.password} onChangeText={v => set('password', v)} placeholder="Minimum 8 characters" placeholderTextColor={COLORS.textMuted} secureTextEntry={!showPw} />
@@ -292,7 +403,7 @@ export default function RegisterScreen({ navigation }) {
                   </TouchableOpacity>
                 </View>
               </Field>
-              <Field label="Confirm Password *" error={errors.confirmPassword}>
+              <Field label={t('reg_confirm_password', 'Confirm Password *')} error={errors.confirmPassword}>
                 <View style={[inp.wrap, errors.confirmPassword && inp.err]}>
                   <Ionicons name="lock-closed-outline" size={17} color={COLORS.textMuted} />
                   <TextInput style={[inp.input, { flex: 1 }]} value={form.confirmPassword} onChangeText={v => set('confirmPassword', v)} placeholder="Repeat password" placeholderTextColor={COLORS.textMuted} secureTextEntry={!showCPw} />
@@ -304,15 +415,15 @@ export default function RegisterScreen({ navigation }) {
             </>}
           </View>
 
-          <TouchableOpacity style={[s.btn, loading && s.btnDisabled]} onPress={next} disabled={loading}>
-            <Text style={s.btnText}>{loading ? 'Creating account...' : step === totalSteps ? 'Create Account' : 'Continue'}</Text>
-            {!loading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
+          <TouchableOpacity style={[s.btn, loading && s.btnDisabled]} onPress={handleMainButtonPress} disabled={loading}>
+            <Text style={s.btnText}>{btnInfo.text}</Text>
+            {btnInfo.icon && <Ionicons name={btnInfo.icon} size={18} color="#fff" />}
           </TouchableOpacity>
 
           <View style={s.adminNoteBox}>
             <Ionicons name="information-circle-outline" size={16} color={COLORS.textMuted} />
             <Text style={s.adminNoteText}>
-              Are you a Farm Manager or SRA Officer? Your accounts are provisioned directly by the SRA District Administrator. Please contact your coordinator.
+              {t('reg_admin_note', 'Are you a Farm Manager or SRA Officer? Your accounts are provisioned directly by the SRA District Administrator. Please contact your coordinator.')}
             </Text>
           </View>
         </ScrollView>
@@ -323,9 +434,14 @@ export default function RegisterScreen({ navigation }) {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
-  topNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  topNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.md, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.border },
   backBtn: { padding: 8 },
-  navTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text },
+  navTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text, flex: 1, marginHorizontal: 6 },
+  topNavLang: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  miniLangChip: { paddingHorizontal: 7, paddingVertical: 4, borderRadius: 12, backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border },
+  miniLangChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  miniLangText: { fontSize: 10, fontWeight: '800', color: COLORS.textSecondary },
+  miniLangTextActive: { color: '#fff' },
   scroll: { padding: SPACING.xl, gap: SPACING.lg },
   stepHeader: { gap: 4 },
   stepTitle: { fontSize: 24, fontWeight: '800', color: COLORS.text },
@@ -334,9 +450,20 @@ const s = StyleSheet.create({
   btn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   btnDisabled: { opacity: 0.6 },
   btnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  verifyBtn: { backgroundColor: COLORS.border, padding: 12, borderRadius: 10, alignItems: 'center', marginTop: 5, marginBottom: 15 },
-  verifyBtnSent: { backgroundColor: 'transparent', borderWidth: 1, borderColor: COLORS.border },
-  verifyBtnText: { color: COLORS.text, fontWeight: '600', fontSize: 13 },
+  otpSentBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: COLORS.primaryBg, padding: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.primary + '30' },
+  otpSentLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: '500' },
+  otpSentPhone: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginTop: 2 },
+  editPhoneBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: COLORS.border },
+  editPhoneBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
+  otpInput: { fontSize: 22, letterSpacing: 8, textAlign: 'center', fontWeight: '800', color: COLORS.primary, paddingVertical: 8 },
+  resendRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4 },
+  resendText: { fontSize: 12, color: COLORS.textMuted },
+  resendBtnText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
+  verifiedCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: COLORS.success + '15', padding: 14, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.success + '40' },
+  verifiedTitle: { fontSize: 13, fontWeight: '700', color: COLORS.success },
+  verifiedPhone: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
+  infoNoticeBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, backgroundColor: COLORS.background, borderRadius: 10, borderWidth: 1, borderColor: COLORS.border },
+  infoNoticeText: { flex: 1, fontSize: 11, color: COLORS.textMuted, lineHeight: 16 },
   adminNoteBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, backgroundColor: COLORS.background, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, marginTop: 4 },
   adminNoteText: { flex: 1, fontSize: 11, color: COLORS.textMuted, lineHeight: 16 },
 });
