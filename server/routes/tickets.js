@@ -31,7 +31,7 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Ticket title is required.' });
   }
 
-  const ticketId = `TCK-${Date.now()}`;
+  const ticketId = req.body.id || `TCK-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase()}`;
   const ticketPayload = {
     id: ticketId,
     title,

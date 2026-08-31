@@ -33,7 +33,15 @@ router.post('/approve', requireAuth, requireRole(['super admin', 'farm manager',
   }
 
   const cleanContact = contact.replace(/\D/g, '');
+  let prefix = '04';
+  const roleLower = String(role || '').toLowerCase();
+  if (roleLower.includes('super admin')) prefix = '01';
+  else if (roleLower.includes('sra') || (roleLower.includes('admin') && !roleLower.includes('farm'))) prefix = '02';
+  else if (roleLower.includes('manager')) prefix = '03';
+  const employeeId = req.body.employeeId || `${prefix}${Math.floor(100000 + Math.random() * 900000)}`;
+
   const userPayload = {
+    employeeId,
     contact: cleanContact,
     name: name || 'Approved Member',
     role: role || 'Member',

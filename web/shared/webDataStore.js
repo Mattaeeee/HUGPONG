@@ -45,10 +45,11 @@ const INITIAL_DATABASE = {
   ],
   logs: [
     {
-      id: 'L-KTR-001',
+      id: 'LOG-2026-KTR-001-001',
       fieldId: 'FLD-KTR-001',
       stageNumber: 1,
       stageName: 'Stage 1: Pre-Planting & Land Preparation',
+      taskId: 'S1',
       sraOperationId: 'SRA-02',
       operationName: 'Land Preparation (Mechanical & Draft)',
       activity: 'Land Preparation (Mechanical & Draft)',
@@ -63,16 +64,17 @@ const INITIAL_DATABASE = {
       status: 'Recorded',
       loggedBy: 'Farmer (Juan dela Cruz)',
       subItems: [
-        { id: 'si-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
-        { id: 'si-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
-        { id: 'si-3', description: 'Furrowing / Tudling', qty: 1.5, unit: 'ha', unitCost: 3000, subTotal: 4500 }
+        { id: 'SI-LOG-KTR001-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
+        { id: 'SI-LOG-KTR001-001-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
+        { id: 'SI-LOG-KTR001-001-3', description: 'Furrowing / Tudling', qty: 1.5, unit: 'ha', unitCost: 3000, subTotal: 4500 }
       ]
     },
     {
-      id: 'L-KTR-002',
+      id: 'LOG-2026-KTR-002-001',
       fieldId: 'FLD-KTR-002',
       stageNumber: 2,
       stageName: 'Stage 2: Planting & Crop Establishment',
+      taskId: 'S2',
       sraOperationId: 'SRA-03',
       operationName: 'Planting Material (Seedpieces)',
       activity: 'Planting Material (Seedpieces)',
@@ -87,14 +89,15 @@ const INITIAL_DATABASE = {
       status: 'Recorded',
       loggedBy: 'Manager (Jose Reyes - Takeover)',
       subItems: [
-        { id: 'si-5', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
+        { id: 'SI-LOG-KTR002-001-1', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
       ]
     },
     {
-      id: 'L-KTR-003',
+      id: 'LOG-2026-KTR-003-001',
       fieldId: 'FLD-KTR-003',
       stageNumber: 3,
       stageName: 'Stage 3: Basal Nutrition & Early Care',
+      taskId: 'S3',
       sraOperationId: 'SRA-05',
       operationName: 'Basal Fertilization',
       activity: 'Basal Fertilization',
@@ -109,10 +112,10 @@ const INITIAL_DATABASE = {
       status: 'Recorded',
       loggedBy: 'Farmer (Ana Gomez)',
       subItems: [
-        { id: 'si-6', description: 'Application of 46-00-00 (Urea Fertilizer)', qty: 6, unit: 'bag', unitCost: 2200, subTotal: 13200 },
-        { id: 'si-7', description: 'Application of 18-46-00 (DAP / Complete)', qty: 9, unit: 'bag', unitCost: 2500, subTotal: 22500 },
-        { id: 'si-8', description: 'Application of 00-00-60 (MOP / Potash)', qty: 6, unit: 'bag', unitCost: 2100, subTotal: 12600 },
-        { id: 'si-9', description: 'Fertilizer Application Labor', qty: 3.0, unit: 'ha', unitCost: 1050, subTotal: 3150 }
+        { id: 'SI-LOG-KTR003-001-1', description: 'Application of 46-00-00 (Urea Fertilizer)', qty: 6, unit: 'bag', unitCost: 2200, subTotal: 13200 },
+        { id: 'SI-LOG-KTR003-001-2', description: 'Application of 18-46-00 (DAP / Complete)', qty: 9, unit: 'bag', unitCost: 2500, subTotal: 22500 },
+        { id: 'SI-LOG-KTR003-001-3', description: 'Application of 00-00-60 (MOP / Potash)', qty: 6, unit: 'bag', unitCost: 2100, subTotal: 12600 },
+        { id: 'SI-LOG-KTR003-001-4', description: 'Fertilizer Application Labor', qty: 3.0, unit: 'ha', unitCost: 1050, subTotal: 3150 }
       ]
     }
   ],
@@ -131,17 +134,17 @@ const INITIAL_DATABASE = {
     { week: 'Week 1 Mar', price: 2450, molasses: 4050, date: '2026-03-05', change: 0, molassesChange: 0, source: 'SRA Circular #92' }
   ],
   users: [
-    { contact: '09194448888', name: 'Maria Santos', role: 'SRA (Admin)', blockFarm: 'Silay Sugar Regulatory Administration', logsHandled: 42, regDate: '2026-02-01' },
-    { contact: '09171234567', name: 'Juan dela Cruz', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-001', logsHandled: 14, regDate: '2026-02-10' },
-    { contact: '09179876543', name: 'Jose Reyes', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-002', logsHandled: 6, regDate: '2026-02-12' },
-    { contact: '09194448889', name: 'Maria Santos', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-003', logsHandled: 10, regDate: '2026-02-15' },
-    { contact: '09987654321', name: 'Pedro Reyes', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-004', logsHandled: 6, regDate: '2026-03-15' },
-    { contact: '09555444333', name: 'Ana Gomez', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-005', logsHandled: 4, regDate: '2026-03-20' },
-    { contact: '09187654321', name: 'Capstone Group', role: 'Super Admin', blockFarm: 'Central Governance', logsHandled: 256, regDate: '2026-01-01' },
-    { contact: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', blockFarm: 'Nacayao Block Farm A', logsHandled: 128, regDate: '2026-02-01' },
-    { contact: '09123456789', name: 'Elena Ramos', role: 'Farm Manager', blockFarm: 'Block Farm B', logsHandled: 18, regDate: '2026-03-01' },
-    { contact: '09171112233', name: 'Elena Batongbakal', role: 'Farm Manager', blockFarm: 'Block Farm C', logsHandled: 14, regDate: '2026-03-05' },
-    { contact: '09174445566', name: 'Ricardo Dalisay', role: 'Farm Manager', blockFarm: 'Block Farm D', logsHandled: 9, regDate: '2026-03-12' }
+    { employeeId: '02000001', contact: '09194448888', name: 'Maria Santos', role: 'SRA (Admin)', blockFarm: 'Silay Sugar Regulatory Administration', logsHandled: 42, regDate: '2026-02-01' },
+    { employeeId: '04000001', contact: '09171234567', name: 'Juan dela Cruz', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-001', logsHandled: 14, regDate: '2026-02-10' },
+    { employeeId: '04000002', contact: '09179876543', name: 'Jose Reyes', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-002', logsHandled: 6, regDate: '2026-02-12' },
+    { employeeId: '04000003', contact: '09194448889', name: 'Maria Santos', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-003', logsHandled: 10, regDate: '2026-02-15' },
+    { employeeId: '04000004', contact: '09987654321', name: 'Pedro Reyes', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-004', logsHandled: 6, regDate: '2026-03-15' },
+    { employeeId: '04000005', contact: '09555444333', name: 'Ana Gomez', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-005', logsHandled: 4, regDate: '2026-03-20' },
+    { employeeId: '01000001', contact: '09187654321', name: 'Capstone Group', role: 'Super Admin', blockFarm: 'Central Governance', logsHandled: 256, regDate: '2026-01-01' },
+    { employeeId: '03000001', contact: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', blockFarm: 'Nacayao Block Farm A', logsHandled: 128, regDate: '2026-02-01' },
+    { employeeId: '03000002', contact: '09123456789', name: 'Elena Ramos', role: 'Farm Manager', blockFarm: 'Block Farm B', logsHandled: 18, regDate: '2026-03-01' },
+    { employeeId: '03000003', contact: '09171112233', name: 'Elena Batongbakal', role: 'Farm Manager', blockFarm: 'Block Farm C', logsHandled: 14, regDate: '2026-03-05' },
+    { employeeId: '03000004', contact: '09174445566', name: 'Ricardo Dalisay', role: 'Farm Manager', blockFarm: 'Block Farm D', logsHandled: 9, regDate: '2026-03-12' }
   ],
   pendingUsers: [
     { contact: '0917-111-2233', name: 'Danilo Cruz', role: 'Member', blockFarm: 'Block Farm A', fieldId: 'FLD-KTR-007', area: '1.5 Ha', regDate: '2026-05-20' },

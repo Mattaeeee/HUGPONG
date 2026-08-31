@@ -46,16 +46,17 @@ export async function seedFirestoreDatabase(force = false) {
     batch.set(ref, { ...f, updatedAt: new Date().toISOString() }, { merge: true });
   });
 
-  // 2. SEED USERS DIRECTORY
+  // 2. SEED USERS DIRECTORY (8-Digit Role-Prefixed Numeric IDs)
+  // 01xxxxxx: Super Admin | 02xxxxxx: SRA Admin | 03xxxxxx: Farm Manager | 04xxxxxx: Member
   const initialUsers = [
-    { contact: '09194448888', name: 'SRA Administrator Maria Santos', role: 'SRA (Admin)', blockFarm: 'Silay Sugar Regulatory Administration', fieldId: '', logsHandled: 42, regDate: '2026-01-15' },
-    { contact: '09189876543', name: 'Farm Manager Jose Reyes', role: 'Farm Manager', blockFarm: 'Nacayao Block Farm A', fieldId: '', logsHandled: 128, regDate: '2026-02-01' },
-    { contact: '09187654321', name: 'Capstone Group', role: 'Super Admin', blockFarm: 'Central Governance', fieldId: '', logsHandled: 256, regDate: '2026-01-01' },
-    { contact: '09171234567', name: 'Juan dela Cruz (Member)', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-001', logsHandled: 14, regDate: '2026-02-10' },
-    { contact: '09175550102', name: 'Jose Rizal', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-002', logsHandled: 8, regDate: '2026-02-12' },
-    { contact: '09175550103', name: 'Maria Santos', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-003', logsHandled: 19, regDate: '2026-02-14' },
-    { contact: '09175550105', name: 'Pedro Reyes', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-004', logsHandled: 23, regDate: '2026-02-20' },
-    { contact: '09175550107', name: 'Ana Gomez', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-005', logsHandled: 3, regDate: '2026-03-01' },
+    { employeeId: '02000001', contact: '09194448888', name: 'Maria Santos', role: 'SRA (Admin)', blockFarm: 'Silay Sugar Regulatory Administration', fieldId: '', logsHandled: 42, regDate: '2026-01-15' },
+    { employeeId: '03000001', contact: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', blockFarm: 'Nacayao Block Farm A', fieldId: '', logsHandled: 128, regDate: '2026-02-01' },
+    { employeeId: '01000001', contact: '09187654321', name: 'Capstone Group', role: 'Super Admin', blockFarm: 'Central Governance', fieldId: '', logsHandled: 256, regDate: '2026-01-01' },
+    { employeeId: '04000001', contact: '09171234567', name: 'Juan dela Cruz', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-001', logsHandled: 14, regDate: '2026-02-10' },
+    { employeeId: '04000002', contact: '09175550102', name: 'Jose Rizal', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-002', logsHandled: 8, regDate: '2026-02-12' },
+    { employeeId: '04000003', contact: '09175550103', name: 'Maria Santos', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-003', logsHandled: 19, regDate: '2026-02-14' },
+    { employeeId: '04000004', contact: '09175550105', name: 'Pedro Reyes', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-004', logsHandled: 23, regDate: '2026-02-20' },
+    { employeeId: '04000005', contact: '09175550107', name: 'Ana Gomez', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-005', logsHandled: 3, regDate: '2026-03-01' },
   ];
 
   initialUsers.forEach(u => {
@@ -81,73 +82,82 @@ export async function seedFirestoreDatabase(force = false) {
     batch.set(ref, { ...p, createdAt: new Date().toISOString() }, { merge: true });
   });
 
-  // 4. SEED OPERATION LOGS (With Sub-Items Schema)
+  // 4. SEED OPERATION LOGS (With Standard Sub-Items Schema)
   const initialLogs = [
     {
-      id: 'LOG-KTR-001',
+      id: 'LOG-2026-KTR-001-001',
       fieldId: 'FLD-KTR-001',
+      stageNumber: 1,
+      stageName: 'Stage 1: Pre-Planting & Land Preparation',
+      taskId: 'S1',
       sraOperationId: 'SRA-02',
       operationName: 'Land Preparation',
-      activity: 'Land Preparation',
+      activity: 'Land Preparation (Disc Plowing & Furrowing)',
       category: 'prep',
       cost: 18000,
       totalCost: 18000,
       costPerHa: 12000,
       hectares: '1.5',
       people: '2',
-      date: '2026-05-18',
+      date: '2026-05-02',
       approved: true,
-      status: 'Approved',
+      status: 'Recorded',
       isOffline: false,
       loggedBy: 'Farmer (Juan dela Cruz)',
       subItems: [
-        { id: 'SI-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
-        { id: 'SI-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
-        { id: 'SI-3', description: 'Furrowing / Tudling', qty: 1.5, unit: 'ha', unitCost: 3000, subTotal: 4500 }
+        { id: 'SI-LOG-KTR001-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
+        { id: 'SI-LOG-KTR001-001-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
+        { id: 'SI-LOG-KTR001-001-3', description: 'Furrowing / Tudling', qty: 1.5, unit: 'ha', unitCost: 3000, subTotal: 4500 }
       ]
     },
     {
-      id: 'LOG-KTR-002',
+      id: 'LOG-2026-KTR-002-001',
       fieldId: 'FLD-KTR-002',
+      stageNumber: 2,
+      stageName: 'Stage 2: Planting & Crop Establishment',
+      taskId: 'S2',
       sraOperationId: 'SRA-03',
       operationName: 'Cost of Planting Material (Seedcane acquisition)',
-      activity: 'Cost of Planting Material (Seedcane acquisition)',
+      activity: 'Cost of Planting Material (Patdan)',
       category: 'plant',
       cost: 37500,
       totalCost: 37500,
       costPerHa: 15000,
       hectares: '2.5',
       people: '4',
-      date: '2026-05-19',
+      date: '2026-05-08',
       approved: true,
-      status: 'Approved',
+      status: 'Recorded',
       isOffline: false,
-      loggedBy: 'Farmer (Jose Rizal)',
+      loggedBy: 'Manager (Jose Reyes - Takeover)',
       subItems: [
-        { id: 'SI-4', description: 'Cane Points (Patdan - High Yielding Variety)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
+        { id: 'SI-LOG-KTR002-001-1', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
       ]
     },
     {
-      id: 'LOG-KTR-003',
+      id: 'LOG-2026-KTR-004-001',
       fieldId: 'FLD-KTR-004',
-      sraOperationId: 'SRA-05',
-      operationName: 'Basal Fertilization',
-      activity: 'Basal Fertilization',
-      category: 'fert',
-      cost: 52850,
-      totalCost: 52850,
-      costPerHa: 15100,
+      stageNumber: 1,
+      stageName: 'Stage 1: Pre-Planting & Land Preparation',
+      taskId: 'S1',
+      sraOperationId: 'SRA-02',
+      operationName: 'Land Preparation',
+      activity: 'Land Preparation (Disc Plowing & Furrowing)',
+      category: 'prep',
+      cost: 42000,
+      totalCost: 42000,
+      costPerHa: 12000,
       hectares: '3.5',
       people: '4',
-      date: '2026-05-20',
+      date: '2026-05-15',
       approved: true,
-      status: 'Approved',
+      status: 'Recorded',
       isOffline: false,
       loggedBy: 'Farmer (Pedro Reyes)',
       subItems: [
-        { id: 'SI-5', description: 'Application of 46-0-0 (Urea)', qty: 7, unit: 'bag', unitCost: 1600, subTotal: 11200 },
-        { id: 'SI-6', description: 'Application of 18-46-00 (DAP / Complete)', qty: 10.5, unit: 'bag', unitCost: 2500, subTotal: 26250 },
-        { id: 'SI-7', description: 'Application of 00-00-60 (MOP / Muriate of Potash)', qty: 7, unit: 'bag', unitCost: 2200, subTotal: 15400 }
+        { id: 'SI-LOG-KTR004-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 3.5, unit: 'ha', unitCost: 5000, subTotal: 17500 },
+        { id: 'SI-LOG-KTR004-001-2', description: '2nd Pass Disc Harrowing', qty: 3.5, unit: 'ha', unitCost: 4000, subTotal: 14000 },
+        { id: 'SI-LOG-KTR004-001-3', description: 'Furrowing / Tudling', qty: 3.5, unit: 'ha', unitCost: 3000, subTotal: 10500 }
       ]
     }
   ];
@@ -157,10 +167,45 @@ export async function seedFirestoreDatabase(force = false) {
     batch.set(ref, { ...l, createdAt: new Date().toISOString() }, { merge: true });
   });
 
+  // 5. SEED SUPPORT TICKETS
+  const initialTickets = [
+    {
+      id: 'TCK-2026-00801',
+      title: 'Offline Log Sync Failure after 3 days offline',
+      author: 'Juan dela Cruz (Member)',
+      blockFarm: 'Nacayao Block Farm A',
+      category: 'Offline Sync',
+      priority: 'High',
+      status: 'Open',
+      date: '2026-05-23',
+      details: 'Completed 3 manual weeding and fertilization logs while in northern field without 4G. Logs remain in device queue after Wi-Fi reconnection.',
+      resolutionNotes: '',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'TCK-2026-00802',
+      title: 'Plot Boundary Hectarage Discrepancy',
+      author: 'Jose Reyes (Farm Manager)',
+      blockFarm: 'Nacayao Block Farm A',
+      category: 'Field Boundary',
+      priority: 'Medium',
+      status: 'In Progress',
+      date: '2026-05-22',
+      details: 'FLD-KTR-002 surveyed area is 2.5 Ha but satellite map boundary shows overlap with adjacent plot.',
+      resolutionNotes: 'Re-survey coordinates dispatched to Silay surveyor.',
+      createdAt: new Date().toISOString()
+    }
+  ];
+
+  initialTickets.forEach(t => {
+    const ref = doc(db, 'support_tickets', t.id);
+    batch.set(ref, { ...t, createdAt: new Date().toISOString() }, { merge: true });
+  });
+
   // Commit all writes
   await batch.commit();
   console.log('[HUGPONG Seeder] Success! All collections seeded to Firestore (hugpong-ff).');
-  return { status: 'success', seededCount: initialFields.length + initialUsers.length + initialPrices.length + initialLogs.length };
+  return { status: 'success', seededCount: initialFields.length + initialUsers.length + initialPrices.length + initialLogs.length + initialTickets.length };
 }
 
 // Auto-seed on load if requested or in browser context

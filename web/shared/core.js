@@ -207,6 +207,24 @@ async function syncLocalChangesToFirestore(db) {
       await setDoc(doc(fDb, 'sra_prices', pId), { ...p, id: pId }, { merge: true });
     }
   }
+
+  // Sync operation logs
+  if (Array.isArray(db.logs)) {
+    for (const l of db.logs) {
+      if (l.id) {
+        await setDoc(doc(fDb, 'operation_logs', l.id), { ...l, synced: true, syncedAt: new Date().toISOString() }, { merge: true });
+      }
+    }
+  }
+
+  // Sync support tickets
+  if (Array.isArray(db.supportTickets)) {
+    for (const t of db.supportTickets) {
+      if (t.id) {
+        await setDoc(doc(fDb, 'support_tickets', t.id), { ...t, synced: true, syncedAt: new Date().toISOString() }, { merge: true });
+      }
+    }
+  }
 }
 
 let firestoreSyncInitialized = false;
@@ -322,6 +340,32 @@ function initFirestoreRealtimeSync() {
       renderDashboard();
     }
   }, (err) => console.warn('[Firestore] sra_prices listener notice:', err));
+
+  // 4. Listen on Support Tickets
+  onSnapshot(collection(fDb, 'support_tickets'), (snapshot) => {
+    if (snapshot.empty) return;
+    const db = getDB();
+    const remoteTickets = [];
+    snapshot.forEach(docSnap => remoteTickets.push(docSnap.data()));
+
+    let changed = false;
+    remoteTickets.forEach(rt => {
+      const idx = (db.supportTickets || []).findIndex(lt => lt.id === rt.id);
+      if (idx >= 0) {
+        db.supportTickets[idx] = { ...db.supportTickets[idx], ...rt };
+        changed = true;
+      } else {
+        if (!db.supportTickets) db.supportTickets = [];
+        db.supportTickets.unshift(rt);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      saveDB(db, false);
+      if (typeof renderSupportTickets === 'function') renderSupportTickets();
+    }
+  }, (err) => console.warn('[Firestore] support_tickets listener notice:', err));
 }
 
 async function verifyBackendSession() {

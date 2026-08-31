@@ -76,13 +76,98 @@ export function resolveStageConflict(currentStage, incomingStage, currentUpdated
 }
 
 /**
- * Generate a unique deterministic client ID for offline logs
+ * Format a date as YYYYMMDD string for human-readable semantic IDs
+ */
+export function getSemanticDatePrefix() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+}
+
+/**
+ * ── 8-DIGIT NUMERIC USER ID GENERATOR ─────────────────────────────────
+ * 01xxxxxx: Super Admin
+ * 02xxxxxx: SRA Admin
+ * 03xxxxxx: Farm Manager
+ * 04xxxxxx: Member / Farmer
+ */
+export function generateUserNumericId(role, seedIndex = null) {
+  let prefix = '04'; // Default to Member
+  const roleLower = String(role || '').toLowerCase();
+
+  if (roleLower.includes('super admin') || roleLower.includes('super_admin')) {
+    prefix = '01';
+  } else if (roleLower.includes('sra') || roleLower.includes('admin') && !roleLower.includes('farm')) {
+    prefix = '02';
+  } else if (roleLower.includes('manager') || roleLower.includes('farm manager')) {
+    prefix = '03';
+  } else {
+    prefix = '04';
+  }
+
+  if (seedIndex !== null && seedIndex !== undefined) {
+    return `${prefix}${String(seedIndex).padStart(6, '0')}`;
+  }
+
+  const randomSeq = Math.floor(100000 + Math.random() * 900000);
+  return `${prefix}${randomSeq}`;
+}
+
+/**
+ * Generate a unique deterministic production-grade ID for operational logs
+ * Format: LOG-{FIELD}-{TIMESTAMP_HEX}-{RAND} e.g. LOG-KTR001-M7A9X2-8F2A
  */
 export function generateDeterministicLogId(fieldId) {
-  const timestamp = Date.now();
-  const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  const cleanField = (fieldId || 'FLD').replace(/[^a-zA-Z0-9]/g, '');
-  return `LOG-${cleanField}-${timestamp}-${rand}`;
+  const cleanField = (fieldId || 'KTR001').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  const timeHex = Date.now().toString(36).toUpperCase();
+  const randHex = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `LOG-${cleanField}-${timeHex}-${randHex}`;
+}
+
+export function generateLogId(fieldId) {
+  return generateDeterministicLogId(fieldId);
+}
+
+/**
+ * Generate a production draft log ID
+ * Format: DFT-{FIELD}-{TIMESTAMP_HEX}-{RAND}
+ */
+export function generateDraftId(fieldId) {
+  const cleanField = (fieldId || 'KTR001').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  const timeHex = Date.now().toString(36).toUpperCase();
+  const randHex = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `DFT-${cleanField}-${timeHex}-${randHex}`;
+}
+
+/**
+ * Generate a production sub-item ID
+ */
+export function generateSubItemId(parentLogId, idx = 0) {
+  const cleanParent = (parentLogId || 'ITEM').replace(/[^a-zA-Z0-9]/g, '-');
+  return `SI-${cleanParent}-${idx + 1}`;
+}
+
+/**
+ * Generate a production support ticket ID
+ * Format: TCK-2026-00801 or TCK-2026-XXXXX
+ */
+export function generateTicketId(seq = null) {
+  const year = new Date().getFullYear();
+  if (seq !== null && seq !== undefined) {
+    return `TCK-${year}-${String(seq).padStart(5, '0')}`;
+  }
+  const timeHex = Date.now().toString(36).toUpperCase();
+  return `TCK-${year}-${timeHex}`;
+}
+
+/**
+ * Generate a custom operation ID
+ */
+export function generateCustomOpId(stageNumber = 1) {
+  const timeHex = Date.now().toString(36).toUpperCase();
+  return `COP-STG${stageNumber}-${timeHex}`;
 }
 
 /**
@@ -120,10 +205,12 @@ export function getOutboxCount() {
  */
 export async function enqueueOutboxItem(type, payload) {
   const clientGeneratedId = payload.id || generateDeterministicLogId(payload.fieldId);
+  const timeHex = Date.now().toString(36).toUpperCase();
+  const randHex = Math.random().toString(36).substring(2, 6).toUpperCase();
   const outboxItem = {
-    outboxId: `OUTBOX-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    outboxId: `OUT-${timeHex}-${randHex}`,
     id: clientGeneratedId,
-    type: type || 'operation_log', // 'operation_log', 'assignment_request', 'stage_update', 'takeover_log'
+    type: type || 'operation_log', // 'operation_log', 'stage_update', 'ticket'
     payload: {
       ...payload,
       id: clientGeneratedId,

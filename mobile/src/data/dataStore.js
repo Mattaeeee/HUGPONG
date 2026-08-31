@@ -1,7 +1,7 @@
 import { STORAGE_KEYS, saveItem, getItem, clearHugpongStorage, hydrateAllStorage } from '../services/storageService';
-import { initSyncEngine, enqueueOutboxItem, processOutbox, getOutboxCount, clearOutbox } from '../services/syncEngine';
+import { initSyncEngine, enqueueOutboxItem, processOutbox, getOutboxCount, clearOutbox, flushOutboxToFirestore, generateUserNumericId, generateTicketId } from '../services/syncEngine';
 import { db } from '../firebase/config';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
 
 export const MOCK_PRICE = {
   value: 2950,
@@ -37,7 +37,7 @@ export const DEMO_ACCOUNTS = {
   'Member': {
     name: 'Juan dela Cruz',
     role: 'Member',
-    employeeId: 'MBR-2026-004',
+    employeeId: '04000001',
     fieldId: 'FLD-KTR-001',
     blockFarmScope: 'FLD-KTR-001 (1.5 Ha)',
     farm: 'Nacayao Block Farm A',
@@ -49,7 +49,7 @@ export const DEMO_ACCOUNTS = {
   'Farm Manager': {
     name: 'Jose Reyes',
     role: 'Farm Manager',
-    employeeId: 'MGR-2026-001',
+    employeeId: '03000001',
     fieldId: 'Nacayao Block Farm A',
     blockFarmScope: 'Nacayao Block Farm A (All Assigned Plots)',
     farm: 'Nacayao Block Farm A',
@@ -61,7 +61,7 @@ export const DEMO_ACCOUNTS = {
   'SRA (Admin)': {
     name: 'Maria Santos',
     role: 'SRA (Admin)',
-    employeeId: 'SRA-2026-088',
+    employeeId: '02000001',
     fieldId: 'All Block Farms',
     blockFarmScope: 'All Silay Block Farms (A, B, C, D)',
     farm: 'Silay Sugar Regulatory Administration',
@@ -94,11 +94,12 @@ export const authenticateUser = (contact, password) => {
 
 export const registerUser = (userData) => {
   const cleaned = (userData.contactNumber || '').replace(/\D/g, '');
+  const numericId = generateUserNumericId('Member');
   const newAccount = {
     name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'New Farmer Member',
     role: 'Member',
-    employeeId: `MBR-2026-${Math.floor(100 + Math.random() * 900)}`,
-    fieldId: 'Unassigned (Pending)',
+    employeeId: numericId,
+    fieldId: 'Unassigned (Pending Manager Allocation)',
     blockFarmScope: userData.blockFarm || 'Nacayao Block Farm A',
     farm: userData.blockFarm || 'Nacayao Block Farm A',
     mobile: userData.contactNumber,
@@ -612,15 +613,15 @@ export const saveFieldFullPlan = (fieldId, fullPlanByStage) => {
 };
 
 export const MOCK_MANAGERS = [
-  { id: 'M1', name: 'Jose Reyes', blockFarm: 'Nacayao Block Farm A' },
-  { id: 'M2', name: 'Carlos Dimayuga', blockFarm: 'Block Farm B' },
-  { id: 'M3', name: 'Elena Batongbakal', blockFarm: 'Block Farm C' },
-  { id: 'M4', name: 'Ramon Magsaysay', blockFarm: 'Block Farm D' },
+  { id: '03000001', name: 'Jose Reyes', blockFarm: 'Nacayao Block Farm A' },
+  { id: '03000002', name: 'Carlos Dimayuga', blockFarm: 'Block Farm B' },
+  { id: '03000003', name: 'Elena Batongbakal', blockFarm: 'Block Farm C' },
+  { id: '03000004', name: 'Ramon Magsaysay', blockFarm: 'Block Farm D' },
 ];
 
 export let MOCK_LOGS = [
   {
-    id: 'L1',
+    id: 'LOG-2026-KTR-001-001',
     fieldId: 'FLD-KTR-001',
     member: 'Juan dela Cruz',
     stageNumber: 1,
@@ -635,16 +636,16 @@ export let MOCK_LOGS = [
     approved: true,
     status: 'Recorded',
     subItems: [
-      { id: 'SI-L1-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
-      { id: 'SI-L1-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
-      { id: 'SI-L1-3', description: 'Furrowing / Tudling', qty: 1.5, unit: 'ha', unitCost: 3000, subTotal: 4500 }
+      { id: 'SI-LOG-KTR001-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
+      { id: 'SI-LOG-KTR001-001-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
+      { id: 'SI-LOG-KTR001-001-3', description: 'Furrowing / Tudling', qty: 1.5, unit: 'ha', unitCost: 3000, subTotal: 4500 }
     ],
     totalCost: 18000,
     cost: 18000,
     costPerHa: 12000,
   },
   {
-    id: 'L2',
+    id: 'LOG-2026-KTR-001-002',
     fieldId: 'FLD-KTR-001',
     member: 'Juan dela Cruz',
     stageNumber: 3,
@@ -659,17 +660,17 @@ export let MOCK_LOGS = [
     approved: true,
     status: 'Recorded',
     subItems: [
-      { id: 'SI-L2-1', description: 'Application of 46-00-00 (Urea)', qty: 3, unit: 'bag', unitCost: 1600, subTotal: 4800 },
-      { id: 'SI-L2-2', description: 'Application of 18-46-00 (DAP / Complete)', qty: 4.5, unit: 'bag', unitCost: 2500, subTotal: 11250 },
-      { id: 'SI-L2-3', description: 'Application of 00-00-60 (MOP / Potash)', qty: 3, unit: 'bag', unitCost: 2200, subTotal: 6600 },
-      { id: 'SI-L2-4', description: 'Fertilizer Application Labor', qty: 10.5, unit: 'bag', unitCost: 100, subTotal: 1050 }
+      { id: 'SI-LOG-KTR001-002-1', description: 'Application of 46-00-00 (Urea)', qty: 3, unit: 'bag', unitCost: 1600, subTotal: 4800 },
+      { id: 'SI-LOG-KTR001-002-2', description: 'Application of 18-46-00 (DAP / Complete)', qty: 4.5, unit: 'bag', unitCost: 2500, subTotal: 11250 },
+      { id: 'SI-LOG-KTR001-002-3', description: 'Application of 00-00-60 (MOP / Potash)', qty: 3, unit: 'bag', unitCost: 2200, subTotal: 6600 },
+      { id: 'SI-LOG-KTR001-002-4', description: 'Fertilizer Application Labor', qty: 10.5, unit: 'bag', unitCost: 100, subTotal: 1050 }
     ],
     totalCost: 23700,
     cost: 23700,
     costPerHa: 15800,
   },
   {
-    id: 'L3',
+    id: 'LOG-2026-KTR-001-003',
     fieldId: 'FLD-KTR-001',
     member: 'Juan dela Cruz',
     stageNumber: 4,
@@ -684,15 +685,15 @@ export let MOCK_LOGS = [
     approved: true,
     status: 'Recorded',
     subItems: [
-      { id: 'SI-L3-1', description: 'Ridge Busting', qty: 1.5, unit: 'pass', unitCost: 300, subTotal: 450 },
-      { id: 'SI-L3-2', description: '1st Off-barring (Pahubas)', qty: 3.0, unit: 'pass', unitCost: 300, subTotal: 900 }
+      { id: 'SI-LOG-KTR001-003-1', description: 'Ridge Busting', qty: 1.5, unit: 'pass', unitCost: 300, subTotal: 450 },
+      { id: 'SI-LOG-KTR001-003-2', description: '1st Off-barring (Pahubas)', qty: 3.0, unit: 'pass', unitCost: 300, subTotal: 900 }
     ],
     totalCost: 1350,
     cost: 1350,
     costPerHa: 900,
   },
   {
-    id: 'L4',
+    id: 'LOG-2026-KTR-002-001',
     fieldId: 'FLD-KTR-002',
     member: 'Jose Reyes',
     stageNumber: 2,
@@ -707,14 +708,14 @@ export let MOCK_LOGS = [
     approved: true,
     status: 'Recorded',
     subItems: [
-      { id: 'SI-L4-1', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
+      { id: 'SI-LOG-KTR002-001-1', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
     ],
     totalCost: 37500,
     cost: 37500,
     costPerHa: 15000,
   },
   {
-    id: 'L5',
+    id: 'LOG-2026-KTR-004-001',
     fieldId: 'FLD-KTR-004',
     member: 'Pedro Reyes',
     stageNumber: 1,
@@ -729,16 +730,16 @@ export let MOCK_LOGS = [
     approved: true,
     status: 'Recorded',
     subItems: [
-      { id: 'SI-L5-1', description: '1st Pass Disc Plowing (Tractor)', qty: 3.5, unit: 'ha', unitCost: 5000, subTotal: 17500 },
-      { id: 'SI-L5-2', description: '2nd Pass Disc Harrowing', qty: 3.5, unit: 'ha', unitCost: 4000, subTotal: 14000 },
-      { id: 'SI-L5-3', description: 'Furrowing / Tudling', qty: 3.5, unit: 'ha', unitCost: 3000, subTotal: 10500 }
+      { id: 'SI-LOG-KTR004-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 3.5, unit: 'ha', unitCost: 5000, subTotal: 17500 },
+      { id: 'SI-LOG-KTR004-001-2', description: '2nd Pass Disc Harrowing', qty: 3.5, unit: 'ha', unitCost: 4000, subTotal: 14000 },
+      { id: 'SI-LOG-KTR004-001-3', description: 'Furrowing / Tudling', qty: 3.5, unit: 'ha', unitCost: 3000, subTotal: 10500 }
     ],
     totalCost: 42000,
     cost: 42000,
     costPerHa: 12000,
   },
   {
-    id: 'L6',
+    id: 'LOG-2026-VIC-001-001',
     fieldId: 'FLD-VIC-001',
     member: 'Emilio Aguinaldo',
     stageNumber: 1,
@@ -753,14 +754,14 @@ export let MOCK_LOGS = [
     approved: true,
     status: 'Recorded',
     subItems: [
-      { id: 'SI-L6-1', description: 'Disc Plowing 2 passes', qty: 7.0, unit: 'ha', unitCost: 6500, subTotal: 45500 }
+      { id: 'SI-LOG-VIC001-001-1', description: 'Disc Plowing 2 passes', qty: 7.0, unit: 'ha', unitCost: 6500, subTotal: 45500 }
     ],
     totalCost: 45500,
     cost: 45500,
     costPerHa: 6500,
   },
   {
-    id: 'L7',
+    id: 'LOG-2026-TLS-001-001',
     fieldId: 'FLD-TLS-001',
     member: 'Andres Bonifacio',
     stageNumber: 3,
@@ -775,15 +776,15 @@ export let MOCK_LOGS = [
     approved: true,
     status: 'Recorded',
     subItems: [
-      { id: 'SI-L7-1', description: 'Urea 46-0-0', qty: 24, unit: 'bag', unitCost: 1650, subTotal: 39600 },
-      { id: 'SI-L7-2', description: 'DAP 18-46-0', qty: 36, unit: 'bag', unitCost: 2400, subTotal: 86400 }
+      { id: 'SI-LOG-TLS001-001-1', description: 'Urea 46-0-0', qty: 24, unit: 'bag', unitCost: 1650, subTotal: 39600 },
+      { id: 'SI-LOG-TLS001-001-2', description: 'DAP 18-46-0', qty: 36, unit: 'bag', unitCost: 2400, subTotal: 86400 }
     ],
     totalCost: 126000,
     cost: 126000,
     costPerHa: 10500,
   },
   {
-    id: 'L8',
+    id: 'LOG-2026-MNP-001-001',
     fieldId: 'FLD-MNP-001',
     member: 'Diego Silang',
     stageNumber: 5,
@@ -798,7 +799,7 @@ export let MOCK_LOGS = [
     approved: true,
     status: 'Recorded',
     subItems: [
-      { id: 'SI-L8-1', description: 'Pasungkal Tractor Passes', qty: 7.5, unit: 'ha', unitCost: 3200, subTotal: 24000 }
+      { id: 'SI-LOG-MNP001-001-1', description: 'Pasungkal Tractor Passes', qty: 7.5, unit: 'ha', unitCost: 3200, subTotal: 24000 }
     ],
     totalCost: 24000,
     cost: 24000,
@@ -808,7 +809,7 @@ export let MOCK_LOGS = [
 
 export let DRAFT_LOGS = [
   {
-    id: 'D1',
+    id: 'DFT-2026-KTR-001-001',
     fieldId: 'FLD-KTR-001',
     member: 'Juan dela Cruz',
     sraOperationId: 'SRA-09',
@@ -817,7 +818,7 @@ export let DRAFT_LOGS = [
     date: '2026-05-21',
     hectares: 1.50,
     subItems: [
-      { id: 'SI-D1-1', description: '1st Weeding (Manual crew)', qty: 1.5, unit: 'ha', unitCost: 2500, subTotal: 3750 }
+      { id: 'SI-DFT-KTR001-001-1', description: '1st Weeding (Manual crew)', qty: 1.5, unit: 'ha', unitCost: 2500, subTotal: 3750 }
     ],
     totalCost: 3750,
     cost: 3750,
@@ -826,30 +827,6 @@ export let DRAFT_LOGS = [
 ];
 
 export let MOCK_ASSIGNMENT_REQUESTS = [];
-
-export const requestFieldAssignment = async (fieldId, memberName, ha = '0.0') => {
-  const req = {
-    id: `REQ-${Date.now()}`,
-    fieldId,
-    memberName,
-    ha,
-    date: new Date().toISOString().split('T')[0],
-    status: 'pending'
-  };
-  MOCK_ASSIGNMENT_REQUESTS.push(req);
-  if (!IS_SYNCED) {
-    await enqueueOutboxItem('assignment_request', req);
-  }
-  notify();
-};
-
-export const resolveAssignmentRequest = (reqId, approved) => {
-  const req = MOCK_ASSIGNMENT_REQUESTS.find(r => r.id === reqId);
-  if (req) {
-    req.status = approved ? 'approved' : 'rejected';
-    notify();
-  }
-};
 
 export const SRA_PRICE_HISTORY = [
   { week: 'Week 1', month: 'Mar', price: 2450 },
@@ -869,7 +846,7 @@ export const SRA_PRICE_HISTORY = [
 const WEEK_LABELS = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-export const addSRAPrice = (price) => {
+export const addSRAPrice = async (price) => {
   const last = SRA_PRICE_HISTORY[SRA_PRICE_HISTORY.length - 1];
   const lastWeekIdx = WEEK_LABELS.indexOf(last.week);
   const lastMonthIdx = MONTH_LABELS.indexOf(last.month);
@@ -881,15 +858,33 @@ export const addSRAPrice = (price) => {
     nextWeek = 'Week 1';
     nextMonth = MONTH_LABELS[(lastMonthIdx + 1) % 12];
   }
-  SRA_PRICE_HISTORY.push({ week: nextWeek, month: nextMonth, price });
+  const dateStr = new Date().toISOString().split('T')[0];
+  const priceRecord = {
+    id: `PRC-${new Date().getFullYear()}-${nextWeek.replace(/\s+/g, '')}-${nextMonth.toUpperCase()}`,
+    week: `${nextWeek} ${nextMonth}`,
+    month: nextMonth,
+    price,
+    date: dateStr,
+    createdAt: new Date().toISOString()
+  };
+  SRA_PRICE_HISTORY.push(priceRecord);
   MOCK_PRICE.value = price;
   MOCK_PRICE.lastUpdated = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  if (db) {
+    try {
+      await setDoc(doc(db, 'sra_prices', priceRecord.id), priceRecord, { merge: true });
+    } catch (e) {
+      console.warn('[dataStore] Failed to write price to Firestore:', e);
+    }
+  }
+
   notify();
 };
 
 export let MOCK_TICKETS = [
   {
-    id: 'TCK-801',
+    id: 'TCK-2026-00801',
     title: 'Offline Log Sync Failure after 3 days offline',
     author: 'Juan dela Cruz (Member)',
     blockFarm: 'Nacayao Block Farm A',
@@ -901,7 +896,7 @@ export let MOCK_TICKETS = [
     resolutionNotes: ''
   },
   {
-    id: 'TCK-802',
+    id: 'TCK-2026-00802',
     title: 'Plot Boundary Hectarage Discrepancy',
     author: 'Jose Reyes (Farm Manager)',
     blockFarm: 'Nacayao Block Farm A',
@@ -914,8 +909,8 @@ export let MOCK_TICKETS = [
   }
 ];
 
-export const submitSupportTicket = (ticket) => {
-  const newId = `TCK-${800 + MOCK_TICKETS.length + 1}`;
+export const submitSupportTicket = async (ticket) => {
+  const newId = generateTicketId(800 + MOCK_TICKETS.length + 1);
   const newTicket = {
     id: newId,
     title: ticket.title,
@@ -926,9 +921,22 @@ export const submitSupportTicket = (ticket) => {
     status: 'Open',
     date: new Date().toISOString().split('T')[0],
     details: ticket.details,
-    resolutionNotes: ''
+    resolutionNotes: '',
+    createdAt: new Date().toISOString()
   };
   MOCK_TICKETS.unshift(newTicket);
+
+  if (db && IS_SYNCED) {
+    try {
+      await setDoc(doc(db, 'support_tickets', newId), newTicket, { merge: true });
+    } catch (e) {
+      console.warn('[dataStore] Failed to write ticket to Firestore, queuing:', e);
+      await enqueueOutboxItem('ticket', newTicket);
+    }
+  } else if (!IS_SYNCED) {
+    await enqueueOutboxItem('ticket', newTicket);
+  }
+
   notify();
   return newTicket;
 };
@@ -952,7 +960,6 @@ export const updateSecurityPreferences = (updates) => {
 
 export const resetLocalCache = async () => {
   DRAFT_LOGS.length = 0;
-  MOCK_ASSIGNMENT_REQUESTS.length = 0;
   IS_SYNCED = true;
   await clearOutbox();
   await clearHugpongStorage();
@@ -988,7 +995,6 @@ export const listenToCloudSync = () => {
       const remotePrices = [];
       snapshot.forEach(docSnap => remotePrices.push(docSnap.data()));
       
-      // Sort newest first
       remotePrices.sort((a, b) => parsePriceTime(b) - parsePriceTime(a));
 
       if (remotePrices.length > 0) {
@@ -1005,66 +1011,6 @@ export const listenToCloudSync = () => {
 
         SRA_PRICE_HISTORY.length = 0;
         remotePrices.forEach(p => SRA_PRICE_HISTORY.push(p));
-
-        const VALID_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-        function getCleanMonthName(p) {
-          if (p.month && VALID_MONTHS.includes(p.month)) return p.month;
-          
-          if (p.date) {
-            const isoMatch = String(p.date).match(/^\d{4}-(\d{2})-\d{2}/);
-            if (isoMatch) {
-              const mNum = parseInt(isoMatch[1], 10) - 1;
-              if (mNum >= 0 && mNum < 12) return VALID_MONTHS[mNum];
-            }
-            const words = String(p.date).replace(/[,/]/g, ' ').trim().split(/\s+/);
-            for (const w of words) {
-              const match = VALID_MONTHS.find(m => m.toLowerCase() === w.toLowerCase().slice(0, 3));
-              if (match) return match;
-            }
-          }
-
-          if (p.week) {
-            const words = String(p.week).replace(/[,/]/g, ' ').trim().split(/\s+/);
-            for (const w of words) {
-              const match = VALID_MONTHS.find(m => m.toLowerCase() === w.toLowerCase().slice(0, 3));
-              if (match) return match;
-            }
-          }
-
-          if (p.createdAt || p.isoDate) {
-            const d = new Date(p.createdAt || p.isoDate);
-            if (!isNaN(d.getTime())) return VALID_MONTHS[d.getMonth()];
-          }
-
-          return 'Jun';
-        }
-
-        // Rebuild dynamic weekly chart months & values
-        const chrono = [...remotePrices].sort((a, b) => parsePriceTime(a) - parsePriceTime(b));
-        const monthMap = new Map();
-        chrono.forEach(p => {
-          const m = getCleanMonthName(p);
-          if (!monthMap.has(m)) monthMap.set(m, []);
-          monthMap.get(m).push(Number(p.price) || 2950);
-        });
-
-        const activeMonths = Array.from(monthMap.keys()).slice(-6);
-        if (activeMonths.length > 0) {
-          MOCK_WEEKLY_CHART.months = activeMonths;
-          const weeksGrid = [[], [], [], []];
-          activeMonths.forEach(m => {
-            const prices = monthMap.get(m);
-            for (let w = 0; w < 4; w++) {
-              const val = prices[w] || prices[prices.length - 1] || 2950;
-              weeksGrid[w].push(val);
-            }
-          });
-          MOCK_WEEKLY_CHART.weeks = weeksGrid;
-          const allPrices = chrono.map(p => Number(p.price) || 2950);
-          MOCK_WEEKLY_CHART.monthlyAvg = Math.round(allPrices.reduce((a, b) => a + b, 0) / (allPrices.length || 1));
-          MOCK_WEEKLY_CHART.cropYearPeak = Math.max(...allPrices);
-        }
 
         saveItem(STORAGE_KEYS.PRICES, remotePrices);
         notify();
@@ -1089,14 +1035,86 @@ export const listenToCloudSync = () => {
       notify();
     }, (err) => console.warn('[Mobile] Fields listener notice:', err));
 
+    // 3. Live Operation Logs Listener (Bidirectional Sync)
+    const unsubLogs = onSnapshot(collection(db, 'operation_logs'), (snapshot) => {
+      if (snapshot.empty) return;
+      const remoteLogs = [];
+      snapshot.forEach(docSnap => remoteLogs.push({ id: docSnap.id, ...docSnap.data() }));
+
+      let logsUpdated = false;
+      remoteLogs.forEach(rl => {
+        const idx = MOCK_LOGS.findIndex(ll => ll.id === rl.id);
+        if (idx >= 0) {
+          MOCK_LOGS[idx] = { ...MOCK_LOGS[idx], ...rl };
+          logsUpdated = true;
+        } else {
+          MOCK_LOGS.unshift(rl);
+          logsUpdated = true;
+        }
+      });
+      if (logsUpdated) {
+        saveItem(STORAGE_KEYS.LOGS, MOCK_LOGS);
+        notify();
+      }
+    }, (err) => console.warn('[Mobile] Operation logs listener notice:', err));
+
+    // 4. Live Support Tickets Listener
+    const unsubTickets = onSnapshot(collection(db, 'support_tickets'), (snapshot) => {
+      if (snapshot.empty) return;
+      const remoteTickets = [];
+      snapshot.forEach(docSnap => remoteTickets.push({ id: docSnap.id, ...docSnap.data() }));
+
+      let ticketsUpdated = false;
+      remoteTickets.forEach(rt => {
+        const idx = MOCK_TICKETS.findIndex(lt => lt.id === rt.id);
+        if (idx >= 0) {
+          MOCK_TICKETS[idx] = { ...MOCK_TICKETS[idx], ...rt };
+          ticketsUpdated = true;
+        } else {
+          MOCK_TICKETS.unshift(rt);
+          ticketsUpdated = true;
+        }
+      });
+      if (ticketsUpdated) {
+        saveItem(STORAGE_KEYS.TICKETS, MOCK_TICKETS);
+        notify();
+      }
+    }, (err) => console.warn('[Mobile] Support tickets listener notice:', err));
+
     return () => {
       unsubPrices();
       unsubFields();
+      unsubLogs();
+      unsubTickets();
     };
   } catch (err) {
     console.warn('[Mobile] Error setting up Cloud listeners:', err);
     return () => {};
   }
+};
+
+export const performMobileSync = async () => {
+  IS_SYNCED = true;
+  MEMBER_SYNC_LAG_DAYS = 0;
+  MEMBER_LAST_SYNC_STR = 'Just now';
+  
+  // Process outbox queue and flush directly to Cloud Firestore
+  await flushOutboxToFirestore();
+
+  CURRENT_SESSION.syncedLogs = (CURRENT_SESSION.syncedLogs || 24) + (CURRENT_SESSION.pendingLogs || 0);
+  CURRENT_SESSION.pendingLogs = 0;
+  
+  MOCK_LOGS.forEach(log => {
+    if (log.isOffline) log.isOffline = false;
+  });
+  
+  MOCK_FIELDS.forEach(f => {
+    f.synced = true;
+    f.lastSync = 'Just now';
+  });
+  
+  notify();
+  return true;
 };
 
 export const initializeOfflineStorage = async () => {
@@ -1109,7 +1127,6 @@ export const initializeOfflineStorage = async () => {
     if (Array.isArray(stored[STORAGE_KEYS.FIELDS])) MOCK_FIELDS = stored[STORAGE_KEYS.FIELDS];
     if (Array.isArray(stored[STORAGE_KEYS.TICKETS])) MOCK_TICKETS = stored[STORAGE_KEYS.TICKETS];
     if (stored[STORAGE_KEYS.PREFS]) SECURITY_PREFERENCES = stored[STORAGE_KEYS.PREFS];
-    if (Array.isArray(stored[STORAGE_KEYS.PENDING_ASSIGNMENTS])) MOCK_ASSIGNMENT_REQUESTS = stored[STORAGE_KEYS.PENDING_ASSIGNMENTS];
     
     // Check outbox count to update pending logs indicator
     const outboxCount = getOutboxCount();
@@ -1133,9 +1150,10 @@ export const initializeOfflineStorage = async () => {
 
 // Auto-invoke hydration on bundle load
 initializeOfflineStorage();
+
 export const MOCK_AUDIT_HISTORY = [
   {
-    id: 'AUD-2026-05',
+    id: 'AUD-2026-05-NCY',
     month: 'May 2026',
     dateGenerated: 'May 21, 2026 · 6:30 PM',
     status: 'Verified SRA Compliance',
@@ -1155,7 +1173,7 @@ export const MOCK_AUDIT_HISTORY = [
     ]
   },
   {
-    id: 'AUD-2026-04',
+    id: 'AUD-2026-04-NCY',
     month: 'April 2026',
     dateGenerated: 'Apr 28, 2026 · 5:15 PM',
     status: 'Verified SRA Compliance',
@@ -1174,7 +1192,7 @@ export const MOCK_AUDIT_HISTORY = [
     ]
   },
   {
-    id: 'AUD-2026-03',
+    id: 'AUD-2026-03-NCY',
     month: 'March 2026',
     dateGenerated: 'Mar 30, 2026 · 4:45 PM',
     status: 'Verified SRA Compliance',
@@ -1191,7 +1209,7 @@ export const MOCK_AUDIT_HISTORY = [
     ]
   },
   {
-    id: 'AUD-2026-02',
+    id: 'AUD-2026-02-NCY',
     month: 'February 2026',
     dateGenerated: 'Feb 26, 2026 · 3:20 PM',
     status: 'Verified SRA Compliance',

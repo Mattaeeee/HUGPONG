@@ -8,6 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
 import { getCurrentSession, MOCK_FIELDS, DRAFT_LOGS, notifyDataUpdate, subscribe, SRA_OPERATIONS_CATALOGUE, getFieldCustomOperations, saveFieldFullPlan, getDefaultStageOperations } from '../data/dataStore';
+import { generateDraftId, generateSubItemId, generateCustomOpId } from '../services/syncEngine';
+import { db } from '../firebase/config';
+import { doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from '../services/i18n';
 
 // ── 6 Official SRA Sugarcane Growth Stages Baseline Configuration ──
@@ -355,7 +358,7 @@ export default function PlannerScreen({ navigation }) {
     const q = parseFloat(newChildQty) || 1;
     const r = parseFloat(newChildRate) || 0;
     const newItem = {
-      id: `SI-${Date.now()}`,
+      id: generateSubItemId(targetOpIdForChild || 'COP', 0),
       category: newChildCategory,
       description: newChildName.trim(),
       name: newChildName.trim(),
@@ -398,23 +401,25 @@ export default function PlannerScreen({ navigation }) {
     if (!activeStageNum) return;
     let opToAdd = null;
     if (selectedCatalogOp) {
+      const customOpId = generateCustomOpId(activeStageNum);
       opToAdd = {
         ...selectedCatalogOp,
-        id: `OP-${Date.now()}`,
+        id: customOpId,
         stageNum: activeStageNum,
         stageId: currentStage.id,
         isCustom: false,
         subItems: (selectedCatalogOp.subItems || []).map((si, i) => ({
           ...si,
-          id: `SI-${Date.now()}-${i}`
+          id: generateSubItemId(customOpId, i)
         }))
       };
     } else if (newOpName.trim()) {
       const perHaNum = parseFloat(newOpPerHa) || 1;
       const rateNum = parseFloat(newOpRate) || 0;
       const isGrp = newOpType === 'group';
+      const customOpId = generateCustomOpId(activeStageNum);
       opToAdd = {
-        id: `COP-${Date.now()}`,
+        id: customOpId,
         stageNum: activeStageNum,
         stageId: currentStage.id,
         name: newOpName.trim(),
@@ -426,7 +431,7 @@ export default function PlannerScreen({ navigation }) {
         unit: isGrp ? '' : newOpUnit,
         rate: rateNum,
         costPerHa: isGrp ? 0 : Math.round(perHaNum * rateNum),
-        subItems: isGrp ? [{ id: `SI-${Date.now()}`, description: `${newOpName.trim()} Item 1`, qty: 1, unit: 'ha', unitCost: 1000, subTotal: 1000 }] : []
+        subItems: isGrp ? [{ id: generateSubItemId(customOpId, 0), description: `${newOpName.trim()} Item 1`, qty: 1, unit: 'ha', unitCost: 1000, subTotal: 1000 }] : []
       };
     } else {
       Alert.alert('Required', 'Please select an operation from the catalogue or type a custom operation name.');
@@ -510,12 +515,13 @@ export default function PlannerScreen({ navigation }) {
   // Helper to create and insert a draft log object
   const createDraftLogForOp = (op) => {
     const fieldId = selectedField?.id || 'FLD-KTR-001';
+    const draftId = generateDraftId(fieldId);
     let subItems = [];
     let totalOpCost = 0;
 
     if (op.isGroup) {
       subItems = (op.subItems || []).map((si, idx) => ({
-        id: `SI-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
+        id: generateSubItemId(draftId, idx),
         description: si.description || si.name,
         qty: Number((si.qty * (si.unit === 'lac' || si.unit === 'pass' || si.unit === 'ha' || si.unit === 'ton' ? area : 1)).toFixed(1)),
         unit: si.unit,
@@ -530,7 +536,7 @@ export default function PlannerScreen({ navigation }) {
     }
 
     const draftLog = {
-      id: `D${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      id: draftId,
       fieldId: fieldId,
       taskId: currentStage.id,
       stageNumber: currentStage.stageNum,

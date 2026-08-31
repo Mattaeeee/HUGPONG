@@ -8,7 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
 import { subscribe, getCurrentSession, setSynced, setSession, updateSessionFieldId, getIsSynced, MOCK_ASSIGNMENT_REQUESTS, resolveAssignmentRequest, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS, notifyDataUpdate, SRA_PRICE_HISTORY, addSRAPrice, MOCK_MANAGERS, updateFieldCustomStages, getMemberSyncHealth, performMobileSync, SRA_OPERATIONS_CATALOGUE, SRA_BENCHMARKS, getFieldCustomOperations, saveFieldCustomOperations, MOCK_AUDIT_HISTORY } from '../data/dataStore';
-import { enqueueOutboxItem } from '../services/syncEngine';
+import { enqueueOutboxItem, generateLogId, generateDraftId, generateSubItemId, generateCustomOpId } from '../services/syncEngine';
+import { db } from '../firebase/config';
+import { doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from '../services/i18n';
 import MemberFieldOpsView from './member/MemberFieldOpsView';
 import ManagerFieldOpsView from './manager/ManagerFieldOpsView';
@@ -527,7 +529,7 @@ export default function FieldOpsScreen({ navigation, route }) {
         const scaledQty = Number(((si.qty || 1) * (si.unit === 'lac' || si.unit === 'pass' || si.unit === 'ha' || si.unit === 'ton' ? haVal : 1)).toFixed(1));
         const subTotal = Math.round(scaledQty * (si.unitCost || si.rate || 0));
         return {
-          id: `SI-${Date.now()}-${idx}`,
+          id: generateSubItemId(targetOp.id || 'OP', idx),
           description: si.description || si.name,
           qty: scaledQty,
           unit: si.unit || 'bag',
@@ -796,7 +798,7 @@ export default function FieldOpsScreen({ navigation, route }) {
       const scaledQty = Number((baseQty * (si.unit === 'lac' || si.unit === 'pass' || si.unit === 'ha' || si.unit === 'ton' ? haVal : 1)).toFixed(1));
       const subTotal = Math.round(scaledQty * si.unitCost);
       return {
-        id: `SI-${Date.now()}-${idx}`,
+        id: generateSubItemId(op.id, idx),
         description: si.description,
         qty: scaledQty,
         unit: si.unit,
@@ -817,8 +819,9 @@ export default function FieldOpsScreen({ navigation, route }) {
   };
 
   const addCustomSubItem = () => {
+    const nextIdx = (logForm.subItems || []).length;
     const newItem = {
-      id: `SI-CUST-${Date.now()}`,
+      id: generateSubItemId(logForm.sraOperationId || 'CUST', nextIdx),
       description: '',
       qty: 1,
       unit: 'days',
@@ -875,7 +878,7 @@ export default function FieldOpsScreen({ navigation, route }) {
       const scaledQty = Number((si.qty * (si.unit === 'lac' || si.unit === 'pass' || si.unit === 'ha' || si.unit === 'ton' ? haVal : 1)).toFixed(1));
       const subTotal = Math.round(scaledQty * si.unitCost);
       return {
-        id: `SI-${Date.now()}-${idx}`,
+        id: generateSubItemId(targetOp.id, idx),
         description: si.description,
         qty: scaledQty,
         unit: si.unit,
@@ -1004,8 +1007,9 @@ export default function FieldOpsScreen({ navigation, route }) {
     const parentStageNum = logForm.stageNumber || matchedOp.stageNumber || 1;
     const parentStageName = logForm.stageName || matchedOp.stageName || 'Stage 1: Pre-Planting & Land Preparation';
 
+    const logIdToUse = logForm.id || (asSubmit ? generateLogId(submittedFieldId) : generateDraftId(submittedFieldId));
     const newLog = {
-      id: logForm.id || `L${Date.now()}`,
+      id: logIdToUse,
       fieldId: submittedFieldId,
       stageNumber: parentStageNum,
       stageName: parentStageName,
@@ -1039,7 +1043,7 @@ export default function FieldOpsScreen({ navigation, route }) {
         // Check if updating an existing submitted log
         const logIdx = MOCK_LOGS.findIndex(l => l.id === logForm.id);
         if (logIdx >= 0) {
-          // FIX 1: Audit trail — preserve original values before overwriting
+          // Audit trail — preserve original values before overwriting
           const originalLog = { ...MOCK_LOGS[logIdx] };
           const editRecord = {
             editedBy: getCurrentSession().name,
@@ -1058,6 +1062,13 @@ export default function FieldOpsScreen({ navigation, route }) {
           };
           const existingHistory = MOCK_LOGS[logIdx].editHistory || [];
           MOCK_LOGS[logIdx] = { ...newLog, id: logForm.id, editHistory: [...existingHistory, editRecord] };
+          
+          if (synced && db) {
+            setDoc(doc(db, 'operation_logs', logForm.id), MOCK_LOGS[logIdx], { merge: true }).catch(err => {
+              console.warn('[FieldOpsScreen] Direct Firestore edit sync failed:', err);
+            });
+          }
+
           setLogs([...MOCK_LOGS]);
           setLogTab('submitted');
           notifyDataUpdate();
@@ -1072,9 +1083,21 @@ export default function FieldOpsScreen({ navigation, route }) {
         if (draftIdx >= 0) DRAFT_LOGS.splice(draftIdx, 1);
         setDraftLogs([...DRAFT_LOGS]);
       }
+
       if (!synced) {
         enqueueOutboxItem('operation_log', newLog);
+      } else if (db) {
+        // Direct live write to Firestore
+        setDoc(doc(db, 'operation_logs', newLog.id), {
+          ...newLog,
+          synced: true,
+          syncedAt: new Date().toISOString()
+        }, { merge: true }).catch(err => {
+          console.warn('[FieldOpsScreen] Direct Firestore write error, queuing:', err);
+          enqueueOutboxItem('operation_log', newLog);
+        });
       }
+
       MOCK_LOGS.unshift(newLog);
       setLogs([...MOCK_LOGS]);
       setLogTab('submitted');
@@ -1127,7 +1150,7 @@ export default function FieldOpsScreen({ navigation, route }) {
         if (idx >= 0) DRAFT_LOGS[idx] = { ...newLog, id: logForm.id };
         setDraftLogs([...DRAFT_LOGS]);
       } else {
-        const draftObj = { ...newLog, id: `D${Date.now()}` };
+        const draftObj = { ...newLog, id: generateDraftId(submittedFieldId) };
         DRAFT_LOGS.unshift(draftObj);
         setDraftLogs([...DRAFT_LOGS]);
       }
@@ -1149,7 +1172,28 @@ export default function FieldOpsScreen({ navigation, route }) {
     const idx = DRAFT_LOGS.findIndex(d => d.id === log.id);
     if (idx >= 0) DRAFT_LOGS.splice(idx, 1);
     setDraftLogs([...DRAFT_LOGS]);
-    const submittedLog = { ...log, approved: true, isOffline: !synced, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) };
+    const submittedId = generateLogId(log.fieldId);
+    const submittedLog = {
+      ...log,
+      id: submittedId,
+      approved: true,
+      isOffline: !synced,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    };
+
+    if (synced && db) {
+      setDoc(doc(db, 'operation_logs', submittedLog.id), {
+        ...submittedLog,
+        synced: true,
+        syncedAt: new Date().toISOString()
+      }, { merge: true }).catch(err => {
+        console.warn('[FieldOpsScreen] Firestore draft upload notice:', err);
+        enqueueOutboxItem('operation_log', submittedLog);
+      });
+    } else if (!synced) {
+      enqueueOutboxItem('operation_log', submittedLog);
+    }
+
     MOCK_LOGS.unshift(submittedLog);
     setLogs([...MOCK_LOGS]);
     setLogTab('submitted');
@@ -3410,7 +3454,7 @@ export default function FieldOpsScreen({ navigation, route }) {
                         disabled={!newStageLabel.trim()}
                         onPress={() => {
                           const stage = {
-                            id: `CS${Date.now()}`,
+                            id: generateCustomOpId(editingStages.length + 1),
                             label: newStageLabel.trim(),
                             phase: newStageLabel.trim(),
                             color: newStageColor,
