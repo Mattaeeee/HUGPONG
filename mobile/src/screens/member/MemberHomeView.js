@@ -16,7 +16,7 @@ function MemberHomeView({
   onManualSync
 }) {
   const { t, formatStageName } = useTranslation();
-  const primaryField = myFields[0] || { id: 'FLD-KTR-001', ha: 1.5, stage: 'Planting & Crop Establishment' };
+  const primaryField = myFields[0] || { id: 'FLD-NCY-001', ha: 1.5, stage: 'Planting & Crop Establishment' };
 
   return (
     <View style={s.container}>

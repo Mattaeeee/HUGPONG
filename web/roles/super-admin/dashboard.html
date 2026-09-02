@@ -250,7 +250,7 @@
     </div>
     <nav class="flex-1 p-2 flex flex-col gap-0.5">
       <span class="text-hug-muted text-[10px] font-bold uppercase tracking-wider px-3 pt-3 pb-1">Overview</span>
-      <button class="nav-item active flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm text-hug-text2 hover:bg-bg hover:text-primary transition-all text-left" data-page="dashboard">
+      <button class="nav-item active flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm text-hug-text2 hover:bg-bg hover:text-primary transition-all text-left cursor-pointer" data-page="dashboard" onclick="navigate('dashboard')">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         Dashboard
       </button>
@@ -598,23 +598,19 @@
               <div id="price-trend-chart" class="w-full flex-1"></div>
             </div>
 
-            <!-- Cost Efficiency Chart Card -->
+            <!-- Production Cost Overview Card -->
             <div class="bg-white rounded-2xl p-6 border border-border shadow-xs flex flex-col">
               <div class="flex items-center justify-between mb-4 border-b border-border pb-3">
                 <div>
                   <h3 class="text-sm font-bold text-hug-text flex items-center gap-2">
                     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                    Cost-per-Hectare Efficiency Index
+                    Production Cost Overview
                   </h3>
-                  <p class="text-xs text-hug-muted">Operational expense comparison and budget utilization</p>
+                  <p class="text-xs text-hug-muted">Total recorded production costs by block farm</p>
                 </div>
-                <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-primary-bg text-primary" id="cost-efficiency-benchmark-badge">Operational Overview</span>
+                <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-primary-bg text-primary">All Block Farms</span>
               </div>
               <div id="cost-efficiency-visual" class="flex flex-col gap-2.5 flex-1 justify-center"></div>
-              <div class="mt-4 pt-3 border-t border-border flex items-center gap-2 bg-bg/50 p-2.5 rounded-xl">
-                <svg width="14" height="14" fill="none" stroke="#1A6B9A" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
-                <p class="text-[11px] text-hug-muted" id="cost-efficiency-note">Nacayao Block Farm plots maintain optimal direct operation budget compliance.</p>
-              </div>
             </div>
           </div>
 
@@ -624,13 +620,13 @@
               <div>
                 <h3 class="text-sm font-bold text-hug-text flex items-center gap-2">
                   <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  Current Crop Cycle Stage Distribution
+                  Crop Cycle Stage Distribution
                 </h3>
-                <p class="text-xs text-hug-muted" id="crop-stage-subtitle">110.5 Ha total area under active supervision</p>
+                <p class="text-xs text-hug-muted" id="crop-stage-subtitle">Active field plots across all block farms</p>
               </div>
               <div class="flex items-center gap-2">
                 <select id="sra-crop-stage-block-filter" onchange="renderCropStageDistribution()" class="border border-border rounded-lg px-2.5 py-1 text-xs bg-bg text-hug-text focus:outline-none focus:border-primary shadow-xs cursor-pointer">
-                  <option value="all">All Regional Block Farms (110.45 Ha)</option>
+                  <option value="all">All Regional Block Farms</option>
                   <option value="Nacayao Block Farm A">Nacayao Block Farm A (15.25 Ha)</option>
                   <option value="Block Farm B">Block Farm B · Victorias (28.00 Ha)</option>
                   <option value="Block Farm C">Block Farm C · Talisay (45.20 Ha)</option>
@@ -640,6 +636,21 @@
               </div>
             </div>
             <div id="crop-stage-visual" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5"></div>
+          </div>
+
+          <!-- Farm Operations Analytics Card -->
+          <div class="bg-white rounded-2xl p-6 border border-border shadow-xs">
+            <div class="flex items-center justify-between mb-4 border-b border-border pb-3">
+              <div>
+                <h3 class="text-sm font-bold text-hug-text flex items-center gap-2">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                  Farm Operations Breakdown
+                </h3>
+                <p class="text-xs text-hug-muted">Recorded operations by agronomic category across all block farms</p>
+              </div>
+              <span class="text-xs font-bold text-hug-text2 bg-bg px-3 py-1 rounded-full border border-border">By Category</span>
+            </div>
+            <div id="sra-farm-ops-chart" class="flex flex-col gap-3"></div>
           </div>
         </div>
 
@@ -742,23 +753,19 @@
               <div id="mgr-price-trend-chart" class="w-full flex-1"></div>
             </div>
 
-            <!-- Cost Efficiency Chart Card for Manager -->
+            <!-- Block Farm Production Cost Card for Manager -->
             <div class="bg-white rounded-2xl p-6 border border-border shadow-xs flex flex-col">
               <div class="flex items-center justify-between mb-4 border-b border-border pb-3">
                 <div>
                   <h3 class="text-sm font-bold text-hug-text flex items-center gap-2">
                     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                    Cost-per-Hectare Efficiency Index
+                    Block Farm Production Cost
                   </h3>
-                  <p class="text-xs text-hug-muted">Block Farm A operational expense monitoring</p>
+                  <p class="text-xs text-hug-muted">Total recorded production costs across your assigned member plots</p>
                 </div>
-                <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-primary-bg text-primary" id="mgr-cost-efficiency-benchmark-badge">Operational Overview</span>
+                <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-primary-bg text-primary" id="mgr-cost-efficiency-benchmark-badge">Block Farm A</span>
               </div>
               <div id="mgr-cost-efficiency-visual" class="flex flex-col gap-3 flex-1 justify-center"></div>
-              <div class="mt-4 pt-3 border-t border-border flex items-center gap-2 bg-bg/50 p-2.5 rounded-xl">
-                <svg width="14" height="14" fill="none" stroke="#1A6B9A" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
-                <p class="text-[11px] text-hug-muted">Optimal labor efficiency with lowest machinery overhead in Silay.</p>
-              </div>
             </div>
           </div>
 
@@ -770,11 +777,26 @@
                   <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   Block Farm A Crop Stage Distribution
                 </h3>
-                <p class="text-xs text-hug-muted">Current growth stages across your assigned plots</p>
+                <p class="text-xs text-hug-muted">Current growth stages across your assigned member plots</p>
               </div>
               <button onclick="navigate('operations')" class="text-xs font-bold text-primary hover:underline cursor-pointer">Field Console →</button>
             </div>
             <div id="mgr-crop-stage-visual" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5"></div>
+          </div>
+
+          <!-- Farm Operations Analytics Card for Manager -->
+          <div class="bg-white rounded-2xl p-6 border border-border shadow-xs">
+            <div class="flex items-center justify-between mb-4 border-b border-border pb-3">
+              <div>
+                <h3 class="text-sm font-bold text-hug-text flex items-center gap-2">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                  Farm Operations Breakdown
+                </h3>
+                <p class="text-xs text-hug-muted">Recorded operations by agronomic category for your block farm</p>
+              </div>
+              <span class="text-xs font-bold text-hug-text2 bg-bg px-3 py-1 rounded-full border border-border">By Category</span>
+            </div>
+            <div id="mgr-farm-ops-chart" class="flex flex-col gap-3"></div>
           </div>
 
           <!-- Sync Health & Inactivity Monitor -->
@@ -2529,15 +2551,21 @@
 <!-- DETAILED DRILL-DOWN ANALYTICS MODAL (2-Column & Segmented Tabs) -->
 <div id="modal-detailed-analytics" onclick="if (event.target === this) closeDetailedAnalyticsModal()" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-4 hidden backdrop-blur-xs">
   <div class="bg-white rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl border border-border flex flex-col gap-4 max-h-[88vh]">
-    <!-- Fixed Header -->
+    <!-- Fixed Header with Back Navigation & Breadcrumb -->
     <div class="flex items-center justify-between border-b border-border pb-3 flex-shrink-0">
-      <div>
-        <div class="flex items-center gap-2">
-          <span id="detail-analytics-type-badge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-primary-bg text-primary uppercase tracking-wider">Block Farm</span>
-          <span id="detail-analytics-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-success-bg text-success">Optimal Efficiency</span>
+      <div class="flex items-center gap-3">
+        <button id="detail-modal-back-btn" onclick="backDetailedAnalyticsModal()" class="hidden px-2.5 py-1.5 rounded-xl bg-bg hover:bg-primary-bg text-hug-muted hover:text-primary border border-border hover:border-primary/40 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+          <span id="detail-modal-back-label">Back</span>
+        </button>
+        <div>
+          <div class="flex items-center gap-2">
+            <span id="detail-analytics-type-badge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-primary-bg text-primary uppercase tracking-wider">Block Farm</span>
+            <span id="detail-analytics-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-success-bg text-success">Optimal Efficiency</span>
+          </div>
+          <h3 id="detail-analytics-title" class="text-lg sm:text-xl font-black text-hug-text mt-1">Block Farm A (Silay)</h3>
+          <p id="detail-analytics-subtitle" class="text-xs text-hug-muted">Supervised by Jose Reyes · 34.5 Hectares cultivated</p>
         </div>
-        <h3 id="detail-analytics-title" class="text-lg sm:text-xl font-black text-hug-text mt-1">Block Farm A (Silay)</h3>
-        <p id="detail-analytics-subtitle" class="text-xs text-hug-muted">Supervised by Jose Reyes · 34.5 Hectares cultivated</p>
       </div>
       <button onclick="closeDetailedAnalyticsModal()" class="w-8 h-8 rounded-full bg-bg hover:bg-border flex items-center justify-center text-hug-muted hover:text-hug-text cursor-pointer transition-all">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2716,9 +2744,9 @@
       <div>
         <h3 id="all-eff-modal-title" class="text-lg font-black text-hug-text flex items-center gap-2">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Cost-per-Hectare Efficiency Directory
+          Production Cost Drill-Down
         </h3>
-        <p id="all-eff-modal-sub" class="text-xs text-hug-muted mt-0.5">Explore comprehensive performance and spend metrics across all entities</p>
+        <p id="all-eff-modal-sub" class="text-xs text-hug-muted mt-0.5">Recorded production costs across all block farms and member plots</p>
       </div>
       <button onclick="closeAllEfficiencyModal()" class="w-8 h-8 rounded-full bg-bg hover:bg-border flex items-center justify-center text-hug-muted hover:text-hug-text cursor-pointer transition-all">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2834,9 +2862,9 @@
         <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-primary-bg text-primary uppercase tracking-wider">SRA Regulatory Broadcast</span>
         <h3 class="text-base font-bold text-hug-text mt-1 flex items-center gap-2">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-          Post New Weekly Sugar Benchmark Price
+          Post Official Weekly Millsite Price
         </h3>
-        <p class="text-xs text-hug-muted">Publish official SRA circular price to synchronize all block farms &amp; mobile apps.</p>
+        <p class="text-xs text-hug-muted">Publish official SRA circular price records to synchronize all block farms &amp; mobile apps.</p>
       </div>
       <button onclick="closePublishPriceModal()" class="w-8 h-8 rounded-full bg-bg hover:bg-border flex items-center justify-center text-hug-muted hover:text-hug-text cursor-pointer transition-all">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2895,7 +2923,7 @@
 
       <div class="p-3 rounded-xl bg-primary-bg/50 border border-primary/20 text-xs text-primary flex items-start gap-2">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
-        <p class="leading-relaxed">Publishing updates the live SRA benchmark ledger, syncs with Firestore cloud instantly, and updates all mobile app price cards in real time.</p>
+        <p class="leading-relaxed">Publishing updates the live SRA official price ledger, syncs with Firestore cloud instantly, and updates all mobile app price cards in real time.</p>
       </div>
     </div>
 

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
-import { SRA_PRICE_HISTORY, subscribe, getCurrentSession, MOCK_FIELDS, MOCK_LOGS } from '../data/dataStore';
+import { SRA_PRICE_HISTORY, MOCK_PRICE, MOCK_MOL, getMemberSyncHealth, subscribe, getCurrentSession, MOCK_FIELDS, MOCK_LOGS } from '../data/dataStore';
 import { useTranslation } from '../services/i18n';
 
 // ── 6 SRA Growth Stages Definition ─────────────────────────────
@@ -17,19 +17,21 @@ const SRA_GROWTH_STAGES = [
 ];
 
 export default function AnalyticsScreen({ navigation, route }) {
-  const { t, formatStageName, formatPhaseMonth } = useTranslation();
+  const { t, formatOperationName, formatStageName, formatPhaseMonth } = useTranslation();
   const [tab, setTab] = useState('overview'); // 'overview' | 'roster' (or 'logs' for member)
   const [selectedBlockFarm, setSelectedBlockFarm] = useState('All');
   const [selectedFieldId, setSelectedFieldId] = useState('All');
   const [selectedStageKey, setSelectedStageKey] = useState(null);
   const [session, setSession] = useState(getCurrentSession());
+  const [showLedgerModal, setShowLedgerModal] = useState(false);
+  const [expandedLedgerLogId, setExpandedLedgerLogId] = useState(null);
 
   useEffect(() => {
-    if (route?.params?.blockFarm) {
+    if (route && route.params && route.params.blockFarm) {
       setSelectedBlockFarm(route.params.blockFarm);
       setSelectedFieldId('All');
     }
-  }, [route?.params]);
+  }, [route && route.params && route.params.blockFarm]);
 
   useEffect(() => {
     const unsubscribe = subscribe(() => {
@@ -82,17 +84,90 @@ export default function AnalyticsScreen({ navigation, route }) {
 
   const totalHa = activeFields.reduce((s, f) => s + (Number(f.ha) || 1.5), 0);
 
-  // Cost calculations
-  const { totalCost, costPerHa } = React.useMemo(() => {
+  // Helper: accurately map an operation log to its agronomic category
+  const getLogCategory = (l) => {
+    if (l.category) return l.category;
+    const sNum = Number(l.stageNumber);
+    if (sNum === 1) return 'prep';
+    if (sNum === 2) return 'plant';
+    if (sNum === 3) return 'fert';
+    if (sNum === 4) return 'weed';
+    if (sNum === 5) return 'maint';
+    if (sNum === 6) return 'harvest';
+
+    const t = `${l.taskId || ''} ${l.sraOperationId || ''} ${l.operationName || ''} ${l.activity || ''}`.toLowerCase();
+    if (t.includes('prep') || t.includes('plow') || t.includes('furrow') || t.includes('sra-01') || t.includes('sra-02') || t.includes('t1') || t.includes('t2')) return 'prep';
+    if (t.includes('plant') || t.includes('patdan') || t.includes('seedcane') || t.includes('sra-03') || t.includes('sra-04') || t.includes('t3') || t.includes('t4')) return 'plant';
+    if (t.includes('fert') || t.includes('basal') || t.includes('dap') || t.includes('urea') || t.includes('sra-05') || t.includes('sra-06') || t.includes('t5') || t.includes('t6')) return 'fert';
+    if (t.includes('weed') || t.includes('cultivation') || t.includes('barring') || t.includes('sra-07') || t.includes('sra-10') || t.includes('t7') || t.includes('t10')) return 'weed';
+    if (t.includes('top-dress') || t.includes('hilling') || t.includes('maint') || t.includes('drainage') || t.includes('sra-08') || t.includes('sra-09') || t.includes('sra-11') || t.includes('t8') || t.includes('t9') || t.includes('t11')) return 'maint';
+    if (t.includes('harvest') || t.includes('cutting') || t.includes('haul') || t.includes('truck') || t.includes('sra-12') || t.includes('sra-13') || t.includes('sra-14') || t.includes('t12') || t.includes('t13') || t.includes('t14')) return 'harvest';
+    return 'prep';
+  };
+
+  // Cost & Activity calculations - STRICT ACTIVE LEDGER: Past cycles and drafts are NOT counted here
+  const { totalCost, costPerHa, activeLogsCount, categoryBreakdown, activeLogs = [] } = React.useMemo(() => {
     const activeFieldIds = activeFields.map(f => f.id);
-    const activeLogs = MOCK_LOGS.filter(l => activeFieldIds.includes(l.fieldId));
+    
+    // Filter only active cycle submitted logs (matching the active ledger)
+    const activeLogs = MOCK_LOGS.filter(l => {
+      if (!activeFieldIds.includes(l.fieldId)) return false;
+      if (l.isPastCycle) return false;
+      if (l.isDraft) return false;
+      if (!isMember && l.isOffline) return false;
+      return true;
+    });
+
     const cost = activeLogs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
     const ha = Math.max(totalHa, 0.1);
+    const totalActivities = activeLogs.length;
+
+    const catLabels = {
+      prep: 'Land Preparation',
+      plant: 'Planting & Seedcane',
+      fert: 'Fertilization',
+      weed: 'Cultivation & Weeding',
+      maint: 'Crop Maintenance & Hilling-Up',
+      harvest: 'Harvesting & Transport'
+    };
+    const catColors = {
+      prep: '#8F3A8F',
+      plant: '#4A7C2F',
+      fert: '#1A6B9A',
+      weed: '#F5A623',
+      maint: '#0284C7',
+      harvest: '#D9534F'
+    };
+
+    const sums = { prep: 0, plant: 0, fert: 0, weed: 0, maint: 0, harvest: 0 };
+    const counts = { prep: 0, plant: 0, fert: 0, weed: 0, maint: 0, harvest: 0 };
+
+    activeLogs.forEach(l => {
+      const cat = getLogCategory(l);
+      if (sums[cat] !== undefined) {
+        sums[cat] += Number(l.totalCost || l.cost) || 0;
+        counts[cat]++;
+      }
+    });
+
+    const breakdown = Object.keys(catLabels).map(cat => ({
+      key: cat,
+      label: catLabels[cat],
+      color: catColors[cat],
+      amount: sums[cat],
+      count: counts[cat],
+      costPct: cost > 0 ? Math.round((sums[cat] / cost) * 100) : 0,
+      activityPct: totalActivities > 0 ? Math.round((counts[cat] / totalActivities) * 100) : 0,
+    }));
+
     return {
       totalCost: cost,
-      costPerHa: Math.round(cost / ha)
+      costPerHa: Math.round(cost / ha),
+      activeLogsCount: totalActivities,
+      categoryBreakdown: breakdown,
+      activeLogs,
     };
-  }, [activeFields, totalHa]);
+  }, [activeFields, totalHa, isMember]);
 
 
   // Helper: map a field to exactly one SRA stage (prevent double counting)
@@ -134,7 +209,7 @@ export default function AnalyticsScreen({ navigation, route }) {
     const stageObj = SRA_GROWTH_STAGES.find(s => s.key === stageKey) || SRA_GROWTH_STAGES[1];
     return {
       ...stageObj,
-      fieldId: myField?.id || 'FLD-KTR-001',
+      fieldId: myField?.id || 'FLD-NCY-001',
       ha: Number(myField?.ha || 1.5),
       variety: myField?.variety || 'Phil 2006-2282',
       blockFarm: myField?.blockFarm || 'Nacayao Block Farm A'
@@ -168,26 +243,34 @@ export default function AnalyticsScreen({ navigation, route }) {
         <View style={{ width: 36 }} />
       </View>
 
-      {/* Role-Specific Clean Tab Selector */}
+      {/* Sleek Segmented Tab Navigation */}
       <View style={s.tabBarWrapper}>
         <View style={s.tabBar}>
           <TouchableOpacity
             style={[s.tab, tab === 'overview' && s.tabActive]}
             onPress={() => setTab('overview')}
-            activeOpacity={0.7}
+            activeOpacity={0.75}
           >
-            <Text style={[s.tabText, tab === 'overview' && s.tabTextActive]}>
-              {isMember ? 'My Field Overview' : 'Overview & Agronomy'}
-            </Text>
+            <Ionicons name="pie-chart-outline" size={13} color={tab === 'overview' ? COLORS.primary : COLORS.textMuted} />
+            <Text style={[s.tabText, tab === 'overview' && s.tabTextActive]}>Overview</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
-            style={[s.tab, tab !== 'overview' && s.tabActive]}
-            onPress={() => setTab(isMember ? 'logs' : 'roster')}
-            activeOpacity={0.7}
+            style={[s.tab, tab === 'stages' && s.tabActive]}
+            onPress={() => setTab('stages')}
+            activeOpacity={0.75}
           >
-            <Text style={[s.tabText, tab !== 'overview' && s.tabTextActive]}>
-              {isMember ? `Activities (${memberLogs.length})` : `Member Plots (${activeFields.length})`}
-            </Text>
+            <Ionicons name="leaf-outline" size={13} color={tab === 'stages' ? COLORS.primary : COLORS.textMuted} />
+            <Text style={[s.tabText, tab === 'stages' && s.tabTextActive]}>{isMember ? 'Crop Cycle' : 'Crop Stages'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[s.tab, tab === 'operations' && s.tabActive]}
+            onPress={() => setTab('operations')}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="briefcase-outline" size={13} color={tab === 'operations' ? COLORS.primary : COLORS.textMuted} />
+            <Text style={[s.tabText, tab === 'operations' && s.tabTextActive]}>Operations</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -224,13 +307,12 @@ export default function AnalyticsScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* TAB 1: OVERVIEW & AGRONOMY (Role Tailored) */}
-        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════ */}
+        {/* TAB 1: OVERVIEW & COST BREAKDOWN                         */}
+        {/* ══════════════════════════════════════════════════════════ */}
         {tab === 'overview' && (
           <>
-
-            {/* 2. Role-Dependent KPI Twin Cards (Matching Web) */}
+            {/* Role-Dependent KPI Twin Cards */}
             <View style={s.twinRow}>
               {isSRA ? (
                 <>
@@ -277,7 +359,7 @@ export default function AnalyticsScreen({ navigation, route }) {
                       <Text style={s.twinLabel}>Cultivated Area</Text>
                     </View>
                     <Text style={s.twinValue}>{totalHa.toFixed(1)} Ha</Text>
-                    <Text style={s.twinSub}>100% mapped &amp; assigned</Text>
+                    <Text style={s.twinSub}>100% mapped & assigned</Text>
                   </View>
                 </>
               ) : (
@@ -307,7 +389,7 @@ export default function AnalyticsScreen({ navigation, route }) {
               )}
             </View>
 
-            {/* 3. Direct Operational Spend Summary Card (Clean Real Actuals, No Benchmarks) */}
+            {/* Direct Operational Spend Summary Card */}
             <View style={s.spendCard}>
               <View style={s.spendCardHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
@@ -333,319 +415,489 @@ export default function AnalyticsScreen({ navigation, route }) {
                 <Text style={s.spendFooterText}>
                   Total Recorded: <Text style={{ fontWeight: '800', color: COLORS.text }}>₱ {totalCost.toLocaleString()}</Text>
                 </Text>
-                <Text style={s.spendFooterSub}>{totalHa.toFixed(2)} Ha under active tracking</Text>
+                <Text style={s.spendFooterSub}>{totalHa.toFixed(2)} Ha · {activeLogsCount} recorded ops</Text>
               </View>
             </View>
 
-            {/* 4. Crop Cycle Section (Role Tailored) */}
-            {isMember && memberCurrentStage ? (
-              /* MEMBER FARMER: Sleek 6-Stage Timeline Stepper & Active Stage Focus */
-              <View style={s.sectionCard}>
-                <View style={s.sectionHeader}>
-                  <View>
-                    <Text style={s.sectionTitle}>My Field Crop Cycle Progress</Text>
-                    <Text style={s.sectionSub}>SRA 6-stage agronomic cycle for {memberCurrentStage.fieldId}</Text>
-                  </View>
-                  <View style={[s.badgePill, { backgroundColor: `${memberCurrentStage.color}15` }]}>
-                    <Text style={[s.badgePillText, { color: memberCurrentStage.color }]}>
-                      Stage {memberCurrentStage.stageNum} Active
-                    </Text>
-                  </View>
+            {/* Operational Cost Breakdown by Category */}
+            <View style={s.sectionCard}>
+              <View style={s.sectionHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.sectionTitle}>Operational Cost Breakdown</Text>
+                  <Text style={s.sectionSub}>Recorded spend by agronomic activity category</Text>
                 </View>
+              </View>
 
-                {/* Horizontal 6-Stage Timeline Stepper */}
-                <View style={s.timelineStepperContainer}>
-                  <View style={s.timelineTrackLine} />
-                  <View style={s.timelineStepsRow}>
-                    {SRA_GROWTH_STAGES.map((st) => {
-                      const isPassed = st.stageNum < memberCurrentStage.stageNum;
-                      const isCurrent = st.stageNum === memberCurrentStage.stageNum;
-
-                      return (
-                        <View key={st.key} style={s.stepItem}>
-                          <View style={[
-                            s.stepCircle,
-                            isPassed && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-                            isCurrent && { backgroundColor: st.color, borderColor: st.color, transform: [{ scale: 1.15 }] },
-                            !isPassed && !isCurrent && { backgroundColor: '#fff', borderColor: COLORS.border }
-                          ]}>
-                            {isPassed ? (
-                              <Ionicons name="checkmark" size={11} color="#fff" />
-                            ) : (
-                              <Text style={[
-                                s.stepNumberText,
-                                isCurrent ? { color: '#fff' } : { color: COLORS.textMuted }
-                              ]}>
-                                {st.stageNum}
-                              </Text>
-                            )}
-                          </View>
-                          <Text style={[
-                            s.stepLabel,
-                            isCurrent && { color: st.color, fontWeight: '800' }
-                          ]} numberOfLines={1}>
-                            {st.short}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-
-                {/* Current Active Stage Focus Card */}
-                <View style={[s.activeStageCard, { borderColor: `${memberCurrentStage.color}50` }]}>
-                  <View style={[s.stageAccentStrip, { backgroundColor: memberCurrentStage.color }]} />
-                  <View style={{ padding: 12, gap: 6 }}>
+              <View style={{ gap: 9 }}>
+                {categoryBreakdown.map(item => (
+                  <View key={item.key} style={{ gap: 4 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <View style={[s.stageTag, { backgroundColor: `${memberCurrentStage.color}15` }]}>
-                        <Text style={[s.stageTagText, { color: memberCurrentStage.color }]}>
-                          Current: Stage {memberCurrentStage.stageNum}
-                        </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.color }} />
+                        <Text style={{ fontSize: 11.5, fontWeight: '700', color: COLORS.text }}>{item.label}</Text>
                       </View>
-                      <View style={s.liveBadge}>
-                        <View style={[s.liveDot, { backgroundColor: memberCurrentStage.color }]} />
-                        <Text style={[s.liveText, { color: memberCurrentStage.color }]}>In Progress</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{ fontSize: 10, color: COLORS.textMuted }}>{item.count} {item.count === 1 ? 'op' : 'ops'}</Text>
+                        <Text style={{ fontSize: 11.5, fontWeight: '800', color: COLORS.text }}>₱ {item.amount.toLocaleString()}</Text>
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: COLORS.textSecondary }}>({item.costPct}%)</Text>
                       </View>
                     </View>
-
-                    <Text style={{ fontSize: 14, fontWeight: '900', color: COLORS.text }}>
-                      {memberCurrentStage.name}
-                    </Text>
-                    <Text style={{ fontSize: 11, color: COLORS.textSecondary }}>
-                      Standard Agronomic Window: <Text style={{ fontWeight: '700', color: COLORS.text }}>{memberCurrentStage.days}</Text> ({memberCurrentStage.ops})
-                    </Text>
-
-                    <View style={{ backgroundColor: '#F8FAF5', borderRadius: RADIUS.xs, padding: 8, marginTop: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <View>
-                        <Text style={{ fontSize: 10, color: COLORS.textMuted }}>Assigned Land</Text>
-                        <Text style={{ fontSize: 13, fontWeight: '900', color: COLORS.text }}>{memberCurrentStage.ha.toFixed(2)} Ha</Text>
-                      </View>
-                      <View>
-                        <Text style={{ fontSize: 10, color: COLORS.textMuted }}>Crop Variety</Text>
-                        <Text style={{ fontSize: 11.5, fontWeight: '800', color: COLORS.primary }}>{memberCurrentStage.variety}</Text>
-                      </View>
-                      <View>
-                        <Text style={{ fontSize: 10, color: COLORS.textMuted }}>Cycle Progress</Text>
-                        <Text style={{ fontSize: 13, fontWeight: '900', color: memberCurrentStage.color }}>
-                          {Math.round((memberCurrentStage.stageNum / 6) * 100)}%
-                        </Text>
-                      </View>
+                    <View style={{ height: 5, backgroundColor: '#F3F4F6', borderRadius: 3, overflow: 'hidden' }}>
+                      <View style={{ height: '100%', width: `${Math.max(item.costPct, item.amount > 0 ? 4 : 0)}%`, backgroundColor: item.color, borderRadius: 3 }} />
                     </View>
                   </View>
-                </View>
+                ))}
               </View>
-            ) : (
-              /* SRA & MANAGER: 2-Column Balanced Crop Cycle Stage Grid */
-              <View style={s.sectionCard}>
-                <View style={s.sectionHeader}>
-                  <View>
-                    <Text style={s.sectionTitle}>Crop Cycle Stage Distribution</Text>
-                    <Text style={s.sectionSub}>6 official SRA agronomic stages · Active Cycle 2026</Text>
-                  </View>
-                  <View style={s.badgePill}>
-                    <Text style={s.badgePillText}>{totalHa.toFixed(1)} Ha Active</Text>
-                  </View>
-                </View>
-
-                <View style={s.stagesGrid}>
-                  {stageDistribution.map(st => {
-                    const isStageSelected = selectedStageKey === st.key;
-                    return (
-                      <TouchableOpacity
-                        key={st.key}
-                        style={[
-                          s.stageCard,
-                          isStageSelected && { borderColor: st.color, backgroundColor: '#FAFDF7' }
-                        ]}
-                        onPress={() => setSelectedStageKey(isStageSelected ? null : st.key)}
-                        activeOpacity={0.7}
-                      >
-                        {/* Top Colored Accent Strip (Matching Web) */}
-                        <View style={[s.stageAccentStrip, { backgroundColor: st.color }]} />
-
-                        <View style={{ padding: 9, gap: 4 }}>
-                          {/* Header: Stage Tag & Share % */}
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <View style={[s.stageTag, { backgroundColor: `${st.color}15` }]}>
-                              <Text style={[s.stageTagText, { color: st.color }]}>Stage {st.stageNum}</Text>
-                            </View>
-                            <View style={s.stagePctBadge}>
-                              <Text style={s.stagePct}>{st.pct}%</Text>
-                            </View>
-                          </View>
-
-                          {/* Stage Name & Timeline */}
-                          <Text style={s.stageName} numberOfLines={1}>{st.name}</Text>
-                          <Text style={s.stageTimeline}>{st.days}</Text>
-
-                          {/* Bottom Stats */}
-                          <View style={{ marginTop: 2, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#F0F0F0' }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                              <Text style={[s.stageHa, { color: st.color }]}>
-                                {st.ha.toFixed(1)} <Text style={{ fontSize: 10, fontWeight: '600', color: COLORS.textMuted }}>Ha</Text>
-                              </Text>
-                              <View style={[s.stagePlotsPill, st.count > 0 ? { backgroundColor: COLORS.primaryBg } : { backgroundColor: '#F3F4F6' }]}>
-                                <Text style={[s.stagePlotsText, st.count > 0 ? { color: COLORS.primary } : { color: COLORS.textMuted }]}>
-                                  {st.count} {st.count === 1 ? 'plot' : 'plots'}
-                                </Text>
-                              </View>
-                            </View>
-
-                            {/* Progress Track */}
-                            <View style={s.stageTrack}>
-                              <View style={[s.stageFill, { width: `${Math.max(st.pct, st.ha > 0 ? 10 : 0)}%`, backgroundColor: st.color }]} />
-                            </View>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-
-                {/* Tapped Stage: Detailed Plot Drilldown Drawer */}
-                {selectedStageKey && (
-                  <View style={s.selectedStageDrawer}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <Text style={s.drawerTitle}>
-                        Plots in {SRA_GROWTH_STAGES.find(s => s.key === selectedStageKey)?.name || 'This Stage'}:
-                      </Text>
-                      <TouchableOpacity onPress={() => setSelectedStageKey(null)}>
-                        <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
-                      </TouchableOpacity>
-                    </View>
-                    {activeFields.filter(f => matchFieldToStageKey(f) === selectedStageKey).length === 0 ? (
-                      <Text style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: 'italic' }}>
-                        No plots are currently in this stage.
-                      </Text>
-                    ) : (
-                      activeFields.filter(f => matchFieldToStageKey(f) === selectedStageKey).map(p => (
-                        <View key={p.id} style={s.drawerPlotItem}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={s.drawerPlotId}>{p.id} · <Text style={{ fontWeight: '600', color: COLORS.textSecondary }}>{p.member || 'Member'}</Text></Text>
-                            <Text style={s.drawerPlotSub}>{p.blockFarm || 'Block Farm'} · {p.variety || 'Phil 84-77'}</Text>
-                          </View>
-                          <Text style={s.drawerPlotHa}>{Number(p.ha || 1.5).toFixed(1)} Ha</Text>
-                        </View>
-                      ))
-                    )}
-                  </View>
-                )}
-              </View>
-            )}
-
+            </View>
           </>
         )}
 
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* TAB 2: ROSTER / ACTIVITIES (Role Tailored) */}
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {tab !== 'overview' && (
-          <>
-            {isMember ? (
-              /* Member Farmer: Field Operations Log History */
-              <View style={s.sectionCard}>
-                <View style={s.sectionHeader}>
-                  <View>
-                    <Text style={s.sectionTitle}>Recorded Field Activities</Text>
-                    <Text style={s.sectionSub}>Chronological logs for {scopedFields[0]?.id || 'Field Plot'}</Text>
+        {/* ══════════════════════════════════════════════════════════ */}
+        {/* TAB 2: CROP STAGE LIFECYCLE DISTRIBUTION                 */}
+        {/* ══════════════════════════════════════════════════════════ */}
+        {tab === 'stages' && (
+          isMember && memberCurrentStage ? (
+            /* MEMBER FARMER: Sleek 6-Stage Timeline Stepper & Active Stage Focus */
+            <View style={s.sectionCard}>
+              <View style={s.sectionHeader}>
+                <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                  <Text style={s.sectionTitle}>My Field Crop Cycle Progress</Text>
+                  <Text style={s.sectionSub}>SRA 6-stage agronomic cycle for {memberCurrentStage.fieldId}</Text>
+                </View>
+                <View style={[s.badgePill, { backgroundColor: `${memberCurrentStage.color}15` }]}>
+                  <Text style={[s.badgePillText, { color: memberCurrentStage.color }]}>
+                    Stage {memberCurrentStage.stageNum} Active
+                  </Text>
+                </View>
+              </View>
+
+              {/* Horizontal 6-Stage Timeline Stepper */}
+              <View style={s.timelineStepperContainer}>
+                <View style={s.timelineTrackLine} />
+                <View style={s.timelineStepsRow}>
+                  {SRA_GROWTH_STAGES.map((st) => {
+                    const isPassed = st.stageNum < memberCurrentStage.stageNum;
+                    const isCurrent = st.stageNum === memberCurrentStage.stageNum;
+
+                    return (
+                      <View key={st.key} style={s.stepItem}>
+                        <View style={[
+                          s.stepCircle,
+                          isPassed && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+                          isCurrent && { backgroundColor: st.color, borderColor: st.color, transform: [{ scale: 1.15 }] },
+                          !isPassed && !isCurrent && { backgroundColor: '#fff', borderColor: COLORS.border }
+                        ]}>
+                          {isPassed ? (
+                            <Ionicons name="checkmark" size={11} color="#fff" />
+                          ) : (
+                            <Text style={[
+                              s.stepNumberText,
+                              isCurrent ? { color: '#fff' } : { color: COLORS.textMuted }
+                            ]}>
+                              {st.stageNum}
+                            </Text>
+                          )}
+                        </View>
+                        <Text style={[
+                          s.stepLabel,
+                          isCurrent && { color: st.color, fontWeight: '800' }
+                        ]} numberOfLines={1}>
+                          {st.short}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Current Active Stage Focus Card */}
+              <View style={[s.activeStageCard, { borderColor: `${memberCurrentStage.color}50` }]}>
+                <View style={[s.stageAccentStrip, { backgroundColor: memberCurrentStage.color }]} />
+                <View style={{ padding: 12, gap: 6 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={[s.stageTag, { backgroundColor: `${memberCurrentStage.color}15` }]}>
+                      <Text style={[s.stageTagText, { color: memberCurrentStage.color }]}>
+                        Current: Stage {memberCurrentStage.stageNum}
+                      </Text>
+                    </View>
+                    <View style={s.liveBadge}>
+                      <View style={[s.liveDot, { backgroundColor: memberCurrentStage.color }]} />
+                      <Text style={[s.liveText, { color: memberCurrentStage.color }]}>In Progress</Text>
+                    </View>
                   </View>
-                  <View style={s.badgePill}>
-                    <Text style={s.badgePillText}>{memberLogs.length} Verified Logs</Text>
+
+                  <Text style={{ fontSize: 14, fontWeight: '900', color: COLORS.text }}>
+                    {memberCurrentStage.name}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: COLORS.textSecondary }}>
+                    Standard Agronomic Window: <Text style={{ fontWeight: '700', color: COLORS.text }}>{memberCurrentStage.days}</Text> ({memberCurrentStage.ops})
+                  </Text>
+
+                  <View style={{ backgroundColor: '#F8FAF5', borderRadius: RADIUS.xs, padding: 8, marginTop: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View>
+                      <Text style={{ fontSize: 10, color: COLORS.textMuted }}>Assigned Land</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '900', color: COLORS.text }}>{memberCurrentStage.ha.toFixed(2)} Ha</Text>
+                    </View>
+                    <View>
+                      <Text style={{ fontSize: 10, color: COLORS.textMuted }}>Crop Variety</Text>
+                      <Text style={{ fontSize: 11.5, fontWeight: '800', color: COLORS.primary }}>{memberCurrentStage.variety}</Text>
+                    </View>
+                    <View>
+                      <Text style={{ fontSize: 10, color: COLORS.textMuted }}>Cycle Progress</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '900', color: memberCurrentStage.color }}>
+                        {Math.round((memberCurrentStage.stageNum / 6) * 100)}%
+                      </Text>
+                    </View>
                   </View>
                 </View>
+              </View>
+            </View>
+          ) : (
+            /* SRA & MANAGER: 2-Column Balanced Crop Cycle Stage Grid */
+            <View style={s.sectionCard}>
+              <View style={s.sectionHeader}>
+                <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                  <Text style={s.sectionTitle}>Crop Cycle Stage Distribution</Text>
+                  <Text style={s.sectionSub}>6 official SRA agronomic stages · Active Cycle 2026</Text>
+                </View>
+                <View style={s.badgePill}>
+                  <Text style={s.badgePillText}>{totalHa.toFixed(1)} Ha Active</Text>
+                </View>
+              </View>
 
-                <View style={{ gap: 8 }}>
-                  {memberLogs.length === 0 ? (
-                    <View style={s.emptyBox}>
-                      <Ionicons name="document-text-outline" size={24} color={COLORS.textMuted} />
-                      <Text style={s.emptyText}>No operations recorded yet</Text>
-                    </View>
-                  ) : (
-                    memberLogs.map(l => (
-                      <View key={l.id} style={s.logItem}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={s.logActivity}>{l.activity || l.operationName || 'Field Operation'}</Text>
-                            <Text style={s.logDate}>{l.date || '2026-05-18'} · {l.fieldId}</Text>
-                            {l.people && (
-                              <Text style={s.logMeta}>{l.people} workers · {l.inputQty || 1} {l.inputUnit || 'bags'}</Text>
-                            )}
+              <View style={s.stagesGrid}>
+                {stageDistribution.map(st => {
+                  const isStageSelected = selectedStageKey === st.key;
+                  return (
+                    <TouchableOpacity
+                      key={st.key}
+                      style={[
+                        s.stageCard,
+                        isStageSelected && { borderColor: st.color, backgroundColor: '#FAFDF7' }
+                      ]}
+                      onPress={() => setSelectedStageKey(isStageSelected ? null : st.key)}
+                      activeOpacity={0.7}
+                    >
+                      {/* Top Colored Accent Strip (Matching Web) */}
+                      <View style={[s.stageAccentStrip, { backgroundColor: st.color }]} />
+
+                      <View style={{ padding: 9, gap: 4 }}>
+                        {/* Header: Stage Tag & Share % */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <View style={[s.stageTag, { backgroundColor: `${st.color}15` }]}>
+                            <Text style={[s.stageTagText, { color: st.color }]}>Stage {st.stageNum}</Text>
                           </View>
-                          <Text style={s.logCost}>₱ {Number(l.totalCost || l.cost || 0).toLocaleString()}</Text>
+                          <View style={s.stagePctBadge}>
+                            <Text style={s.stagePct}>{st.pct}%</Text>
+                          </View>
                         </View>
+
+                        {/* Stage Name & Timeline */}
+                        <Text style={s.stageName} numberOfLines={1}>{st.name}</Text>
+                        <Text style={s.stageTimeline}>{st.days}</Text>
+
+                        {/* Bottom Stats */}
+                        <View style={{ marginTop: 2, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#F0F0F0' }}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                            <Text style={[s.stageHa, { color: st.color }]}>
+                              {st.ha.toFixed(1)} <Text style={{ fontSize: 10, fontWeight: '600', color: COLORS.textMuted }}>Ha</Text>
+                            </Text>
+                            <View style={[s.stagePlotsPill, st.count > 0 ? { backgroundColor: COLORS.primaryBg } : { backgroundColor: '#F3F4F6' }]}>
+                              <Text style={[s.stagePlotsText, st.count > 0 ? { color: COLORS.primary } : { color: COLORS.textMuted }]}>
+                                {st.count} {st.count === 1 ? 'plot' : 'plots'}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Progress Track */}
+                          <View style={s.stageTrack}>
+                            <View style={[s.stageFill, { width: `${Math.max(st.pct, st.ha > 0 ? 10 : 0)}%`, backgroundColor: st.color }]} />
+                          </View>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Tapped Stage: Detailed Plot Drilldown Drawer */}
+              {selectedStageKey && (
+                <View style={s.selectedStageDrawer}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <Text style={s.drawerTitle}>
+                      Plots in {SRA_GROWTH_STAGES.find(s => s.key === selectedStageKey)?.name || 'This Stage'}:
+                    </Text>
+                    <TouchableOpacity onPress={() => setSelectedStageKey(null)}>
+                      <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+                    </TouchableOpacity>
+                  </View>
+                  {activeFields.filter(f => matchFieldToStageKey(f) === selectedStageKey).length === 0 ? (
+                    <Text style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: 'italic' }}>
+                      No plots are currently in this stage.
+                    </Text>
+                  ) : (
+                    activeFields.filter(f => matchFieldToStageKey(f) === selectedStageKey).map(p => (
+                      <View key={p.id} style={s.drawerPlotItem}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.drawerPlotId}>{p.id} · <Text style={{ fontWeight: '600', color: COLORS.textSecondary }}>{p.member || 'Member'}</Text></Text>
+                          <Text style={s.drawerPlotSub}>{p.blockFarm || 'Block Farm'} · {p.variety || 'Phil 84-77'}</Text>
+                        </View>
+                        <Text style={s.drawerPlotHa}>{Number(p.ha || 1.5).toFixed(1)} Ha</Text>
                       </View>
                     ))
                   )}
                 </View>
+              )}
+            </View>
+          )
+        )}
+
+        {/* ══════════════════════════════════════════════════════════ */}
+        {/* TAB 3: FARM OPERATIONS & ACTIVITY DISTRIBUTION           */}
+        {/* ══════════════════════════════════════════════════════════ */}
+        {tab === 'operations' && (
+          <View style={s.sectionCard}>
+            <View style={s.sectionHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.sectionTitle}>Farm Operations Analytics</Text>
+                <Text style={s.sectionSub}>Aggregated activity volume, categories & execution distribution</Text>
+              </View>
+            </View>
+
+            {activeLogsCount === 0 ? (
+              <View style={{ paddingVertical: 18, alignItems: 'center' }}>
+                <Text style={{ fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic' }}>
+                  No recorded operations yet.
+                </Text>
               </View>
             ) : (
-              /* SRA Admin & Farm Manager: Clean Member Plots Directory */
-              <View style={s.sectionCard}>
-                <View style={s.sectionHeader}>
-                  <View>
-                    <Text style={s.sectionTitle}>Member Plots Directory</Text>
-                    <Text style={s.sectionSub}>Status, cultivated area, and recorded spend per member</Text>
+              <View style={{ gap: 12, marginTop: 4 }}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flex: 1, backgroundColor: '#F8FAF5', padding: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase' }}>Total Completed</Text>
+                    <Text style={{ fontSize: 20, fontWeight: '900', color: COLORS.text, marginTop: 2 }}>{activeLogsCount}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: COLORS.textSecondary, marginTop: 2 }}>Field activities</Text>
                   </View>
-                  <View style={s.badgePill}>
-                    <Text style={s.badgePillText}>{activeFields.length} Plots</Text>
+                  <View style={{ flex: 1, backgroundColor: '#F8FAF5', padding: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase' }}>Active Plots</Text>
+                    <Text style={{ fontSize: 20, fontWeight: '900', color: COLORS.primary, marginTop: 2 }}>{activeFields.length}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: COLORS.textSecondary, marginTop: 2 }}>{totalHa.toFixed(1)} Ha supervised</Text>
                   </View>
                 </View>
 
-                <View style={{ gap: 8 }}>
-                  {activeFields.map(f => {
-                    const fieldLogs = MOCK_LOGS.filter(l => l.fieldId === f.id);
-                    const fieldCost = fieldLogs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
-                    const isSelected = selectedFieldId === f.id;
-
-                    return (
-                      <TouchableOpacity
-                        key={f.id}
-                        style={[
-                          s.plotCard,
-                          isSelected && s.plotCardSelected
-                        ]}
-                        onPress={() => setSelectedFieldId(selectedFieldId === f.id ? 'All' : f.id)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
-                            <View style={s.memberAvatar}>
-                              <Text style={s.memberAvatarText}>
-                                {(f.member || 'M').split(' ').map(n => n[0]).slice(0, 2).join('')}
-                              </Text>
-                            </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={s.plotMemberName} numberOfLines={1}>{f.member || 'Member Farmer'}</Text>
-                              <Text style={s.plotSubText} numberOfLines={1}>
-                                {f.id} · {f.ha} Ha · {f.blockFarm || 'Block Farm'}
-                              </Text>
-                              <Text style={s.plotVarietyText}>
-                                {f.variety || 'Sugarcane'} · {f.cycleType || 'Plant Cane'}
-                              </Text>
-                            </View>
-                          </View>
-
-                          <View style={{ alignItems: 'flex-end', gap: 3 }}>
-                            <View style={s.plotStagePill}>
-                              <Text style={s.plotStageText} numberOfLines={1}>
-                                {f.stage ? f.stage.split(':')[0] : 'Stage 1'}
-                              </Text>
-                            </View>
-                            <Text style={s.plotCost}>₱ {fieldCost.toLocaleString()}</Text>
-                            <Text style={s.plotLogCount}>{fieldLogs.length} logs</Text>
-                          </View>
+                {/* Operations by Category Distribution with clean spacing & progress bars */}
+                <View style={{ gap: 10, marginTop: 4 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Activity Category Distribution
+                  </Text>
+                  {categoryBreakdown.map(cat => (
+                    <View key={cat.key} style={{ gap: 6, paddingVertical: 3 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: cat.color }} />
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.text }}>{cat.label}</Text>
                         </View>
-                      </TouchableOpacity>
-                    );
-                  })}
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.text }}>
+                          {cat.count} <Text style={{ fontSize: 11, fontWeight: '500', color: COLORS.textMuted }}>({cat.activityPct}%)</Text>
+                        </Text>
+                      </View>
+                      <View style={{ height: 6, backgroundColor: '#EEF0E9', borderRadius: 3, overflow: 'hidden' }}>
+                        <View style={{ height: '100%', width: `${Math.max(cat.activityPct, cat.count > 0 ? 4 : 0)}%`, backgroundColor: cat.color, borderRadius: 3 }} />
+                      </View>
+                    </View>
+                  ))}
                 </View>
+
+                {/* Clean Drill-Down Action automatically opening the Operational Ledger (Zero Animation Lag) */}
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    backgroundColor: '#F0F7EB',
+                    paddingVertical: 13,
+                    paddingHorizontal: 16,
+                    borderRadius: RADIUS.md,
+                    borderWidth: 1,
+                    borderColor: `${COLORS.primary}40`,
+                    marginTop: 6
+                  }}
+                  onPress={() => setShowLedgerModal(true)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="book-outline" size={16} color={COLORS.primary} />
+                  <Text style={{ fontSize: 12.5, fontWeight: '800', color: COLORS.primary }}>
+                    View Detailed Operations Ledger ({activeLogsCount} {activeLogsCount === 1 ? 'record' : 'records'}) →
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
-          </>
+          </View>
         )}
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* ── Direct Analytics Ledger Modal (Instant, Zero Lag, Stays on Analytics) ── */}
+      <Modal visible={showLedgerModal} animationType="none" onRequestClose={() => setShowLedgerModal(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'bottom']}>
+          {/* Modal Header */}
+          <View style={s.historyModalHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.historyModalTitle}>
+                {t('ledger_title', 'Field History & Ledger')}
+              </Text>
+              <Text style={s.historyModalSub}>
+                {isSRA
+                  ? `${selectedBlockFarm === 'All' ? 'All Block Farms' : selectedBlockFarm} · Active Operations`
+                  : `${activeFields[0]?.id || scopedFields[0]?.id || 'Field Plot'} · ${activeFields[0]?.member || session.name || 'Member'}`}
+              </Text>
+            </View>
+            <TouchableOpacity 
+              style={s.historyModalCloseBtn}
+              onPress={() => setShowLedgerModal(false)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Stat Summary Bar */}
+          <View style={s.historyStatBar}>
+            <View style={s.historyStatItem}>
+              <Text style={s.historyStatLbl}>Total Recorded Cost</Text>
+              <Text style={s.historyStatVal}>Php {totalCost.toLocaleString()}</Text>
+            </View>
+            <View style={[s.historyStatItem, { borderLeftWidth: 1, borderLeftColor: COLORS.border, paddingLeft: 14 }]}>
+              <Text style={s.historyStatLbl}>Submitted Records</Text>
+              <Text style={s.historyStatVal}>{activeLogsCount} {activeLogsCount === 1 ? 'Record' : 'Records'}</Text>
+            </View>
+          </View>
+
+          {/* Scrollable Records List */}
+          <ScrollView contentContainerStyle={{ padding: SPACING.md, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+            {activeLogs.length === 0 ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                <Ionicons name="documents-outline" size={40} color={COLORS.textMuted} />
+                <Text style={{ fontSize: 13, color: COLORS.textMuted, fontStyle: 'italic', marginTop: 8 }}>
+                  No active cycle submitted operations found.
+                </Text>
+              </View>
+            ) : (
+              <View style={{ gap: 8 }}>
+                {activeLogs.map(log => {
+                  const isExpanded = expandedLedgerLogId === log.id;
+                  return (
+                    <View key={log.id} style={s.compactLogCard}>
+                      <TouchableOpacity
+                        style={s.compactLogHeader}
+                        onPress={() => setExpandedLedgerLogId(isExpanded ? null : log.id)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={s.compactLogDot} />
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            {log.sraOperationId && (
+                              <View style={{ backgroundColor: COLORS.primaryBg, paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: RADIUS.xs }}>
+                                <Text style={{ fontSize: 10, fontWeight: '900', color: COLORS.primary }}>{log.sraOperationId}</Text>
+                              </View>
+                            )}
+                            <Text style={s.compactLogTitle} numberOfLines={1}>
+                              {formatOperationName ? formatOperationName(log.operationName || log.activity) : log.operationName || log.activity}
+                            </Text>
+                          </View>
+
+                          {/* Connected Parent Stage Badge */}
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                            <Ionicons name="git-branch-outline" size={11} color={COLORS.primary} />
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }} numberOfLines={1}>
+                              {formatStageName ? formatStageName(log.stageName || `Stage ${log.stageNumber}`, true) : log.stageName || `Stage ${log.stageNumber}`}
+                            </Text>
+                          </View>
+
+                          <Text style={[s.compactLogSub, { marginTop: 2 }]}>
+                            {log.date || log.period} · {log.hectares || 1.5} Ha · {log.people || 2} Workers{log.subItems?.length ? ` · ${log.subItems.length} Items` : ''}
+                          </Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
+                          <Text style={s.compactLogCost}>₱{Number(log.totalCost || log.cost || 0).toLocaleString()}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                            {log.isOffline && <Ionicons name="cloud-offline-outline" size={12} color="#C97A00" />}
+                            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color={COLORS.textMuted} />
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+
+                      {/* Expandable Details Drawer */}
+                      {isExpanded && (
+                        <View style={s.compactLogDrawer}>
+                          <View style={s.compactLogDivider} />
+                          <View style={s.receiptRow}>
+                            <Text style={s.receiptLabel}>Operation Name</Text>
+                            <Text style={s.receiptValue}>{log.sraOperationId ? `[${log.sraOperationId}] ` : ''}{log.operationName || log.activity}</Text>
+                          </View>
+                          <View style={s.receiptRow}>
+                            <Text style={s.receiptLabel}>Connected Stage</Text>
+                            <Text style={[s.receiptValue, { color: COLORS.primary, fontWeight: '800' }]}>
+                              {log.stageName || (log.stageNumber ? `Stage ${log.stageNumber}` : 'General Operation')}
+                            </Text>
+                          </View>
+                          <View style={s.receiptRow}>
+                            <Text style={s.receiptLabel}>Log Reference</Text>
+                            <Text style={s.receiptValue}>#{log.id}</Text>
+                          </View>
+                          <View style={s.receiptRow}>
+                            <Text style={s.receiptLabel}>Work Coverage</Text>
+                            <Text style={s.receiptValue}>{log.hectares || 1.5} Hectares · {log.people || 2} Workers</Text>
+                          </View>
+
+                          {/* Child Items / Materials Breakdown */}
+                          {log.subItems && log.subItems.length > 0 && (
+                            <View style={{ backgroundColor: '#F8FAF5', padding: 10, borderRadius: RADIUS.sm, gap: 5, marginVertical: 6, borderWidth: 1, borderColor: COLORS.border }}>
+                              <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.primary, textTransform: 'uppercase' }}>
+                                Operation Items & Materials ({log.subItems.length})
+                              </Text>
+                              {log.subItems.map((si, idx) => (
+                                <View key={si.id || idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: idx !== log.subItems.length - 1 ? 1 : 0, borderBottomColor: '#EDEDED', paddingVertical: 3 }}>
+                                  <Text style={{ fontSize: 12, fontWeight: '600', color: COLORS.text, flex: 1, marginRight: 6 }}>
+                                    • {si.description}
+                                  </Text>
+                                  <Text style={{ fontSize: 11.5, fontWeight: '700', color: COLORS.textSecondary }}>
+                                    {si.qty} {si.unit} @ ₱{Number(si.unitCost || 0).toLocaleString()} = ₱{Number(si.subTotal || 0).toLocaleString()}
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+
+                          <View style={s.receiptRow}>
+                            <Text style={s.receiptLabel}>Total Cost</Text>
+                            <Text style={s.receiptCostText}>Php {Number(log.totalCost || log.cost || 0).toLocaleString()}</Text>
+                          </View>
+                          <View style={s.receiptRow}>
+                            <Text style={s.receiptLabel}>Date Recorded</Text>
+                            <Text style={s.receiptValue}>{log.date || log.period}</Text>
+                          </View>
+                          <View style={s.receiptRow}>
+                            <Text style={s.receiptLabel}>Status</Text>
+                            <View style={[s.receiptStatusBadge, { backgroundColor: log.isOffline ? '#FFFBF0' : '#F2FBF2', borderColor: log.isOffline ? '#FEF0D0' : '#E8F5E8' }]}>
+                              <Ionicons name={log.isOffline ? 'cloud-offline-outline' : 'checkmark-circle-outline'} size={12} color={log.isOffline ? '#C97A00' : '#267326'} />
+                              <Text style={[s.receiptStatusText, { fontSize: 10, color: log.isOffline ? '#C97A00' : '#267326' }]}>
+                                {log.isOffline ? 'Saved Offline' : 'Recorded'}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -666,15 +918,70 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text, textAlign: 'center' },
   headerSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 1, textAlign: 'center' },
 
-  // Role Tab Bar
-  tabBarWrapper: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  tabBar: { flexDirection: 'row', paddingHorizontal: SPACING.md },
-  tab: { flex: 1, paddingVertical: 11, alignItems: 'center', borderBottomWidth: 2.5, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: COLORS.primary },
-  tabText: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
-  tabTextActive: { color: COLORS.primary, fontWeight: '800' },
+  // Dedicated Ledger Modal Styles
+  historyModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  historyModalTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text },
+  historyModalSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
+  historyModalCloseBtn: { padding: 4 },
+  historyStatBar: { flexDirection: 'row', backgroundColor: '#F8FAF5', paddingHorizontal: SPACING.lg, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.border, gap: 16 },
+  historyStatItem: { flex: 1 },
+  historyStatLbl: { fontSize: 10, color: COLORS.textMuted, fontWeight: '600', textTransform: 'uppercase' },
+  historyStatVal: { fontSize: 13, fontWeight: '800', color: COLORS.primary, marginTop: 1 },
 
-  scroll: { padding: 12, gap: 12, paddingBottom: 28 },
+  // Compact Log Cards in Ledger
+  compactLogCard: { backgroundColor: '#fff', borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden' },
+  compactLogHeader: { flexDirection: 'row', alignItems: 'center', padding: 10, gap: 8 },
+  compactLogDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary },
+  compactLogTitle: { fontSize: 12.5, fontWeight: '700', color: COLORS.text, flex: 1 },
+  compactLogSub: { fontSize: 10.5, color: COLORS.textMuted },
+  compactLogCost: { fontSize: 13, fontWeight: '800', color: COLORS.primary },
+  compactLogDrawer: { backgroundColor: '#FAFAF8', padding: 10, gap: 5, borderTopWidth: 1, borderTopColor: '#EEEEEE' },
+  compactLogDivider: { height: 1, backgroundColor: '#E5E5E5', marginBottom: 2 },
+  receiptRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
+  receiptLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: '600' },
+  receiptValue: { fontSize: 11.5, color: COLORS.text, fontWeight: '700' },
+  receiptCostText: { fontSize: 12, fontWeight: '900', color: COLORS.primary },
+  receiptStatusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6, paddingVertical: 2, borderRadius: RADIUS.xs, borderWidth: 1 },
+  receiptStatusText: { fontSize: 10, fontWeight: '700' },
+
+  // Segmented Pill Tab Bar
+  tabBarWrapper: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 8,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F5EE',
+    borderRadius: RADIUS.lg,
+    padding: 3,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: RADIUS.md,
+  },
+  tabActive: {
+    backgroundColor: '#fff',
+    ...SHADOW.xs,
+  },
+  tabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+  },
+  tabTextActive: {
+    color: COLORS.primary,
+    fontWeight: '900',
+  },
+
+  scroll: { padding: 14, gap: 14, paddingBottom: 36 },
 
   // SRA Minimal Filter Row
   sraFilterContainer: {
@@ -863,7 +1170,8 @@ const s = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start'
+    alignItems: 'flex-start',
+    gap: 8,
   },
   sectionTitle: {
     fontSize: 13.5,
@@ -877,9 +1185,11 @@ const s = StyleSheet.create({
   },
   badgePill: {
     backgroundColor: COLORS.primaryBg,
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
-    borderRadius: RADIUS.full
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: RADIUS.full,
+    flexShrink: 0,
+    alignSelf: 'flex-start',
   },
   badgePillText: {
     fontSize: 10,

@@ -349,6 +349,187 @@ const getFieldStages = (fieldId) => {
 
 const STATUS_COLORS = { approved: COLORS.success, pending: '#F5A623', flagged: '#D9534F' };
 
+// Memoized Log Item Card to prevent re-rendering the entire list on expand/edit
+const CompactLogItem = React.memo(function CompactLogItem({
+  log,
+  isDraft,
+  isExpanded,
+  onToggleExpand,
+  formatOperationName,
+  formatStageName,
+  t,
+  editDraft,
+  submitDraft,
+  deleteDraft,
+  editSubmittedLog,
+  deleteSubmittedLog,
+  canDeleteSubmitted,
+  s,
+}) {
+  return (
+    <View style={[s.compactLogCard, isDraft && { borderColor: '#F5A623', backgroundColor: '#FFFBF0' }]}>
+      <TouchableOpacity
+        style={s.compactLogHeader}
+        onPress={onToggleExpand}
+        activeOpacity={0.7}
+      >
+        <View style={[s.compactLogDot, { backgroundColor: isDraft ? '#C97A00' : COLORS.primary }]} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {log.sraOperationId && (
+              <View style={{ backgroundColor: COLORS.primaryBg, paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: RADIUS.xs }}>
+                <Text style={{ fontSize: 10, fontWeight: '900', color: COLORS.primary }}>{log.sraOperationId}</Text>
+              </View>
+            )}
+            <Text style={s.compactLogTitle} numberOfLines={1}>
+              {formatOperationName ? formatOperationName(log.operationName || log.activity) : log.operationName || log.activity}
+            </Text>
+          </View>
+          
+          {/* Connected Parent Stage Badge */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+            <Ionicons name="git-branch-outline" size={11} color={COLORS.primary} />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }} numberOfLines={1}>
+              {formatStageName ? formatStageName(log.stageName || `Stage ${log.stageNumber}`, true) : log.stageName || `Stage ${log.stageNumber}`}
+            </Text>
+          </View>
+
+          <Text style={[s.compactLogSub, { marginTop: 2 }]}>
+            {log.date || log.period} · {log.hectares} Ha · {log.people} Workers{log.subItems?.length ? ` · ${log.subItems.length} ${t('child_items_lbl', 'Items')}` : ''}
+          </Text>
+        </View>
+        <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
+          <Text style={[s.compactLogCost, isDraft && { color: '#C97A00' }]}>₱{Number(log.cost || 0).toLocaleString()}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
+            {log.isOffline && <Ionicons name="cloud-offline-outline" size={12} color="#C97A00" />}
+            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color={COLORS.textMuted} />
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      {/* Expandable Details Drawer with Child Sub-Items */}
+      {isExpanded && (
+        <View style={s.compactLogDrawer}>
+          <View style={s.compactLogDivider} />
+          <View style={s.receiptRow}>
+            <Text style={s.receiptLabel}>{t('operation_name_lbl', 'Operation Name')}</Text>
+            <Text style={s.receiptValue}>{log.sraOperationId ? `[${log.sraOperationId}] ` : ''}{log.operationName || log.activity}</Text>
+          </View>
+          <View style={s.receiptRow}>
+            <Text style={s.receiptLabel}>{t('connected_stage_lbl', 'Connected Stage')}</Text>
+            <Text style={[s.receiptValue, { color: COLORS.primary, fontWeight: '800' }]}>
+              {log.stageName || (log.stageNumber ? `Stage ${log.stageNumber}` : 'General Operation')}
+            </Text>
+          </View>
+          <View style={s.receiptRow}>
+            <Text style={s.receiptLabel}>{t('receipt_ref', 'Log Reference')}</Text>
+            <Text style={s.receiptValue}>#{log.id}</Text>
+          </View>
+          <View style={s.receiptRow}>
+            <Text style={s.receiptLabel}>{t('receipt_coverage', 'Work Coverage')}</Text>
+            <Text style={s.receiptValue}>{log.hectares} {t('hectares_unit', 'Hectares')} · {log.people} {t('workers_unit', 'Workers')}</Text>
+          </View>
+
+          {/* Child Items / Materials & Inputs Breakdown */}
+          {log.subItems && log.subItems.length > 0 && (
+            <View style={{ backgroundColor: '#F8FAF5', padding: 10, borderRadius: RADIUS.sm, gap: 5, marginVertical: 6, borderWidth: 1, borderColor: COLORS.border }}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.primary, textTransform: 'uppercase' }}>
+                {t('op_children_materials_lbl', 'Operation Items & Materials')} ({log.subItems.length})
+              </Text>
+              {log.subItems.map((si, idx) => (
+                <View key={si.id || idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: idx !== log.subItems.length - 1 ? 1 : 0, borderBottomColor: '#EDEDED', paddingVertical: 3 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: COLORS.text, flex: 1, marginRight: 6 }}>
+                    • {si.description}
+                  </Text>
+                  <Text style={{ fontSize: 11.5, fontWeight: '700', color: COLORS.textSecondary }}>
+                    {si.qty} {si.unit} @ ₱{Number(si.unitCost || 0).toLocaleString()} = ₱{Number(si.subTotal || 0).toLocaleString()}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {Boolean(log.inputQty) && (!log.subItems || log.subItems.length === 0) && (
+            <View style={s.receiptRow}>
+              <Text style={s.receiptLabel}>{t('direct_op_input_lbl', 'Direct Operation Input')}</Text>
+              <Text style={s.receiptValue}>{log.inputQty} {log.inputUnit || 'ha'} {log.directRate ? `@ ₱${Number(log.directRate).toLocaleString()}/${log.inputUnit || 'ha'}` : ''}</Text>
+            </View>
+          )}
+          <View style={s.receiptRow}>
+            <Text style={s.receiptLabel}>{t('stat_total_cost', 'Total Cost')}</Text>
+            <Text style={[s.receiptCostText, isDraft && { color: '#C97A00' }]}>Php {Number(log.cost || 0).toLocaleString()}</Text>
+          </View>
+          <View style={s.receiptRow}>
+            <Text style={s.receiptLabel}>{t('form_date', 'Date Recorded')}</Text>
+            <Text style={s.receiptValue}>{log.date || log.period}</Text>
+          </View>
+          {!isDraft && (
+            <View style={s.receiptRow}>
+              <Text style={s.receiptLabel}>{t('status', 'Status')}</Text>
+              <View style={[s.receiptStatusBadge, { backgroundColor: log.isOffline ? '#FFFBF0' : '#F2FBF2', borderColor: log.isOffline ? '#FEF0D0' : '#E8F5E8' }]}>
+                <Ionicons name={log.isOffline ? 'cloud-offline-outline' : 'checkmark-circle-outline'} size={12} color={log.isOffline ? '#C97A00' : '#267326'} />
+                <Text style={[s.receiptStatusText, { fontSize: 10, color: log.isOffline ? '#C97A00' : '#267326' }]}>
+                  {log.isOffline ? t('sync_status_pending', 'Saved Offline (Pending Sync)') : t('synced', 'Recorded')}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Actions inside drawer */}
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: COLORS.border }}>
+            {isDraft ? (
+              <>
+                <TouchableOpacity
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#fff', borderWidth: 1, borderColor: '#C97A00', borderRadius: RADIUS.sm, paddingVertical: 7 }}
+                  onPress={() => editDraft(log)}
+                >
+                  <Ionicons name="create-outline" size={14} color="#C97A00" />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#C97A00' }}>{t('btn_edit_draft', 'Edit Draft')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1.3, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: COLORS.success, borderRadius: RADIUS.sm, paddingVertical: 7 }}
+                  onPress={() => submitDraft(log)}
+                >
+                  <Ionicons name="paper-plane-outline" size={14} color="#fff" />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>{t('btn_submit_draft', 'Submit Draft')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ width: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFEAEB', borderRadius: RADIUS.sm, borderWidth: 1, borderColor: '#FFD4D4' }}
+                  onPress={() => deleteDraft(log.id)}
+                >
+                  <Ionicons name="trash-outline" size={15} color="#D9534F" />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#F8FAF5', borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, paddingVertical: 7 }}
+                  onPress={() => editSubmittedLog(log)}
+                >
+                  <Ionicons name="create-outline" size={14} color={COLORS.primary} />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }}>
+                    {t('btn_edit', 'Edit / Correct')}
+                  </Text>
+                </TouchableOpacity>
+
+                {canDeleteSubmitted && (
+                  <TouchableOpacity
+                    style={{ flex: 0.8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#FFF5F5', borderWidth: 1, borderColor: '#FFD4D4', borderRadius: RADIUS.sm, paddingVertical: 7 }}
+                    onPress={() => deleteSubmittedLog(log)}
+                  >
+                    <Ionicons name="trash-outline" size={14} color="#D9534F" />
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#D9534F' }}>Delete</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+});
+
 export default function FieldOpsScreen({ navigation, route }) {
   const { t, formatSyncTime, formatOperationName, formatStageName, formatPhaseMonth } = useTranslation();
   const [activeRole, setActiveRole] = useState(getCurrentSession().role);
@@ -356,13 +537,6 @@ export default function FieldOpsScreen({ navigation, route }) {
   const [selectedField, setSelectedField] = useState(MOCK_FIELDS[0]);
   const [showAuditHistoryModal, setShowAuditHistoryModal] = useState(false);
   const [selectedManagerAuditId, setSelectedManagerAuditId] = useState('AUD-2026-05');
-
-  useEffect(() => {
-    const unsub = subscribe(() => {
-      setActiveRole(getCurrentSession().role);
-    });
-    return unsub;
-  }, []);
 
   useEffect(() => {
     const targetFieldId = route?.params?.fieldId || route?.params?.initialFieldId || route?.params?.takeOverFieldId;
@@ -413,6 +587,15 @@ export default function FieldOpsScreen({ navigation, route }) {
   const [logCurrentPage, setLogCurrentPage] = useState(1);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [synced, setSyncedState] = useState(getIsSynced());
+
+  // Automatically open the active cycle Operations Ledger modal when navigating from Analytics
+  useEffect(() => {
+    if (route?.params?.openLedger) {
+      setLogTab('submitted');
+      setShowHistoryModal(true);
+      navigation.setParams({ openLedger: undefined });
+    }
+  }, [route?.params?.openLedger]);
   const [requests, setRequests] = useState(MOCK_ASSIGNMENT_REQUESTS);
   const [showCalendar, setShowCalendar] = useState(false);
   const [calDate, setCalDate] = useState(new Date(2026, 4, 21));
@@ -441,7 +624,7 @@ export default function FieldOpsScreen({ navigation, route }) {
       });
     } else {
       const nextNum = MOCK_FIELDS.length + 1;
-      const generatedId = `FLD-KTR-${String(nextNum).padStart(3, '0')}`;
+      const generatedId = `FLD-NCY-${String(nextNum).padStart(3, '0')}`;
       setManagerAssignForm({ userId: '', fieldId: generatedId, ha: '', isEditing: false });
     }
     setShowManagerAssignModal(true);
@@ -1016,6 +1199,7 @@ export default function FieldOpsScreen({ navigation, route }) {
       sraOperationId: logForm.sraOperationId || matchedOp.id || 'SRA-02',
       operationName: logForm.operationName || matchedOp.name || logForm.activity,
       activity: logForm.activity,
+      category: logForm.category || matchedOp.category || 'prep',
       cost: costValue,
       totalCost: costValue,
       costPerHa: costPerHaVal,
@@ -1026,8 +1210,8 @@ export default function FieldOpsScreen({ navigation, route }) {
       inputUnit: logForm.inputUnit || '',
       inputName: logForm.inputName || '',
       date: logForm.period || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      approved: true,
-      status: 'Approved',
+      approved: false,
+      status: 'Recorded',
       loggedBy: loggedByStr,
       taskId: logForm.taskId,
       isOffline: !synced,
@@ -1341,10 +1525,19 @@ export default function FieldOpsScreen({ navigation, route }) {
     );
   };
 
-  const activeFieldId = selectedField?.id || MOCK_FIELDS[0]?.id || 'FLD-KTR-001';
-  const visibleLogs = activeRole === 'Member' ? logs : logs.filter(l => !l.isOffline);
-  const fieldLogs = visibleLogs.filter(l => l.fieldId === activeFieldId && !l.isPastCycle);
-  const pastLogs = visibleLogs.filter(l => l.fieldId === activeFieldId && l.isPastCycle);
+  const activeFieldId = selectedField?.id || MOCK_FIELDS[0]?.id || 'FLD-NCY-001';
+  
+  const visibleLogs = React.useMemo(() => {
+    return activeRole === 'Member' ? logs : logs.filter(l => !l.isOffline);
+  }, [activeRole, logs]);
+
+  const fieldLogs = React.useMemo(() => {
+    return visibleLogs.filter(l => l.fieldId === activeFieldId && !l.isPastCycle);
+  }, [visibleLogs, activeFieldId]);
+
+  const pastLogs = React.useMemo(() => {
+    return visibleLogs.filter(l => l.fieldId === activeFieldId && l.isPastCycle);
+  }, [visibleLogs, activeFieldId]);
 
   const handleClearPastLogs = () => {
     if (pastLogs.length === 0) return;
@@ -1369,13 +1562,18 @@ export default function FieldOpsScreen({ navigation, route }) {
     );
   };
 
-  const unsynced = MOCK_FIELDS.filter(f => !f.synced);
+  const unsynced = React.useMemo(() => {
+    return MOCK_FIELDS.filter(f => !f.synced);
+  }, []);
 
   // Dynamic calculations for month-level QR code compilation
-  const activeCycleLogs = visibleLogs.filter(l => !l.isPastCycle);
-  const uniqueFieldsCount = new Set(activeCycleLogs.map(l => l.fieldId)).size;
-  const totalLogsCount = activeCycleLogs.length;
-  const totalOperationalCost = activeCycleLogs.reduce((sum, l) => sum + l.cost, 0);
+  const { activeCycleLogs, uniqueFieldsCount, totalLogsCount, totalOperationalCost } = React.useMemo(() => {
+    const acl = visibleLogs.filter(l => !l.isPastCycle);
+    const ufc = new Set(acl.map(l => l.fieldId)).size;
+    const tlc = acl.length;
+    const toc = acl.reduce((sum, l) => sum + (Number(l.cost) || 0), 0);
+    return { activeCycleLogs: acl, uniqueFieldsCount: ufc, totalLogsCount: tlc, totalOperationalCost: toc };
+  }, [visibleLogs]);
 
   const LOGS_PER_PAGE = 5;
 
@@ -1497,172 +1695,29 @@ export default function FieldOpsScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* Compact Expandable Item Rows */}
+        {/* Compact Expandable Item Rows using memoized component */}
         {displayItems.map(log => {
           const isExpanded = expandedLogId === log.id;
+          const canDeleteSubmitted = !isManager || selectedField.member === getCurrentSession().name || log.authorName === getCurrentSession().name;
 
           return (
-            <View key={log.id} style={[s.compactLogCard, isDraft && { borderColor: '#F5A623', backgroundColor: '#FFFBF0' }]}>
-              <TouchableOpacity
-                style={s.compactLogHeader}
-                onPress={() => setExpandedLogId(isExpanded ? null : log.id)}
-                activeOpacity={0.7}
-              >
-                <View style={[s.compactLogDot, { backgroundColor: isDraft ? '#C97A00' : COLORS.primary }]} />
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    {log.sraOperationId && (
-                      <View style={{ backgroundColor: COLORS.primaryBg, paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: RADIUS.xs }}>
-                        <Text style={{ fontSize: 10, fontWeight: '900', color: COLORS.primary }}>{log.sraOperationId}</Text>
-                      </View>
-                    )}
-                    <Text style={s.compactLogTitle} numberOfLines={1}>
-                      {formatOperationName ? formatOperationName(log.operationName || log.activity) : log.operationName || log.activity}
-                    </Text>
-                  </View>
-                  
-                  {/* Connected Parent Stage Badge */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <Ionicons name="git-branch-outline" size={11} color={COLORS.primary} />
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }} numberOfLines={1}>
-                      {formatStageName ? formatStageName(log.stageName || `Stage ${log.stageNumber}`, true) : log.stageName || `Stage ${log.stageNumber}`}
-                    </Text>
-                  </View>
-
-                  <Text style={[s.compactLogSub, { marginTop: 2 }]}>
-                    {log.date || log.period} · {log.hectares} Ha · {log.people} Workers{log.subItems?.length ? ` · ${log.subItems.length} ${t('child_items_lbl', 'Items')}` : ''}
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-                  <Text style={[s.compactLogCost, isDraft && { color: '#C97A00' }]}>₱{Number(log.cost || 0).toLocaleString()}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
-                    {log.isOffline && <Ionicons name="cloud-offline-outline" size={12} color="#C97A00" />}
-                    <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color={COLORS.textMuted} />
-                  </View>
-                </View>
-              </TouchableOpacity>
-
-              {/* Expandable Details Drawer with Child Sub-Items */}
-              {isExpanded && (
-                <View style={s.compactLogDrawer}>
-                  <View style={s.compactLogDivider} />
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>{t('operation_name_lbl', 'Operation Name')}</Text>
-                    <Text style={s.receiptValue}>{log.sraOperationId ? `[${log.sraOperationId}] ` : ''}{log.operationName || log.activity}</Text>
-                  </View>
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>{t('connected_stage_lbl', 'Connected Stage')}</Text>
-                    <Text style={[s.receiptValue, { color: COLORS.primary, fontWeight: '800' }]}>
-                      {log.stageName || (log.stageNumber ? `Stage ${log.stageNumber}` : 'General Operation')}
-                    </Text>
-                  </View>
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>{t('receipt_ref', 'Log Reference')}</Text>
-                    <Text style={s.receiptValue}>#{log.id}</Text>
-                  </View>
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>{t('receipt_coverage', 'Work Coverage')}</Text>
-                    <Text style={s.receiptValue}>{log.hectares} {t('hectares_unit', 'Hectares')} · {log.people} {t('workers_unit', 'Workers')}</Text>
-                  </View>
-
-                  {/* Child Items / Materials & Inputs Breakdown */}
-                  {log.subItems && log.subItems.length > 0 && (
-                    <View style={{ backgroundColor: '#F8FAF5', padding: 10, borderRadius: RADIUS.sm, gap: 5, marginVertical: 6, borderWidth: 1, borderColor: COLORS.border }}>
-                      <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.primary, textTransform: 'uppercase' }}>
-                        {t('op_children_materials_lbl', 'Operation Items & Materials')} ({log.subItems.length})
-                      </Text>
-                      {log.subItems.map((si, idx) => (
-                        <View key={si.id || idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: idx !== log.subItems.length - 1 ? 1 : 0, borderBottomColor: '#EDEDED', paddingVertical: 3 }}>
-                          <Text style={{ fontSize: 12, fontWeight: '600', color: COLORS.text, flex: 1, marginRight: 6 }}>
-                            • {si.description}
-                          </Text>
-                          <Text style={{ fontSize: 11.5, fontWeight: '700', color: COLORS.textSecondary }}>
-                            {si.qty} {si.unit} @ ₱{Number(si.unitCost || 0).toLocaleString()} = ₱{Number(si.subTotal || 0).toLocaleString()}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-
-                  {Boolean(log.inputQty) && (!log.subItems || log.subItems.length === 0) && (
-                    <View style={s.receiptRow}>
-                      <Text style={s.receiptLabel}>{t('direct_op_input_lbl', 'Direct Operation Input')}</Text>
-                      <Text style={s.receiptValue}>{log.inputQty} {log.inputUnit || 'ha'} {log.directRate ? `@ ₱${Number(log.directRate).toLocaleString()}/${log.inputUnit || 'ha'}` : ''}</Text>
-                    </View>
-                  )}
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>{t('stat_total_cost', 'Total Cost')}</Text>
-                    <Text style={[s.receiptCostText, isDraft && { color: '#C97A00' }]}>Php {Number(log.cost || 0).toLocaleString()}</Text>
-                  </View>
-                  <View style={s.receiptRow}>
-                    <Text style={s.receiptLabel}>{t('form_date', 'Date Recorded')}</Text>
-                    <Text style={s.receiptValue}>{log.date || log.period}</Text>
-                  </View>
-                  {!isDraft && (
-                    <View style={s.receiptRow}>
-                      <Text style={s.receiptLabel}>{t('status', 'Status')}</Text>
-                      <View style={[s.receiptStatusBadge, { backgroundColor: log.isOffline ? '#FFFBF0' : '#F2FBF2', borderColor: log.isOffline ? '#FEF0D0' : '#E8F5E8' }]}>
-                        <Ionicons name={log.isOffline ? 'cloud-offline-outline' : 'checkmark-circle-outline'} size={12} color={log.isOffline ? '#C97A00' : '#267326'} />
-                        <Text style={[s.receiptStatusText, { fontSize: 10, color: log.isOffline ? '#C97A00' : '#267326' }]}>
-                          {log.isOffline ? t('sync_status_pending', 'Saved Offline (Pending Sync)') : t('synced', 'Recorded')}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Actions inside drawer */}
-                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: COLORS.border }}>
-                    {isDraft ? (
-                      <>
-                        <TouchableOpacity
-                          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#fff', borderWidth: 1, borderColor: '#C97A00', borderRadius: RADIUS.sm, paddingVertical: 7 }}
-                          onPress={() => editDraft(log)}
-                        >
-                          <Ionicons name="create-outline" size={14} color="#C97A00" />
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#C97A00' }}>{t('btn_edit_draft', 'Edit Draft')}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={{ flex: 1.3, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: COLORS.success, borderRadius: RADIUS.sm, paddingVertical: 7 }}
-                          onPress={() => submitDraft(log)}
-                        >
-                          <Ionicons name="paper-plane-outline" size={14} color="#fff" />
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>{t('btn_submit_draft', 'Submit Draft')}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={{ width: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFEAEB', borderRadius: RADIUS.sm, borderWidth: 1, borderColor: '#FFD4D4' }}
-                          onPress={() => deleteDraft(log.id)}
-                        >
-                          <Ionicons name="trash-outline" size={15} color="#D9534F" />
-                        </TouchableOpacity>
-                      </>
-                    ) : (
-                      <>
-                        <TouchableOpacity
-                          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#F8FAF5', borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, paddingVertical: 7 }}
-                          onPress={() => editSubmittedLog(log)}
-                        >
-                          <Ionicons name="create-outline" size={14} color={COLORS.primary} />
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.primary }}>
-                            {t('btn_edit', 'Edit / Correct')}
-                          </Text>
-                        </TouchableOpacity>
-
-                        {/* Allow deletion if user is a member OR the manager is on their own assigned field */}
-                        {(!isManager || selectedField.member === getCurrentSession().name || log.authorName === getCurrentSession().name) && (
-                          <TouchableOpacity
-                            style={{ flex: 0.8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#FFF5F5', borderWidth: 1, borderColor: '#FFD4D4', borderRadius: RADIUS.sm, paddingVertical: 7 }}
-                            onPress={() => deleteSubmittedLog(log)}
-                          >
-                            <Ionicons name="trash-outline" size={14} color="#D9534F" />
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#D9534F' }}>Delete</Text>
-                          </TouchableOpacity>
-                        )}
-                      </>
-                    )}
-                  </View>
-                </View>
-              )}
-            </View>
+            <CompactLogItem
+              key={log.id}
+              log={log}
+              isDraft={isDraft}
+              isExpanded={isExpanded}
+              onToggleExpand={() => setExpandedLogId(isExpanded ? null : log.id)}
+              formatOperationName={formatOperationName}
+              formatStageName={formatStageName}
+              t={t}
+              editDraft={editDraft}
+              submitDraft={submitDraft}
+              deleteDraft={deleteDraft}
+              editSubmittedLog={editSubmittedLog}
+              deleteSubmittedLog={deleteSubmittedLog}
+              canDeleteSubmitted={canDeleteSubmitted}
+              s={s}
+            />
           );
         })}
 
@@ -3522,7 +3577,7 @@ export default function FieldOpsScreen({ navigation, route }) {
       </Modal>
 
       {/* ── Dedicated Full History & Ledger Modal (Full Screen) ── */}
-      <Modal visible={showHistoryModal} animationType="slide" onRequestClose={() => setShowHistoryModal(false)}>
+      <Modal visible={showHistoryModal} animationType="none" onRequestClose={() => setShowHistoryModal(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
           {/* Modal Header */}
           <View style={s.historyModalHeader}>

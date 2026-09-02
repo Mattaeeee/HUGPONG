@@ -85,6 +85,21 @@ export default function LoginScreen({ navigation }) {
     }, 450);
   };
 
+  const fastLoginRole = (contact, pw) => {
+    setAuthError('');
+    setLoading(true);
+    setTimeout(() => {
+      const res = authenticateUser(contact, pw);
+      setLoading(false);
+      if (res.success) {
+        setFailedAttempts(0);
+        navigation.replace('MainTabs');
+      } else {
+        setAuthError(res.error || 'Fast login failed');
+      }
+    }, 200);
+  };
+
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -196,6 +211,42 @@ export default function LoginScreen({ navigation }) {
               <Ionicons name="shield-checkmark-outline" size={14} color={COLORS.primary} />
               <Text style={s.securityNoticeText}>Encrypted &amp; SRA Certified Agricultural Gateway</Text>
             </View>
+
+            {/* Fast Scan 1-Click Role Login Bar */}
+            <View style={s.fastLoginSection}>
+              <Text style={s.fastLoginTitle}>Fast Scan Role Login (1-Click)</Text>
+              <View style={s.fastLoginGrid}>
+                <TouchableOpacity
+                  style={[s.fastBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
+                  onPress={() => fastLoginRole('09171234567', 'password123')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.fastBtnIcon]}>👨‍🌾</Text>
+                  <Text style={[s.fastBtnRole, { color: COLORS.primary }]}>Member</Text>
+                  <Text style={s.fastBtnSub}>FLD-001</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[s.fastBtn, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}
+                  onPress={() => fastLoginRole('09189876543', 'manager123')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.fastBtnIcon]}>🚜</Text>
+                  <Text style={[s.fastBtnRole, { color: '#0284C7' }]}>Manager</Text>
+                  <Text style={s.fastBtnSub}>Block A</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[s.fastBtn, { backgroundColor: '#FAF5FF', borderColor: '#E9D5FF' }]}
+                  onPress={() => fastLoginRole('09194448888', 'admin123')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.fastBtnIcon]}>🌾</Text>
+                  <Text style={[s.fastBtnRole, { color: '#7C3AED' }]}>SRA Admin</Text>
+                  <Text style={s.fastBtnSub}>All Blocks</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
 
           {/* Register Link */}
@@ -289,6 +340,49 @@ const s = StyleSheet.create({
   },
   securityNoticeText: {
     fontSize: 10.5,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+
+  // Fast Login Section Styles
+  fastLoginSection: {
+    marginTop: 6,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    gap: 8,
+  },
+  fastLoginTitle: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  fastLoginGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  fastBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    paddingHorizontal: 6,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  fastBtnIcon: {
+    fontSize: 16,
+  },
+  fastBtnRole: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  fastBtnSub: {
+    fontSize: 9,
     color: COLORS.textMuted,
     fontWeight: '600',
   },

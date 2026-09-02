@@ -20,11 +20,11 @@ const SRA_BENCHMARKS = {
 const INITIAL_DATABASE = {
   fields: [
     // ── Block Farm A: Nacayao Small Farmers Association (15.25 Ha)
-    { id: 'FLD-KTR-001', member: 'Juan dela Cruz', ha: 1.50, stage: 'Pre-Planting & Land Preparation', age: '0.5 months', synced: true, lastSync: '15 mins ago', syncLagDays: 0, blockFarm: 'Nacayao Block Farm A', batchMonth: 1, customStages: [] },
-    { id: 'FLD-KTR-002', member: 'Jose Reyes', ha: 2.50, stage: 'Planting & Crop Establishment', age: '1.0 months', synced: true, lastSync: '4 days ago', syncLagDays: 4, blockFarm: 'Nacayao Block Farm A', batchMonth: 1, customStages: [] },
-    { id: 'FLD-KTR-003', member: 'Maria Santos', ha: 4.50, stage: 'Basal Nutrition & Early Care', age: '1.2 months', synced: true, lastSync: '2 hrs ago', syncLagDays: 0, blockFarm: 'Nacayao Block Farm A', batchMonth: 1, customStages: [] },
-    { id: 'FLD-KTR-004', member: 'Pedro Reyes', ha: 3.50, stage: 'Cultivation & Weed Management', age: '2.5 months', synced: true, lastSync: '1 hr ago', syncLagDays: 0, blockFarm: 'Nacayao Block Farm A', batchMonth: 2, customStages: [] },
-    { id: 'FLD-KTR-005', member: 'Ana Gomez', ha: 3.25, stage: 'Crop Maintenance & Final Hilling-Up', age: '3.5 months', synced: true, lastSync: '5 hrs ago', syncLagDays: 0, blockFarm: 'Nacayao Block Farm A', batchMonth: 2, customStages: [] },
+    { id: 'FLD-NCY-001', member: 'Juan dela Cruz', ha: 1.50, stage: 'Pre-Planting & Land Preparation', age: '0.5 months', synced: true, lastSync: '15 mins ago', syncLagDays: 0, blockFarm: 'Nacayao Block Farm A', batchMonth: 1, customStages: [] },
+    { id: 'FLD-NCY-002', member: 'Jose Reyes', ha: 2.50, stage: 'Planting & Crop Establishment', age: '1.0 months', synced: true, lastSync: '4 days ago', syncLagDays: 4, blockFarm: 'Nacayao Block Farm A', batchMonth: 1, customStages: [] },
+    { id: 'FLD-NCY-003', member: 'Maria Santos', ha: 4.50, stage: 'Basal Nutrition & Early Care', age: '1.2 months', synced: true, lastSync: '2 hrs ago', syncLagDays: 0, blockFarm: 'Nacayao Block Farm A', batchMonth: 1, customStages: [] },
+    { id: 'FLD-NCY-004', member: 'Pedro Reyes', ha: 3.50, stage: 'Cultivation & Weed Management', age: '2.5 months', synced: true, lastSync: '1 hr ago', syncLagDays: 0, blockFarm: 'Nacayao Block Farm A', batchMonth: 2, customStages: [] },
+    { id: 'FLD-NCY-005', member: 'Ana Gomez', ha: 3.25, stage: 'Crop Maintenance & Final Hilling-Up', age: '3.5 months', synced: true, lastSync: '5 hrs ago', syncLagDays: 0, blockFarm: 'Nacayao Block Farm A', batchMonth: 2, customStages: [] },
 
     // ── Block Farm B: Victorias Planters Cluster (28.00 Ha)
     { id: 'FLD-VIC-001', member: 'Emilio Aguinaldo', ha: 7.00, stage: 'Pre-Planting & Land Preparation', age: '0.8 months', synced: true, lastSync: '2 hrs ago', syncLagDays: 0, blockFarm: 'Block Farm B', batchMonth: 1, customStages: [] },
@@ -45,8 +45,8 @@ const INITIAL_DATABASE = {
   ],
   logs: [
     {
-      id: 'LOG-2026-KTR-001-001',
-      fieldId: 'FLD-KTR-001',
+      id: 'LOG-2026-NCY-001-001',
+      fieldId: 'FLD-NCY-001',
       stageNumber: 1,
       stageName: 'Stage 1: Pre-Planting & Land Preparation',
       taskId: 'S1',
@@ -60,18 +60,18 @@ const INITIAL_DATABASE = {
       hectares: '1.5',
       people: '2',
       date: '2026-05-02',
-      approved: true,
+      approved: false,
       status: 'Recorded',
       loggedBy: 'Farmer (Juan dela Cruz)',
       subItems: [
-        { id: 'SI-LOG-KTR001-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
-        { id: 'SI-LOG-KTR001-001-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
-        { id: 'SI-LOG-KTR001-001-3', description: 'Furrowing / Tudling', qty: 1.5, unit: 'ha', unitCost: 3000, subTotal: 4500 }
+        { id: 'SI-LOG-NCY001-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
+        { id: 'SI-LOG-NCY001-001-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
+        { id: 'SI-LOG-NCY001-001-3', description: 'Furrowing / Tudling', qty: 1.5, unit: 'ha', unitCost: 3000, subTotal: 4500 }
       ]
     },
     {
-      id: 'LOG-2026-KTR-002-001',
-      fieldId: 'FLD-KTR-002',
+      id: 'LOG-2026-NCY-002-001',
+      fieldId: 'FLD-NCY-002',
       stageNumber: 2,
       stageName: 'Stage 2: Planting & Crop Establishment',
       taskId: 'S2',
@@ -85,16 +85,16 @@ const INITIAL_DATABASE = {
       hectares: '2.5',
       people: '4',
       date: '2026-05-08',
-      approved: true,
+      approved: false,
       status: 'Recorded',
       loggedBy: 'Manager (Jose Reyes - Takeover)',
       subItems: [
-        { id: 'SI-LOG-KTR002-001-1', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
+        { id: 'SI-LOG-NCY002-001-1', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
       ]
     },
     {
-      id: 'LOG-2026-KTR-003-001',
-      fieldId: 'FLD-KTR-003',
+      id: 'LOG-2026-NCY-003-001',
+      fieldId: 'FLD-NCY-003',
       stageNumber: 3,
       stageName: 'Stage 3: Basal Nutrition & Early Care',
       taskId: 'S3',
@@ -108,14 +108,14 @@ const INITIAL_DATABASE = {
       hectares: '4.5',
       people: '3',
       date: '2026-05-12',
-      approved: true,
+      approved: false,
       status: 'Recorded',
       loggedBy: 'Farmer (Ana Gomez)',
       subItems: [
-        { id: 'SI-LOG-KTR003-001-1', description: 'Application of 46-00-00 (Urea Fertilizer)', qty: 6, unit: 'bag', unitCost: 2200, subTotal: 13200 },
-        { id: 'SI-LOG-KTR003-001-2', description: 'Application of 18-46-00 (DAP / Complete)', qty: 9, unit: 'bag', unitCost: 2500, subTotal: 22500 },
-        { id: 'SI-LOG-KTR003-001-3', description: 'Application of 00-00-60 (MOP / Potash)', qty: 6, unit: 'bag', unitCost: 2100, subTotal: 12600 },
-        { id: 'SI-LOG-KTR003-001-4', description: 'Fertilizer Application Labor', qty: 3.0, unit: 'ha', unitCost: 1050, subTotal: 3150 }
+        { id: 'SI-LOG-NCY003-001-1', description: 'Application of 46-00-00 (Urea Fertilizer)', qty: 6, unit: 'bag', unitCost: 2200, subTotal: 13200 },
+        { id: 'SI-LOG-NCY003-001-2', description: 'Application of 18-46-00 (DAP / Complete)', qty: 9, unit: 'bag', unitCost: 2500, subTotal: 22500 },
+        { id: 'SI-LOG-NCY003-001-3', description: 'Application of 00-00-60 (MOP / Potash)', qty: 6, unit: 'bag', unitCost: 2100, subTotal: 12600 },
+        { id: 'SI-LOG-NCY003-001-4', description: 'Fertilizer Application Labor', qty: 3.0, unit: 'ha', unitCost: 1050, subTotal: 3150 }
       ]
     }
   ],
@@ -135,11 +135,11 @@ const INITIAL_DATABASE = {
   ],
   users: [
     { employeeId: '02000001', contact: '09194448888', name: 'Maria Santos', role: 'SRA (Admin)', blockFarm: 'Silay Sugar Regulatory Administration', logsHandled: 42, regDate: '2026-02-01' },
-    { employeeId: '04000001', contact: '09171234567', name: 'Juan dela Cruz', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-001', logsHandled: 14, regDate: '2026-02-10' },
-    { employeeId: '04000002', contact: '09179876543', name: 'Jose Reyes', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-002', logsHandled: 6, regDate: '2026-02-12' },
-    { employeeId: '04000003', contact: '09194448889', name: 'Maria Santos', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-003', logsHandled: 10, regDate: '2026-02-15' },
-    { employeeId: '04000004', contact: '09987654321', name: 'Pedro Reyes', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-004', logsHandled: 6, regDate: '2026-03-15' },
-    { employeeId: '04000005', contact: '09555444333', name: 'Ana Gomez', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-KTR-005', logsHandled: 4, regDate: '2026-03-20' },
+    { employeeId: '04000001', contact: '09171234567', name: 'Juan dela Cruz', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-NCY-001', logsHandled: 14, regDate: '2026-02-10' },
+    { employeeId: '04000002', contact: '09179876543', name: 'Jose Reyes', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-NCY-002', logsHandled: 6, regDate: '2026-02-12' },
+    { employeeId: '04000003', contact: '09194448889', name: 'Maria Santos', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-NCY-003', logsHandled: 10, regDate: '2026-02-15' },
+    { employeeId: '04000004', contact: '09987654321', name: 'Pedro Reyes', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-NCY-004', logsHandled: 6, regDate: '2026-03-15' },
+    { employeeId: '04000005', contact: '09555444333', name: 'Ana Gomez', role: 'Member', blockFarm: 'Nacayao Block Farm A', fieldId: 'FLD-NCY-005', logsHandled: 4, regDate: '2026-03-20' },
     { employeeId: '01000001', contact: '09187654321', name: 'Capstone Group', role: 'Super Admin', blockFarm: 'Central Governance', logsHandled: 256, regDate: '2026-01-01' },
     { employeeId: '03000001', contact: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', blockFarm: 'Nacayao Block Farm A', logsHandled: 128, regDate: '2026-02-01' },
     { employeeId: '03000002', contact: '09123456789', name: 'Elena Ramos', role: 'Farm Manager', blockFarm: 'Block Farm B', logsHandled: 18, regDate: '2026-03-01' },

@@ -11,7 +11,7 @@ const LOGO = require('../../assets/HUGPONG LOGO.png');
  * AppHeader — shared header brand row used across all main tab screens.
  * Features a dynamic sync indicator button on the right that turns green/yellow.
  */
-export default function AppHeader({ right }) {
+function AppHeader({ right }) {
   const { t } = useTranslation();
   const [synced, setSyncedState] = useState(getIsSynced());
   const [pendingCount, setPendingCount] = useState(getCurrentSession().pendingLogs);
@@ -91,6 +91,8 @@ export default function AppHeader({ right }) {
     </View>
   );
 }
+
+export default React.memo(AppHeader);
 
 const s = StyleSheet.create({
   header: {

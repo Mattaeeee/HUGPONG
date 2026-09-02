@@ -88,48 +88,48 @@ function MainTabs() {
     });
   }, []);
 
-  return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarShowLabel: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textMuted,
-        tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopColor: COLORS.border,
-          borderTopWidth: 1,
-          height: 52 + bottomInset,
-          paddingTop: 4,
-          paddingBottom: bottomInset > 0 ? bottomInset : 4,
-          ...SHADOW.float,
-        },
-        tabBarItemStyle: {
-          justifyContent: 'center',
+  const screenOptions = React.useCallback(({ route }) => ({
+    headerShown: false,
+    tabBarShowLabel: false,
+    tabBarActiveTintColor: COLORS.primary,
+    tabBarInactiveTintColor: COLORS.textMuted,
+    tabBarStyle: {
+      backgroundColor: COLORS.surface,
+      borderTopColor: COLORS.border,
+      borderTopWidth: 1,
+      height: 52 + bottomInset,
+      paddingTop: 4,
+      paddingBottom: bottomInset > 0 ? bottomInset : 4,
+      ...SHADOW.float,
+    },
+    tabBarItemStyle: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: 44,
+    },
+    tabBarIcon: ({ focused }) => {
+      const cfg = TAB_ICONS[route.name];
+      return (
+        <View style={{
           alignItems: 'center',
-          height: 44,
-        },
-        tabBarIcon: ({ focused }) => {
-          const cfg = TAB_ICONS[route.name];
-          return (
-            <View style={{
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 44,
-              height: 28,
-              borderRadius: 14,
-              backgroundColor: focused ? '#E2EED9' : 'transparent',
-            }}>
-              <Ionicons
-                name={focused ? cfg.active : cfg.inactive}
-                size={22}
-                color={focused ? COLORS.primary : COLORS.textMuted}
-              />
-            </View>
-          );
-        },
-      })}
-    >
+          justifyContent: 'center',
+          width: 44,
+          height: 28,
+          borderRadius: 14,
+          backgroundColor: focused ? '#E2EED9' : 'transparent',
+        }}>
+          <Ionicons
+            name={focused ? cfg.active : cfg.inactive}
+            size={22}
+            color={focused ? COLORS.primary : COLORS.textMuted}
+          />
+        </View>
+      );
+    },
+  }), [bottomInset]);
+
+  return (
+    <Tab.Navigator screenOptions={screenOptions}>
       <Tab.Screen name="Home" component={HomeNavigator} />
       {role !== 'SRA (Admin)' && (
         <Tab.Screen name="Planner" component={CalcNavigator} />

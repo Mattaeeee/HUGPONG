@@ -139,6 +139,25 @@
           <span>Encrypted Session &middot; SRA Certified Gateway</span>
         </div>
 
+        <!-- Fast Scan Quick Login Section -->
+        <div class="pt-3 border-t border-dashed border-border flex flex-col gap-2 mt-1">
+          <p class="text-[10px] font-bold text-hug-muted uppercase tracking-wider text-center">Fast Scan Role Login (1-Click)</p>
+          <div class="grid grid-cols-3 gap-1.5">
+            <a href="roles/sra-admin/dashboard.html" onclick="localStorage.setItem('hugpong_role', 'admin')" class="px-2 py-2 rounded-xl border border-primary/20 bg-primary-bg text-primary hover:bg-primary hover:text-white transition-all text-xs font-bold flex flex-col items-center gap-0.5 cursor-pointer no-underline text-center">
+              <span>🌾 SRA Admin</span>
+              <span class="text-[9px] font-normal opacity-75">All Blocks</span>
+            </a>
+            <a href="roles/farm-manager/dashboard.html" onclick="localStorage.setItem('hugpong_role', 'manager')" class="px-2 py-2 rounded-xl border border-farm-blue/20 bg-[#E0F2FE] text-[#0284C7] hover:bg-[#0284C7] hover:text-white transition-all text-xs font-bold flex flex-col items-center gap-0.5 cursor-pointer no-underline text-center">
+              <span>🚜 Farm Mgr</span>
+              <span class="text-[9px] font-normal opacity-75">Block A</span>
+            </a>
+            <a href="roles/super-admin/dashboard.html" onclick="localStorage.setItem('hugpong_role', 'superadmin')" class="px-2 py-2 rounded-xl border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-700 hover:text-white transition-all text-xs font-bold flex flex-col items-center gap-0.5 cursor-pointer no-underline text-center">
+              <span>⚡ Super Admin</span>
+              <span class="text-[9px] font-normal opacity-75">Telemetry</span>
+            </a>
+          </div>
+        </div>
+
       </form>
 
     </div>

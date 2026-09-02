@@ -20,7 +20,8 @@
         "foregroundImage": "./assets/HUGPONG LOGO.png",
         "backgroundColor": "#F7F9F4"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.hugpong"
     },
     "web": {
       "favicon": "./assets/HUGPONG LOGO.png"

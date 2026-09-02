@@ -19,12 +19,12 @@ export default function ManagerAnalyticsView({
   const totalHa = managedFields.reduce((sum, f) => sum + (Number(f.ha) || 1.5), 0);
   const totalSpent = farmLogs.reduce((sum, l) => sum + (Number(l.cost || l.totalCost) || 0), 0);
   const avgCostPerHa = totalHa > 0 ? Math.round(totalSpent / totalHa) : 0;
-  const projectedYield = totalHa * 60;
+  const opsCount = farmLogs.length;
 
   return (
     <View style={s.container}>
       <View style={s.summaryCard}>
-        <Text style={s.cardLabel}>{t('block_farm_agg_analytics', 'Block Farm Aggregated Analytics')}</Text>
+        <Text style={s.cardLabel}>{t('block_farm_agg_analytics', 'Block Farm Production Overview')}</Text>
         <Text style={s.cardTitle}>{session.farm || 'Nacayao Block Farm A'} · {managedFields.length} {t('plots_lbl', 'Plots')}</Text>
 
         <View style={s.statsGrid}>
@@ -34,15 +34,15 @@ export default function ManagerAnalyticsView({
           </View>
           <View style={s.statCell}>
             <Text style={[s.statVal, { color: COLORS.primary }]}>₱{totalSpent.toLocaleString()}</Text>
-            <Text style={s.statDesc}>{t('total_logged_costs', 'Total Logged Costs')}</Text>
+            <Text style={s.statDesc}>{t('total_logged_costs', 'Production Cost')}</Text>
           </View>
           <View style={s.statCell}>
             <Text style={s.statVal}>₱{avgCostPerHa.toLocaleString()}</Text>
-            <Text style={s.statDesc}>{t('avg_cost_ha', 'Avg Cost / Hectare')}</Text>
+            <Text style={s.statDesc}>{t('avg_cost_ha', 'Cost / Hectare')}</Text>
           </View>
           <View style={s.statCell}>
-            <Text style={[s.statVal, { color: COLORS.success }]}>{projectedYield.toFixed(0)} TC</Text>
-            <Text style={s.statDesc}>{t('projected_harvest', 'Projected Harvest')}</Text>
+            <Text style={[s.statVal, { color: COLORS.farmGreen }]}>{opsCount}</Text>
+            <Text style={s.statDesc}>{t('recorded_ops_count', 'Recorded Operations')}</Text>
           </View>
         </View>
       </View>

@@ -19,31 +19,32 @@ export default function MemberAnalyticsView({
   const totalHa = myFields.reduce((sum, f) => sum + (Number(f.ha) || 1.5), 0);
   const totalSpent = myLogs.reduce((sum, l) => sum + (Number(l.cost || l.totalCost) || 0), 0);
   const costPerHa = totalHa > 0 ? Math.round(totalSpent / totalHa) : 0;
-  const targetYield = totalHa * (benchmarks.targetYieldTonsPerHa || 60);
+  const opsCount = myLogs.length;
+  const currentStage = myFields[0]?.stage || 'Stage 1';
 
   return (
     <View style={s.container}>
       {/* Member Yield & Investment Card */}
       <View style={s.summaryCard}>
-        <Text style={s.cardLabel}>{t('plot_perf_title', 'Plot Performance & Projections')}</Text>
+        <Text style={s.cardLabel}>{t('plot_perf_title', 'Plot Production Overview')}</Text>
         <Text style={s.cardTitle}>{myFields[0]?.id || 'FLD-KTR-001'} · {totalHa.toFixed(2)} {t('lbl_hectares', 'Hectares')}</Text>
 
         <View style={s.statsGrid}>
           <View style={s.statCell}>
             <Text style={s.statVal}>₱{totalSpent.toLocaleString()}</Text>
-            <Text style={s.statDesc}>{t('total_logged_input', 'Total Logged Input')}</Text>
+            <Text style={s.statDesc}>{t('total_logged_input', 'Production Cost')}</Text>
           </View>
           <View style={s.statCell}>
             <Text style={[s.statVal, { color: COLORS.primary }]}>₱{costPerHa.toLocaleString()}</Text>
-            <Text style={s.statDesc}>{t('cost_per_hectare', 'Cost Per Hectare')}</Text>
+            <Text style={s.statDesc}>{t('cost_per_hectare', 'Cost / Hectare')}</Text>
           </View>
           <View style={s.statCell}>
-            <Text style={[s.statVal, { color: COLORS.success }]}>{targetYield.toFixed(0)} TC</Text>
-            <Text style={s.statDesc}>{t('target_harvest_tons', 'Target Harvest (Tons)')}</Text>
+            <Text style={[s.statVal, { color: COLORS.farmGreen }]}>{opsCount}</Text>
+            <Text style={s.statDesc}>{t('recorded_ops_count', 'Recorded Operations')}</Text>
           </View>
           <View style={s.statCell}>
-            <Text style={s.statVal}>₱66,900</Text>
-            <Text style={s.statDesc}>{t('sra_direct_bench', 'SRA Direct Benchmark')}</Text>
+            <Text style={[s.statVal, { fontSize: 13, color: COLORS.text }]} numberOfLines={1}>{currentStage.split(':')[0] || currentStage}</Text>
+            <Text style={s.statDesc}>{t('current_crop_stage', 'Current Stage')}</Text>
           </View>
         </View>
       </View>

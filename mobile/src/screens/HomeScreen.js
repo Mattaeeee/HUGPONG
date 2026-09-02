@@ -35,12 +35,16 @@ export default function HomeScreen({ navigation }) {
   const [session, setSessionState] = useState(getCurrentSession());
   const [fields, setFields] = useState([...MOCK_FIELDS]);
   
-  // Dynamic SRA Price States
-  const [livePrice, setLivePrice] = useState(MOCK_PRICE.value);
-  const [liveMol, setLiveMol] = useState(MOCK_MOL.value);
-  const [liveDate, setLiveDate] = useState(MOCK_PRICE.lastUpdated || 'May 21, 2026');
-  const [liveChange, setLiveChange] = useState(MOCK_PRICE.change || 70.0);
-  const [liveWeek, setLiveWeek] = useState(MOCK_PRICE.week || 'Week 4 May');
+  // Consolidated Dynamic SRA Price State
+  const [priceData, setPriceData] = useState({
+    livePrice: MOCK_PRICE.value,
+    liveMol: MOCK_MOL.value,
+    liveDate: MOCK_PRICE.lastUpdated || 'May 21, 2026',
+    liveChange: MOCK_PRICE.change || 70.0,
+    liveWeek: MOCK_PRICE.week || 'Week 4 May',
+  });
+  const { livePrice, liveMol, liveDate, liveChange, liveWeek } = priceData;
+
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [inputWeek, setInputWeek] = useState('Week 4 May');
   const [inputBag, setInputBag] = useState('2950');
@@ -54,11 +58,13 @@ export default function HomeScreen({ navigation }) {
       setSyncedState(getIsSynced());
       setSessionState(getCurrentSession());
       setFields(MOCK_FIELDS);
-      setLivePrice(MOCK_PRICE.value);
-      setLiveMol(MOCK_MOL.value);
-      setLiveDate(MOCK_PRICE.lastUpdated || 'May 21, 2026');
-      setLiveChange(MOCK_PRICE.change || 70.0);
-      setLiveWeek(MOCK_PRICE.week || 'Week 4 May');
+      setPriceData({
+        livePrice: MOCK_PRICE.value,
+        liveMol: MOCK_MOL.value,
+        liveDate: MOCK_PRICE.lastUpdated || 'May 21, 2026',
+        liveChange: MOCK_PRICE.change || 70.0,
+        liveWeek: MOCK_PRICE.week || 'Week 4 May',
+      });
     });
     return unsubscribe;
   }, []);
@@ -157,7 +163,7 @@ export default function HomeScreen({ navigation }) {
           {session.role === 'SRA (Admin)' && (
             <View style={s.sraEditHint}>
               <Ionicons name="create-outline" size={13} color={COLORS.primary} />
-              <Text style={s.sraEditText}>{t('tap_to_broadcast', 'Tap to broadcast new SRA weekly benchmark')}</Text>
+              <Text style={s.sraEditText}>{t('tap_to_broadcast', 'Tap to broadcast new official SRA weekly price')}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -322,10 +328,13 @@ export default function HomeScreen({ navigation }) {
                   Alert.alert(t('error_title', 'Error'), t('invalid_numbers_error', 'Please enter valid numbers'));
                   return;
                 }
-                setLivePrice(b);
-                setLiveMol(m);
-                setLiveWeek(inputWeek);
-                setLiveDate(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
+                setPriceData(prev => ({
+                  ...prev,
+                  livePrice: b,
+                  liveMol: m,
+                  liveWeek: inputWeek,
+                  liveDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                }));
                 setShowPriceModal(false);
                 Alert.alert(t('price_posted_title', 'Price Posted ✓'), `${inputCircular || 'SRA Circular'} benchmark updated to ₱${b.toLocaleString()}/Lkg.`);
               }}

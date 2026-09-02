@@ -65,31 +65,40 @@ export default function SyncMonitorScreen({ navigation }) {
     });
   }, []);
 
-  const attentionCount = memberTelemetry.filter(m => m.status === 'warning' || m.status === 'critical').length;
-  const activeCount = memberTelemetry.filter(m => m.status === 'active').length;
-  const warningCount = memberTelemetry.filter(m => m.status === 'warning').length;
-  const criticalCount = memberTelemetry.filter(m => m.status === 'critical').length;
+  const { attentionCount, activeCount, warningCount, criticalCount } = React.useMemo(() => {
+    let att = 0, act = 0, warn = 0, crit = 0;
+    memberTelemetry.forEach(m => {
+      if (m.status === 'warning' || m.status === 'critical') att++;
+      if (m.status === 'active') act++;
+      if (m.status === 'warning') warn++;
+      if (m.status === 'critical') crit++;
+    });
+    return { attentionCount: att, activeCount: act, warningCount: warn, criticalCount: crit };
+  }, [memberTelemetry]);
 
-  let filteredMembers = memberTelemetry;
-  if (filterMode === 'attention') {
-    filteredMembers = memberTelemetry.filter(m => m.status === 'warning' || m.status === 'critical');
-  } else if (filterMode === 'active') {
-    filteredMembers = memberTelemetry.filter(m => m.status === 'active');
-  } else if (filterMode === 'warning') {
-    filteredMembers = memberTelemetry.filter(m => m.status === 'warning');
-  } else if (filterMode === 'critical') {
-    filteredMembers = memberTelemetry.filter(m => m.status === 'critical');
-  }
+  const filteredMembers = React.useMemo(() => {
+    let list = memberTelemetry;
+    if (filterMode === 'attention') {
+      list = memberTelemetry.filter(m => m.status === 'warning' || m.status === 'critical');
+    } else if (filterMode === 'active') {
+      list = memberTelemetry.filter(m => m.status === 'active');
+    } else if (filterMode === 'warning') {
+      list = memberTelemetry.filter(m => m.status === 'warning');
+    } else if (filterMode === 'critical') {
+      list = memberTelemetry.filter(m => m.status === 'critical');
+    }
 
-  if (searchQuery.trim()) {
-    const q = searchQuery.toLowerCase();
-    filteredMembers = filteredMembers.filter(m =>
-      m.name.toLowerCase().includes(q) ||
-      m.id.toLowerCase().includes(q) ||
-      m.contact.toLowerCase().includes(q) ||
-      m.stage.toLowerCase().includes(q)
-    );
-  }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter(m =>
+        m.name.toLowerCase().includes(q) ||
+        m.id.toLowerCase().includes(q) ||
+        m.contact.toLowerCase().includes(q) ||
+        m.stage.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [memberTelemetry, filterMode, searchQuery]);
 
   const handleContactMember = (member) => {
     const cleanPhone = (member.contact || '').replace(/[^0-9+]/g, '');

@@ -1,4 +1,4 @@
-import { STORAGE_KEYS, saveItem, getItem, clearHugpongStorage, hydrateAllStorage } from '../services/storageService';
+import { STORAGE_KEYS, saveItem, getItem, clearHugpongStorage, hydrateAllStorage, multiSave } from '../services/storageService';
 import { initSyncEngine, enqueueOutboxItem, processOutbox, getOutboxCount, clearOutbox, flushOutboxToFirestore, generateUserNumericId, generateTicketId } from '../services/syncEngine';
 import { db } from '../firebase/config';
 import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
@@ -38,8 +38,8 @@ export const DEMO_ACCOUNTS = {
     name: 'Juan dela Cruz',
     role: 'Member',
     employeeId: '04000001',
-    fieldId: 'FLD-KTR-001',
-    blockFarmScope: 'FLD-KTR-001 (1.5 Ha)',
+    fieldId: 'FLD-NCY-001',
+    blockFarmScope: 'FLD-NCY-001 (1.5 Ha)',
     farm: 'Nacayao Block Farm A',
     mobile: '0917 123 4567',
     password: 'password123',
@@ -133,17 +133,19 @@ const persistAllToStorage = () => {
   if (persistTimeout) clearTimeout(persistTimeout);
   persistTimeout = setTimeout(async () => {
     try {
-      await saveItem(STORAGE_KEYS.SESSION, CURRENT_SESSION);
-      await saveItem(STORAGE_KEYS.LOGS, MOCK_LOGS);
-      await saveItem(STORAGE_KEYS.DRAFTS, DRAFT_LOGS);
-      await saveItem(STORAGE_KEYS.FIELDS, MOCK_FIELDS);
-      await saveItem(STORAGE_KEYS.TICKETS, MOCK_TICKETS);
-      await saveItem(STORAGE_KEYS.PREFS, SECURITY_PREFERENCES);
-      await saveItem(STORAGE_KEYS.PENDING_ASSIGNMENTS, MOCK_ASSIGNMENT_REQUESTS);
+      await multiSave([
+        [STORAGE_KEYS.SESSION, CURRENT_SESSION],
+        [STORAGE_KEYS.LOGS, MOCK_LOGS],
+        [STORAGE_KEYS.DRAFTS, DRAFT_LOGS],
+        [STORAGE_KEYS.FIELDS, MOCK_FIELDS],
+        [STORAGE_KEYS.TICKETS, MOCK_TICKETS],
+        [STORAGE_KEYS.PREFS, SECURITY_PREFERENCES],
+        [STORAGE_KEYS.PENDING_ASSIGNMENTS, MOCK_ASSIGNMENT_REQUESTS],
+      ]);
     } catch (e) {
       console.warn('[dataStore] Background persistence error:', e);
     }
-  }, 100);
+  }, 350);
 };
 
 const notify = () => {
@@ -204,32 +206,6 @@ export const triggerSyncLagDemo = (days, label) => {
   notify();
 };
 
-export const performMobileSync = async () => {
-  IS_SYNCED = true;
-  MEMBER_SYNC_LAG_DAYS = 0;
-  MEMBER_LAST_SYNC_STR = 'Just now';
-  
-  // Process outbox queue
-  await processOutbox(async (item) => {
-    // Simulated instant successful upload
-    return true;
-  });
-
-  CURRENT_SESSION.syncedLogs = (CURRENT_SESSION.syncedLogs || 24) + (CURRENT_SESSION.pendingLogs || 0);
-  CURRENT_SESSION.pendingLogs = 0;
-  
-  MOCK_LOGS.forEach(log => {
-    if (log.isOffline) log.isOffline = false;
-  });
-  
-  MOCK_FIELDS.forEach(f => {
-    f.synced = true;
-    f.lastSync = 'Just now';
-  });
-  
-  notify();
-  return true;
-};
 
 export const setSynced = (synced) => {
   IS_SYNCED = synced;
@@ -457,7 +433,7 @@ export const SRA_OPERATIONS_CATALOGUE = [
     stageName: 'Stage 5: Crop Maintenance & Final Hilling-Up',
     section: 'I. Direct Operations',
     name: 'Drainage / Irrigation',
-    category: 'weed',
+    category: 'maint',
     inputType: 'direct',
     isGroup: false,
     perHa: 1,
@@ -525,11 +501,11 @@ export const SRA_OPERATIONS_CATALOGUE = [
 
 export let MOCK_FIELDS = [
   // ── Block Farm A: Nacayao Small Farmers Association (15.25 Ha)
-  { id: 'FLD-KTR-001', member: 'Juan dela Cruz', ha: '1.50', cycleType: 'Plant Cane (New Plant)', cropYear: 'CY 2025–2026', stage: 'Stage 3: Basal Nutrition & Early Care', month: 2.5, batch: 'Batch 1 (Month 1)', batchMonth: 1, synced: true, lastSync: '15 mins ago', blockFarm: 'Nacayao Block Farm A', variety: 'Phil 2006-2282', customStages: [] },
-  { id: 'FLD-KTR-002', member: 'Jose Reyes', ha: '2.50', cycleType: '1st Ratoon (Ratoon 1)', cropYear: 'CY 2025–2026', stage: 'Stage 4: Cultivation & Weed Management', month: 3.5, batch: 'Batch 1 (Month 1)', batchMonth: 1, synced: true, lastSync: '10 mins ago', blockFarm: 'Nacayao Block Farm A', variety: 'VMC 84-524', customStages: [] },
-  { id: 'FLD-KTR-003', member: 'Maria Santos', ha: '4.50', cycleType: 'Plant Cane (New Plant)', cropYear: 'CY 2025–2026', stage: 'Stage 1: Pre-Planting & Land Preparation', month: 0.5, batch: 'Batch 1 (Month 1)', batchMonth: 1, synced: true, lastSync: '2 hrs ago', blockFarm: 'Nacayao Block Farm A', variety: 'Phil 2006-2282', customStages: [] },
-  { id: 'FLD-KTR-004', member: 'Pedro Reyes', ha: '3.50', cycleType: '2nd Ratoon (Ratoon 2)', cropYear: 'CY 2025–2026', stage: 'Stage 2: Planting & Crop Establishment', month: 1.2, batch: 'Batch 2 (Month 2)', batchMonth: 2, synced: true, lastSync: '4 days ago', blockFarm: 'Nacayao Block Farm A', variety: 'Phil 2006-2282', customStages: [] },
-  { id: 'FLD-KTR-005', member: 'Ana Gomez', ha: '3.25', cycleType: 'Plant Cane (New Plant)', cropYear: 'CY 2025–2026', stage: 'Stage 5: Crop Maintenance & Final Hilling-Up', month: 6.0, batch: 'Batch 2 (Month 2)', batchMonth: 2, synced: true, lastSync: '1 hr ago', blockFarm: 'Nacayao Block Farm A', variety: 'VMC 84-524', customStages: [] },
+  { id: 'FLD-NCY-001', member: 'Juan dela Cruz', ha: '1.50', cycleType: 'Plant Cane (New Plant)', cropYear: 'CY 2025–2026', stage: 'Stage 3: Basal Nutrition & Early Care', month: 2.5, batch: 'Batch 1 (Month 1)', batchMonth: 1, synced: true, lastSync: '15 mins ago', blockFarm: 'Nacayao Block Farm A', variety: 'Phil 2006-2282', customStages: [] },
+  { id: 'FLD-NCY-002', member: 'Jose Reyes', ha: '2.50', cycleType: '1st Ratoon (Ratoon 1)', cropYear: 'CY 2025–2026', stage: 'Stage 4: Cultivation & Weed Management', month: 3.5, batch: 'Batch 1 (Month 1)', batchMonth: 1, synced: true, lastSync: '10 mins ago', blockFarm: 'Nacayao Block Farm A', variety: 'VMC 84-524', customStages: [] },
+  { id: 'FLD-NCY-003', member: 'Maria Santos', ha: '4.50', cycleType: 'Plant Cane (New Plant)', cropYear: 'CY 2025–2026', stage: 'Stage 1: Pre-Planting & Land Preparation', month: 0.5, batch: 'Batch 1 (Month 1)', batchMonth: 1, synced: true, lastSync: '2 hrs ago', blockFarm: 'Nacayao Block Farm A', variety: 'Phil 2006-2282', customStages: [] },
+  { id: 'FLD-NCY-004', member: 'Pedro Reyes', ha: '3.50', cycleType: '2nd Ratoon (Ratoon 2)', cropYear: 'CY 2025–2026', stage: 'Stage 2: Planting & Crop Establishment', month: 1.2, batch: 'Batch 2 (Month 2)', batchMonth: 2, synced: true, lastSync: '4 days ago', blockFarm: 'Nacayao Block Farm A', variety: 'Phil 2006-2282', customStages: [] },
+  { id: 'FLD-NCY-005', member: 'Ana Gomez', ha: '3.25', cycleType: 'Plant Cane (New Plant)', cropYear: 'CY 2025–2026', stage: 'Stage 5: Crop Maintenance & Final Hilling-Up', month: 6.0, batch: 'Batch 2 (Month 2)', batchMonth: 2, synced: true, lastSync: '1 hr ago', blockFarm: 'Nacayao Block Farm A', variety: 'VMC 84-524', customStages: [] },
 
   // ── Block Farm B: Victorias Planters Cluster (28.00 Ha)
   { id: 'FLD-VIC-001', member: 'Emilio Aguinaldo', ha: '7.00', cycleType: 'Plant Cane (New Plant)', cropYear: 'CY 2025–2026', stage: 'Stage 1: Pre-Planting & Land Preparation', month: 0.8, batch: 'Batch 1 (Month 1)', batchMonth: 1, synced: true, lastSync: '2 hrs ago', blockFarm: 'Block Farm B', variety: 'Phil 2006-2282', customStages: [] },
@@ -621,8 +597,8 @@ export const MOCK_MANAGERS = [
 
 export let MOCK_LOGS = [
   {
-    id: 'LOG-2026-KTR-001-001',
-    fieldId: 'FLD-KTR-001',
+    id: 'LOG-2026-NCY-001-001',
+    fieldId: 'FLD-NCY-001',
     member: 'Juan dela Cruz',
     stageNumber: 1,
     stageName: 'Stage 1: Pre-Planting & Land Preparation',
@@ -633,20 +609,20 @@ export let MOCK_LOGS = [
     date: '2026-05-02',
     hectares: 1.50,
     loggedBy: 'Farmer (Juan dela Cruz)',
-    approved: true,
+    approved: false,
     status: 'Recorded',
     subItems: [
-      { id: 'SI-LOG-KTR001-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
-      { id: 'SI-LOG-KTR001-001-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
-      { id: 'SI-LOG-KTR001-001-3', description: 'Furrowing / Tudling', qty: 1.5, unit: 'ha', unitCost: 3000, subTotal: 4500 }
+      { id: 'SI-LOG-NCY001-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
+      { id: 'SI-LOG-NCY001-001-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
+      { id: 'SI-LOG-NCY001-001-3', description: 'Furrowing / Tudling', qty: 1.5, unit: 'ha', unitCost: 3000, subTotal: 4500 }
     ],
     totalCost: 18000,
     cost: 18000,
     costPerHa: 12000,
   },
   {
-    id: 'LOG-2026-KTR-001-002',
-    fieldId: 'FLD-KTR-001',
+    id: 'LOG-2026-NCY-001-002',
+    fieldId: 'FLD-NCY-001',
     member: 'Juan dela Cruz',
     stageNumber: 3,
     stageName: 'Stage 3: Basal Nutrition & Early Care',
@@ -657,21 +633,21 @@ export let MOCK_LOGS = [
     date: '2026-05-10',
     hectares: 1.50,
     loggedBy: 'Farmer (Juan dela Cruz)',
-    approved: true,
+    approved: false,
     status: 'Recorded',
     subItems: [
-      { id: 'SI-LOG-KTR001-002-1', description: 'Application of 46-00-00 (Urea)', qty: 3, unit: 'bag', unitCost: 1600, subTotal: 4800 },
-      { id: 'SI-LOG-KTR001-002-2', description: 'Application of 18-46-00 (DAP / Complete)', qty: 4.5, unit: 'bag', unitCost: 2500, subTotal: 11250 },
-      { id: 'SI-LOG-KTR001-002-3', description: 'Application of 00-00-60 (MOP / Potash)', qty: 3, unit: 'bag', unitCost: 2200, subTotal: 6600 },
-      { id: 'SI-LOG-KTR001-002-4', description: 'Fertilizer Application Labor', qty: 10.5, unit: 'bag', unitCost: 100, subTotal: 1050 }
+      { id: 'SI-LOG-NCY001-002-1', description: 'Application of 46-00-00 (Urea)', qty: 3, unit: 'bag', unitCost: 1600, subTotal: 4800 },
+      { id: 'SI-LOG-NCY001-002-2', description: 'Application of 18-46-00 (DAP / Complete)', qty: 4.5, unit: 'bag', unitCost: 2500, subTotal: 11250 },
+      { id: 'SI-LOG-NCY001-002-3', description: 'Application of 00-00-60 (MOP / Potash)', qty: 3, unit: 'bag', unitCost: 2200, subTotal: 6600 },
+      { id: 'SI-LOG-NCY001-002-4', description: 'Fertilizer Application Labor', qty: 10.5, unit: 'bag', unitCost: 100, subTotal: 1050 }
     ],
     totalCost: 23700,
     cost: 23700,
     costPerHa: 15800,
   },
   {
-    id: 'LOG-2026-KTR-001-003',
-    fieldId: 'FLD-KTR-001',
+    id: 'LOG-2026-NCY-001-003',
+    fieldId: 'FLD-NCY-001',
     member: 'Juan dela Cruz',
     stageNumber: 4,
     stageName: 'Stage 4: Cultivation & Weed Management',
@@ -682,19 +658,19 @@ export let MOCK_LOGS = [
     date: '2026-05-18',
     hectares: 1.50,
     loggedBy: 'Farmer (Juan dela Cruz)',
-    approved: true,
+    approved: false,
     status: 'Recorded',
     subItems: [
-      { id: 'SI-LOG-KTR001-003-1', description: 'Ridge Busting', qty: 1.5, unit: 'pass', unitCost: 300, subTotal: 450 },
-      { id: 'SI-LOG-KTR001-003-2', description: '1st Off-barring (Pahubas)', qty: 3.0, unit: 'pass', unitCost: 300, subTotal: 900 }
+      { id: 'SI-LOG-NCY001-003-1', description: 'Ridge Busting', qty: 1.5, unit: 'pass', unitCost: 300, subTotal: 450 },
+      { id: 'SI-LOG-NCY001-003-2', description: '1st Off-barring (Pahubas)', qty: 3.0, unit: 'pass', unitCost: 300, subTotal: 900 }
     ],
     totalCost: 1350,
     cost: 1350,
     costPerHa: 900,
   },
   {
-    id: 'LOG-2026-KTR-002-001',
-    fieldId: 'FLD-KTR-002',
+    id: 'LOG-2026-NCY-002-001',
+    fieldId: 'FLD-NCY-002',
     member: 'Jose Reyes',
     stageNumber: 2,
     stageName: 'Stage 2: Planting & Crop Establishment',
@@ -705,18 +681,18 @@ export let MOCK_LOGS = [
     date: '2026-05-08',
     hectares: 2.50,
     loggedBy: 'Manager (Jose Reyes - Takeover)',
-    approved: true,
+    approved: false,
     status: 'Recorded',
     subItems: [
-      { id: 'SI-LOG-KTR002-001-1', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
+      { id: 'SI-LOG-NCY002-001-1', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
     ],
     totalCost: 37500,
     cost: 37500,
     costPerHa: 15000,
   },
   {
-    id: 'LOG-2026-KTR-004-001',
-    fieldId: 'FLD-KTR-004',
+    id: 'LOG-2026-NCY-004-001',
+    fieldId: 'FLD-NCY-004',
     member: 'Pedro Reyes',
     stageNumber: 1,
     stageName: 'Stage 1: Pre-Planting & Land Preparation',
@@ -727,12 +703,12 @@ export let MOCK_LOGS = [
     date: '2026-05-15',
     hectares: 3.50,
     loggedBy: 'Farmer (Pedro Reyes)',
-    approved: true,
+    approved: false,
     status: 'Recorded',
     subItems: [
-      { id: 'SI-LOG-KTR004-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 3.5, unit: 'ha', unitCost: 5000, subTotal: 17500 },
-      { id: 'SI-LOG-KTR004-001-2', description: '2nd Pass Disc Harrowing', qty: 3.5, unit: 'ha', unitCost: 4000, subTotal: 14000 },
-      { id: 'SI-LOG-KTR004-001-3', description: 'Furrowing / Tudling', qty: 3.5, unit: 'ha', unitCost: 3000, subTotal: 10500 }
+      { id: 'SI-LOG-NCY004-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 3.5, unit: 'ha', unitCost: 5000, subTotal: 17500 },
+      { id: 'SI-LOG-NCY004-001-2', description: '2nd Pass Disc Harrowing', qty: 3.5, unit: 'ha', unitCost: 4000, subTotal: 14000 },
+      { id: 'SI-LOG-NCY004-001-3', description: 'Furrowing / Tudling', qty: 3.5, unit: 'ha', unitCost: 3000, subTotal: 10500 }
     ],
     totalCost: 42000,
     cost: 42000,
@@ -793,6 +769,7 @@ export let MOCK_LOGS = [
     sraOperationId: 'SRA-11',
     operationName: 'Final Hilling-up (Pasungkal)',
     activity: 'Tractor Hilling-up & Canal Maintenance',
+    category: 'maint',
     date: '2026-05-16',
     hectares: 7.50,
     loggedBy: 'Farmer (Diego Silang)',
