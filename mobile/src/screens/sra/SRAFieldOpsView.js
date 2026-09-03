@@ -21,11 +21,11 @@ function SRAFieldOpsView({
   const { t } = useTranslation();
 
   const availableFarms = React.useMemo(() => {
-    return ['All Block Farms', ...new Set(fields.map(f => f.blockFarm || 'Nacayao Block Farm A'))];
+    return ['All Block Farms', ...new Set(fields.map(f => f.blockFarm || f.blockFarmName || 'Nacayao Block Farm'))];
   }, [fields]);
 
   const filteredFields = React.useMemo(() => {
-    return selectedFarm === 'All Block Farms' ? fields : fields.filter(f => (f.blockFarm || 'Nacayao Block Farm A') === selectedFarm);
+    return selectedFarm === 'All Block Farms' ? fields : fields.filter(f => (f.blockFarm || f.blockFarmName || 'Nacayao Block Farm') === selectedFarm);
   }, [fields, selectedFarm]);
 
   const totalHectares = React.useMemo(() => {

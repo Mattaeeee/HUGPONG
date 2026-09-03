@@ -18,6 +18,7 @@ router.get('/', async (req, res) => {
         snap.forEach(docSnap => prices.push({ id: docSnap.id, ...docSnap.data() }));
       }
     }
+    prices.sort((a, b) => (b.timestamp || new Date(b.date || 0).getTime()) - (a.timestamp || new Date(a.date || 0).getTime()));
     return res.json({ success: true, count: prices.length, data: prices });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });

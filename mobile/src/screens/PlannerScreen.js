@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
-import { getCurrentSession, MOCK_FIELDS, DRAFT_LOGS, notifyDataUpdate, subscribe, SRA_OPERATIONS_CATALOGUE, getFieldCustomOperations, saveFieldFullPlan, getDefaultStageOperations } from '../data/dataStore';
+import { getCurrentSession, fields, fields as fieldsStore, fields as MOCK_FIELDS, DRAFT_LOGS, notifyDataUpdate, subscribe, SRA_OPERATIONS_CATALOGUE, getFieldCustomOperations, saveFieldFullPlan, getDefaultStageOperations } from '../data/dataStore';
 import { generateDraftId, generateSubItemId, generateCustomOpId } from '../services/syncEngine';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
@@ -43,49 +43,49 @@ const DEFAULT_GROWTH_STAGES = [
     key: 'stage3',
     stageNum: 3,
     id: 'S3',
-    label: '3. Basal Nutrition & Early Care',
-    shortLabel: 'Basal Nutrition & Care',
-    icon: 'flask',
+    label: '3. Early Vegetative & Cultivation',
+    shortLabel: 'Early Vegetative',
+    icon: 'flower',
     color: '#1A6B9A',
-    month: 'Month 2–3',
-    benchmarkCost: 20800,
-    description: 'Basal fertilizer application (46-00-00 + 18-46-00 + 00-00-60), rock phosphate, and initial off-barring.',
+    month: 'Month 2–4',
+    benchmarkCost: 11000,
+    description: 'First dose fertilizing (Urea+DAP), inter-row cultivating, off-barring & herbicide application.',
   },
   {
     key: 'stage4',
     stageNum: 4,
     id: 'S4',
-    label: '4. Cultivation & Weed Management',
-    shortLabel: 'Cultivation & Weeding',
-    icon: 'git-branch',
+    label: '4. Peak Tillering & Grand Growth',
+    shortLabel: 'Tillering & Grand Growth',
+    icon: 'water',
     color: '#F5A623',
-    month: 'Month 3–5',
-    benchmarkCost: 9000,
-    description: 'Ridge busting, off-barring & on-barring passes, 1st, 2nd, and 3rd round manual weeding.',
+    month: 'Month 4–8',
+    benchmarkCost: 14500,
+    description: 'Final hilling-up (closing-in), full fertilizer side-dressing (MOP+Urea), and biological pest monitoring.',
   },
   {
     key: 'stage5',
     stageNum: 5,
     id: 'S5',
-    label: '5. Crop Maintenance & Final Hilling-Up',
-    shortLabel: 'Maintenance & Hilling-Up',
-    icon: 'water',
-    color: '#0284C7',
-    month: 'Month 5–8',
-    benchmarkCost: 5000,
-    description: '2nd dose top-dress fertilizer application (46-00-00 + 00-00-60), final hilling-up, and canal drainage upkeep.',
+    label: '5. Maturation & Ripening',
+    shortLabel: 'Maturation & Ripening',
+    icon: 'sunny',
+    color: '#D9534F',
+    month: 'Month 9–11',
+    benchmarkCost: 3500,
+    description: 'Withholding irrigation, field drainage, pre-harvest Brix hand-refractometer sugar content sampling.',
   },
   {
     key: 'stage6',
     stageNum: 6,
     id: 'S6',
-    label: '6. Harvesting & Post-Harvest Transport',
-    shortLabel: 'Harvesting & Transport',
-    icon: 'bus',
-    color: '#D9534F',
-    month: 'Month 10–12',
-    benchmarkCost: 51000,
-    description: 'Cane cutting (tapas), truck loading (karga), carabao bull cart in-field haul, and freight delivery to sugar mill.',
+    label: '6. Harvesting & Ratoon Management',
+    shortLabel: 'Harvesting & Ratoon',
+    icon: 'bag-check',
+    color: '#2D5016',
+    month: 'Month 12',
+    benchmarkCost: 34500,
+    description: 'Cane cutting (tapas), field loading, HPCo hauling, trash blanketing or field stubble shaving.',
   },
 ];
 
@@ -117,7 +117,16 @@ const fmt = n => Number.isFinite(n) ? n.toLocaleString('en-PH') : '—';
 export default function PlannerScreen({ navigation }) {
   const { t, formatOperationName, formatStageName, formatPhaseMonth } = useTranslation();
   const [session, setSession] = useState(getCurrentSession());
+  const [allFields, setAllFields] = useState([...fieldsStore]);
   const isMember = session.role === 'Member';
+
+  useEffect(() => {
+    const unsub = subscribe(() => {
+      setSession(getCurrentSession());
+      setAllFields([...fieldsStore]);
+    });
+    return unsub;
+  }, []);
 
   const [fieldScope, setFieldScope] = useState(isMember ? 'my' : 'all');
   const [showFieldPickerModal, setShowFieldPickerModal] = useState(false);
@@ -126,20 +135,26 @@ export default function PlannerScreen({ navigation }) {
 
   const displayedFields = useMemo(() => {
     if (isMember || fieldScope === 'my') {
-      const filtered = MOCK_FIELDS.filter(f => f.member === session.name || f.owner === session.name || (session.fieldId && f.id === session.fieldId));
-      return filtered.length > 0 ? filtered : [MOCK_FIELDS[0]];
+      const filtered = allFields.filter(f => f.memberId === session.employeeId || f.member === session.name || f.owner === session.name || (session.fieldId && f.id === session.fieldId));
+      return filtered.length > 0 ? filtered : (allFields.length > 0 ? [allFields[0]] : []);
     }
-    return MOCK_FIELDS;
-  }, [session, isMember, fieldScope]);
+    return allFields;
+  }, [session, isMember, fieldScope, allFields]);
 
   const [selectedField, setSelectedField] = useState(() => {
     const cur = getCurrentSession();
     if (cur.role === 'Member') {
-      const memberFields = MOCK_FIELDS.filter(f => f.member === cur.name || f.owner === cur.name);
-      return memberFields.length > 0 ? memberFields[0] : MOCK_FIELDS[0];
+      const memberFields = fieldsStore.filter(f => f.memberId === cur.employeeId || f.member === cur.name || f.owner === cur.name);
+      return memberFields.length > 0 ? memberFields[0] : (fieldsStore.length > 0 ? fieldsStore[0] : null);
     }
-    return MOCK_FIELDS[0];
+    return fieldsStore.length > 0 ? fieldsStore[0] : null;
   });
+
+  useEffect(() => {
+    if (!selectedField && displayedFields.length > 0) {
+      setSelectedField(displayedFields[0]);
+    }
+  }, [displayedFields, selectedField]);
 
   const [landArea, setLandArea] = useState(() => selectedField?.ha ? String(selectedField.ha) : '1.50');
   
@@ -162,7 +177,7 @@ export default function PlannerScreen({ navigation }) {
   const [stageOperationsMap, setStageOperationsMap] = useState(() => {
     const map = {};
     for (let i = 1; i <= 6; i++) {
-      map[i] = getFieldCustomOperations(selectedField?.id || 'FLD-KTR-001', i);
+      map[i] = getFieldCustomOperations(selectedField?.id || 'FLD-NCY-001', i);
     }
     return map;
   });
@@ -475,7 +490,7 @@ export default function PlannerScreen({ navigation }) {
               map[i] = getDefaultStageOperations(i);
             }
             setStageOperationsMap(map);
-            saveFieldFullPlan(selectedField?.id || 'FLD-KTR-001', map);
+            saveFieldFullPlan(selectedField?.id || 'FLD-NCY-001', map);
             Alert.alert('Restored', 'All 6 stages restored to official SRA benchmarks.');
           }
         }
@@ -485,10 +500,10 @@ export default function PlannerScreen({ navigation }) {
 
   // Save full custom plan for this field
   const handleSaveFieldPlan = () => {
-    saveFieldFullPlan(selectedField?.id || 'FLD-KTR-001', stageOperationsMap);
+    saveFieldFullPlan(selectedField?.id || 'FLD-NCY-001', stageOperationsMap);
     Alert.alert(
       'Farm Plan Saved',
-      `Custom plan for ${selectedField?.id || 'FLD-KTR-001'} saved! Field Operations will now use these customized operations.`
+      `Custom plan for ${selectedField?.id || 'FLD-NCY-001'} saved! Field Operations will now use these customized operations.`
     );
   };
 
@@ -514,7 +529,7 @@ export default function PlannerScreen({ navigation }) {
 
   // Helper to create and insert a draft log object
   const createDraftLogForOp = (op) => {
-    const fieldId = selectedField?.id || 'FLD-KTR-001';
+    const fieldId = selectedField?.id || 'FLD-NCY-001';
     const draftId = generateDraftId(fieldId);
     let subItems = [];
     let totalOpCost = 0;
@@ -670,8 +685,8 @@ export default function PlannerScreen({ navigation }) {
               <View style={s.fieldCardHeader}>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={s.fieldIdText}>{selectedField?.id || 'FLD-KTR-001'}</Text>
-                    <Text style={s.fieldFarmText}>· {selectedField?.blockFarm || 'Nacayao Block Farm A'}</Text>
+                    <Text style={s.fieldIdText}>{selectedField?.id || 'FLD-NCY-001'}</Text>
+                    <Text style={s.fieldFarmText}>· {selectedField?.blockFarm || 'Nacayao Block Farm'}</Text>
                   </View>
                   <Text style={s.fieldMemberText}>{t('assigned_lbl', 'Assigned')}: {selectedField?.member || session.name}</Text>
                 </View>

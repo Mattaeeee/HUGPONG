@@ -32,7 +32,7 @@ function MemberHomeView({
         <View style={s.fieldCardHeader}>
           <View>
             <Text style={s.fieldId}>{primaryField.id}</Text>
-            <Text style={s.fieldFarm}>{session?.farm || 'Nacayao Block Farm A'}</Text>
+            <Text style={s.fieldFarm}>{session?.farm || 'Nacayao Block Farm'}</Text>
           </View>
           <View style={s.haBadge}>
             <Text style={s.haText}>{primaryField.ha} Ha</Text>

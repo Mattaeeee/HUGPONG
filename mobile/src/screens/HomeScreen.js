@@ -6,7 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
-import { MOCK_PRICE, MOCK_MOL, MOCK_WEEKLY_CHART, subscribe, getIsSynced, getCurrentSession, MOCK_FIELDS, performMobileSync } from '../data/dataStore';
+import { MOCK_PRICE, MOCK_MOL, MOCK_WEEKLY_CHART, subscribe, getIsSynced, getCurrentSession, MOCK_FIELDS, performMobileSync, getSortedPrices, operationLogs } from '../data/dataStore';
+import { getOutboxCount } from '../services/syncEngine';
 import { useTranslation } from '../services/i18n';
 import AppHeader from '../components/AppHeader';
 
@@ -20,17 +21,46 @@ const BAR_COLORS = ['#B8D4A0', '#8FBF6A', '#6BA045', '#4A7C2F', '#2D5016'];
 const MAX_PRICE = 3000;
 const MIN_PRICE = 1000;
 
-const NOTIFICATIONS = [
-  { id: 1, type: 'price', icon: 'trending-up', color: COLORS.success, title: 'Price Update', msg: 'HPCo price increased by Php 70/Lkg to ₱2,950', time: '4:15 PM', unread: true },
-  { id: 2, type: 'alert', icon: 'warning', color: COLORS.accent, title: 'Sync Reminder', msg: '5 offline records are pending sync', time: '2:30 PM', unread: true },
-  { id: 3, type: 'info', icon: 'information-circle', color: COLORS.blue, title: 'Market Summary', msg: 'Monthly average is Php 2,845/Lkg — 3% upward trend', time: 'Yesterday', unread: false },
-];
+const generateDynamicNotifications = () => {
+  const notifs = [];
+  const outboxCount = getOutboxCount();
+  const sortedPrices = getSortedPrices();
+
+  if (outboxCount > 0) {
+    notifs.push({
+      id: 'notif-sync',
+      type: 'alert',
+      icon: 'warning',
+      color: COLORS.accent,
+      title: 'Sync Advisory',
+      msg: `${outboxCount} offline records are currently queued for Cloud Firestore sync.`,
+      time: 'Real-time',
+      unread: true
+    });
+  }
+
+  if (sortedPrices.length > 0) {
+    const latest = sortedPrices[0];
+    notifs.push({
+      id: 'notif-price',
+      type: 'price',
+      icon: 'trending-up',
+      color: COLORS.success,
+      title: 'SRA Market Circular',
+      msg: `HPCo Raw Sugar price is ₱${Number(latest.price).toLocaleString()}/Lkg (${latest.week || 'Current Circular'}).`,
+      time: latest.date || 'Latest',
+      unread: false
+    });
+  }
+
+  return notifs;
+};
 
 export default function HomeScreen({ navigation }) {
   const { t } = useTranslation();
   const [chartMode, setChartMode] = useState('weekly');
   const [showNotifs, setShowNotifs] = useState(false);
-  const [notifs, setNotifs] = useState(NOTIFICATIONS);
+  const [notifs, setNotifs] = useState(generateDynamicNotifications());
   const [synced, setSyncedState] = useState(getIsSynced());
   const [session, setSessionState] = useState(getCurrentSession());
   const [fields, setFields] = useState([...MOCK_FIELDS]);
@@ -39,9 +69,9 @@ export default function HomeScreen({ navigation }) {
   const [priceData, setPriceData] = useState({
     livePrice: MOCK_PRICE.value,
     liveMol: MOCK_MOL.value,
-    liveDate: MOCK_PRICE.lastUpdated || 'May 21, 2026',
-    liveChange: MOCK_PRICE.change || 70.0,
-    liveWeek: MOCK_PRICE.week || 'Week 4 May',
+    liveDate: MOCK_PRICE.lastUpdated || 'No records',
+    liveChange: MOCK_PRICE.change || 0,
+    liveWeek: MOCK_PRICE.week || 'No circular',
   });
   const { livePrice, liveMol, liveDate, liveChange, liveWeek } = priceData;
 
@@ -58,12 +88,13 @@ export default function HomeScreen({ navigation }) {
       setSyncedState(getIsSynced());
       setSessionState(getCurrentSession());
       setFields(MOCK_FIELDS);
+      setNotifs(generateDynamicNotifications());
       setPriceData({
         livePrice: MOCK_PRICE.value,
         liveMol: MOCK_MOL.value,
-        liveDate: MOCK_PRICE.lastUpdated || 'May 21, 2026',
-        liveChange: MOCK_PRICE.change || 70.0,
-        liveWeek: MOCK_PRICE.week || 'Week 4 May',
+        liveDate: MOCK_PRICE.lastUpdated || 'No records',
+        liveChange: MOCK_PRICE.change || 0,
+        liveWeek: MOCK_PRICE.week || 'No circular',
       });
     });
     return unsubscribe;

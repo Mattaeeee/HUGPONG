@@ -20,9 +20,12 @@ function ManagerFieldOpsView({
   const { t, formatStageName } = useTranslation();
 
   const managedFields = React.useMemo(() => {
-    const targetFarm = session?.farm || 'Nacayao Block Farm A';
-    return fields.filter(f => !f.blockFarm || f.blockFarm === targetFarm);
-  }, [fields, session?.farm]);
+    if (session?.blockFarmId) {
+      return fields.filter(f => f.blockFarmId === session.blockFarmId || f.blockFarm === session.farm || (f.blockFarm && f.blockFarm.includes('Nacayao')));
+    }
+    const targetFarm = session?.farm || 'Nacayao Block Farm';
+    return fields.filter(f => !f.blockFarm || f.blockFarm === targetFarm || (f.blockFarm && f.blockFarm.includes('Nacayao')));
+  }, [fields, session?.farm, session?.blockFarmId]);
 
   return (
     <View style={s.container}>
@@ -42,7 +45,7 @@ function ManagerFieldOpsView({
       {/* Supervised Field Registry */}
       <View style={s.sectionHeader}>
         <Text style={s.sectionTitle}>{t('supervised_plots_label', 'Supervised Plots')} ({managedFields.length})</Text>
-        <Text style={s.farmTag}>{session.farm || 'Nacayao Block Farm A'}</Text>
+        <Text style={s.farmTag}>{session.farm || 'Nacayao Block Farm'}</Text>
       </View>
 
       {managedFields.map(f => (

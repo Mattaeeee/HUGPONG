@@ -60,7 +60,7 @@ export default function SyncMonitorScreen({ navigation }) {
         status,
         statusLabel,
         device: devices[idx % devices.length],
-        blockFarm: f.blockFarm || 'Nacayao Block Farm A'
+        blockFarm: f.blockFarm || 'Nacayao Block Farm'
       };
     });
   }, []);
@@ -157,7 +157,7 @@ export default function SyncMonitorScreen({ navigation }) {
         </TouchableOpacity>
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={s.headerTitle}>{isFarmManager ? t('telemetry_title', 'Member Sync Monitor') : (isSRA ? 'SRA Terminal' : t('action_sync_hub', 'Sync Status'))}</Text>
-          <Text style={s.headerSub}>{isFarmManager ? `${session.farm || 'Nacayao Block Farm A'} Supervision` : (isSRA ? 'Administrative Authority' : 'Mobile Terminal Connection')}</Text>
+          <Text style={s.headerSub}>{isFarmManager ? `${session.farm || 'Nacayao Block Farm'} Supervision` : (isSRA ? 'Administrative Authority' : 'Mobile Terminal Connection')}</Text>
         </View>
         <View style={{ width: 36 }} />
       </View>
@@ -415,7 +415,7 @@ export default function SyncMonitorScreen({ navigation }) {
               <Ionicons name="shield-checkmark" size={28} color={COLORS.success} />
             </View>
             <Text style={{ fontSize: 16, fontWeight: '800', color: COLORS.text, textAlign: 'center' }}>
-              {t('sync_status_synced', 'Terminal Connected to')} {session.farm || 'Nacayao Block Farm A'}
+              {t('sync_status_synced', 'Terminal Connected to')} {session.farm || 'Nacayao Block Farm'}
             </Text>
             <Text style={{ fontSize: 12, color: COLORS.textMuted, textAlign: 'center', marginTop: 4, lineHeight: 18 }}>
               {t('sync_toast_synced', 'Your offline operation logs and resource entries are automatically synchronized when online connectivity is detected.')}
@@ -424,11 +424,11 @@ export default function SyncMonitorScreen({ navigation }) {
             <View style={{ width: '100%', backgroundColor: '#F8FAF6', borderRadius: RADIUS.md, padding: 12, borderWidth: 1, borderColor: '#E2E8DC', marginVertical: 16, gap: 8 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{t('my_field', 'My Field')}:</Text>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.text }}>FLD-KTR-001 (1.5 Ha)</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.text }}>{session.fieldId || 'FLD-NCY-001'} (1.5 Ha)</Text>
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{t('profile_supervising_farm', 'Supervising Manager')}:</Text>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.text }}>Jose Reyes ({session.farm || 'Nacayao Block Farm A'})</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.text }}>Jose Reyes ({session.farm || 'Nacayao Block Farm'})</Text>
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ fontSize: 11, color: COLORS.textMuted }}>{t('sync_info', 'Latest Sync')}:</Text>
@@ -441,7 +441,7 @@ export default function SyncMonitorScreen({ navigation }) {
                 style={{ flex: 1, backgroundColor: COLORS.primary, paddingVertical: 12, paddingHorizontal: 6, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5 }}
                 onPress={() => {
                   performMobileSync();
-                  Alert.alert(t('sync_status_synced', 'Sync Successful'), `Your local logs are now fully synchronized with ${session.farm || 'Nacayao Block Farm A'}.`);
+                  Alert.alert(t('sync_status_synced', 'Sync Successful'), `Your local logs are now fully synchronized with ${session.farm || 'Nacayao Block Farm'}.`);
                 }}
               >
                 <Ionicons name="sync" size={15} color="#FFF" />

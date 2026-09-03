@@ -85,21 +85,6 @@ export default function LoginScreen({ navigation }) {
     }, 450);
   };
 
-  const fastLoginRole = (contact, pw) => {
-    setAuthError('');
-    setLoading(true);
-    setTimeout(() => {
-      const res = authenticateUser(contact, pw);
-      setLoading(false);
-      if (res.success) {
-        setFailedAttempts(0);
-        navigation.replace('MainTabs');
-      } else {
-        setAuthError(res.error || 'Fast login failed');
-      }
-    }, 200);
-  };
-
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -207,45 +192,60 @@ export default function LoginScreen({ navigation }) {
               )}
             </TouchableOpacity>
 
+            {/* Instant Role Access (No Emojis) */}
+            <View style={s.quickAccessWrap}>
+              <View style={s.quickAccessHeader}>
+                <Text style={s.quickAccessTitle}>Instant Role Access</Text>
+                <Text style={s.quickAccessSub}>1-Click Fast Switch</Text>
+              </View>
+              <View style={s.quickGrid}>
+                <TouchableOpacity
+                  style={s.quickRoleBtn}
+                  onPress={() => {
+                    setContactNumber('09171234567');
+                    setPassword('password123');
+                    authenticateUser('09171234567', 'password123');
+                    navigation.replace('MainTabs');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={s.quickRoleTitle}>Farmer Member</Text>
+                  <Text style={s.quickRoleName}>Juan dela Cruz</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={s.quickRoleBtn}
+                  onPress={() => {
+                    setContactNumber('09189876543');
+                    setPassword('password123');
+                    authenticateUser('09189876543', 'password123');
+                    navigation.replace('MainTabs');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={s.quickRoleTitle}>Farm Manager</Text>
+                  <Text style={s.quickRoleName}>Jose Reyes</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[s.quickRoleBtn, { width: '100%' }]}
+                  onPress={() => {
+                    setContactNumber('09194448888');
+                    setPassword('password123');
+                    authenticateUser('09194448888', 'password123');
+                    navigation.replace('MainTabs');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={s.quickRoleTitle}>SRA Admin</Text>
+                  <Text style={s.quickRoleName}>Engr. Maria Santos (Silay Authority)</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <View style={s.securityNotice}>
               <Ionicons name="shield-checkmark-outline" size={14} color={COLORS.primary} />
               <Text style={s.securityNoticeText}>Encrypted &amp; SRA Certified Agricultural Gateway</Text>
-            </View>
-
-            {/* Fast Scan 1-Click Role Login Bar */}
-            <View style={s.fastLoginSection}>
-              <Text style={s.fastLoginTitle}>Fast Scan Role Login (1-Click)</Text>
-              <View style={s.fastLoginGrid}>
-                <TouchableOpacity
-                  style={[s.fastBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
-                  onPress={() => fastLoginRole('09171234567', 'password123')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[s.fastBtnIcon]}>👨‍🌾</Text>
-                  <Text style={[s.fastBtnRole, { color: COLORS.primary }]}>Member</Text>
-                  <Text style={s.fastBtnSub}>FLD-001</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[s.fastBtn, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}
-                  onPress={() => fastLoginRole('09189876543', 'manager123')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[s.fastBtnIcon]}>🚜</Text>
-                  <Text style={[s.fastBtnRole, { color: '#0284C7' }]}>Manager</Text>
-                  <Text style={s.fastBtnSub}>Block A</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[s.fastBtn, { backgroundColor: '#FAF5FF', borderColor: '#E9D5FF' }]}
-                  onPress={() => fastLoginRole('09194448888', 'admin123')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[s.fastBtnIcon]}>🌾</Text>
-                  <Text style={[s.fastBtnRole, { color: '#7C3AED' }]}>SRA Admin</Text>
-                  <Text style={s.fastBtnSub}>All Blocks</Text>
-                </TouchableOpacity>
-              </View>
             </View>
           </View>
 
@@ -344,45 +344,53 @@ const s = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Fast Login Section Styles
-  fastLoginSection: {
-    marginTop: 6,
-    paddingTop: 10,
+  // Instant Role Access Styles (No Emojis)
+  quickAccessWrap: {
+    marginTop: 8,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    borderStyle: 'dashed',
+    borderTopColor: COLORS.border,
     gap: 8,
   },
-  fastLoginTitle: {
+  quickAccessHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  quickAccessTitle: {
     fontSize: 10.5,
     fontWeight: '800',
-    color: COLORS.textMuted,
+    color: COLORS.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    textAlign: 'center',
   },
-  fastLoginGrid: {
+  quickAccessSub: {
+    fontSize: 9.5,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  quickGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
-  fastBtn: {
-    flex: 1,
-    paddingVertical: 9,
-    paddingHorizontal: 6,
-    borderRadius: RADIUS.md,
+  quickRoleBtn: {
+    width: '48.5%',
+    backgroundColor: COLORS.background,
     borderWidth: 1,
-    alignItems: 'center',
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
     gap: 2,
   },
-  fastBtnIcon: {
-    fontSize: 16,
-  },
-  fastBtnRole: {
-    fontSize: 11,
+  quickRoleTitle: {
+    fontSize: 11.5,
     fontWeight: '800',
+    color: COLORS.text,
   },
-  fastBtnSub: {
-    fontSize: 9,
+  quickRoleName: {
+    fontSize: 10,
     color: COLORS.textMuted,
     fontWeight: '600',
   },

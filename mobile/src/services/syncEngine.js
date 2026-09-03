@@ -42,13 +42,55 @@ function notifySyncEngine() {
  */
 
 export const SRA_STAGE_HIERARCHY = {
+  'Stage 1: Soil Sampling & Land Preparation': 1,
   'Stage 1: Land Preparation & Tillage': 1,
+  'Stage 1: Pre-Planting & Land Preparation': 1,
+  'Stage 1': 1,
+  'Soil & Land Prep': 1,
+  
+  'Stage 2: Planting Material & Planting (Patdan)': 2,
   'Stage 2: Planting & Basal Nutrition': 2,
+  'Stage 2: Planting & Crop Establishment': 2,
+  'Stage 2': 2,
+  'Planting & Canepoints': 2,
+
+  'Stage 3: Basal Fertilization & Early Care': 3,
+  'Stage 3: Basal Nutrition & Early Care': 3,
   'Stage 3: Early Vegetative & Weed Control': 3,
+  'Stage 3': 3,
+  'Basal Fertilization': 3,
+
+  'Stage 4: Cultivation, Weeding & Drainage': 4,
+  'Stage 4: Cultivation & Weed Management': 4,
   'Stage 4: Top-Dressing & Earthing-Up': 4,
+  'Stage 4': 4,
+  'Cultivation & Care': 4,
+
+  'Stage 5: Top-Dress Fertilization (2nd Dose)': 5,
+  'Stage 5: Crop Maintenance & Final Hilling-Up': 5,
   'Stage 5: Ripening & Stalk Maturation': 5,
-  'Stage 6: Harvest & Hauling': 6
+  'Stage 5': 5,
+  'Top-Dress Fert': 5,
+
+  'Stage 6: Harvesting, Cutting & Hauling Operations': 6,
+  'Stage 6: Harvesting & Post-Harvest Transport': 6,
+  'Stage 6: Harvest & Hauling': 6,
+  'Stage 6': 6,
+  'Harvest & Milling': 6,
 };
+
+export function getStageLevel(stageStr) {
+  if (!stageStr) return 0;
+  if (SRA_STAGE_HIERARCHY[stageStr]) return SRA_STAGE_HIERARCHY[stageStr];
+  const s = String(stageStr).toLowerCase();
+  if (s.includes('stage 6') || s.includes('harvest') || s.includes('hauling') || s.includes('cutting')) return 6;
+  if (s.includes('stage 5') || s.includes('top-dress') || s.includes('hilling') || s.includes('maint')) return 5;
+  if (s.includes('stage 4') || s.includes('cultivation') || s.includes('weed')) return 4;
+  if (s.includes('stage 3') || s.includes('basal') || s.includes('dap')) return 3;
+  if (s.includes('stage 2') || s.includes('plant') || s.includes('patdan')) return 2;
+  if (s.includes('stage 1') || s.includes('prep') || s.includes('soil') || s.includes('plow')) return 1;
+  return 1;
+}
 
 /**
  * Resolves conflict between current field stage and an incoming offline stage update
@@ -57,8 +99,8 @@ export function resolveStageConflict(currentStage, incomingStage, currentUpdated
   if (!currentStage) return { stage: incomingStage, resolution: 'applied_initial' };
   if (!incomingStage) return { stage: currentStage, resolution: 'retained_current' };
 
-  const currentLevel = SRA_STAGE_HIERARCHY[currentStage] || 0;
-  const incomingLevel = SRA_STAGE_HIERARCHY[incomingStage] || 0;
+  const currentLevel = getStageLevel(currentStage);
+  const incomingLevel = getStageLevel(incomingStage);
 
   // Monotonic forward progression: higher stage takes natural precedence
   if (incomingLevel > currentLevel) {
@@ -99,7 +141,7 @@ export function generateUserNumericId(role, seedIndex = null) {
 
   if (roleLower.includes('super admin') || roleLower.includes('super_admin')) {
     prefix = '01';
-  } else if (roleLower.includes('sra') || roleLower.includes('admin') && !roleLower.includes('farm')) {
+  } else if (roleLower.includes('sra') || (roleLower.includes('admin') && !roleLower.includes('farm'))) {
     prefix = '02';
   } else if (roleLower.includes('manager') || roleLower.includes('farm manager')) {
     prefix = '03';
@@ -117,10 +159,10 @@ export function generateUserNumericId(role, seedIndex = null) {
 
 /**
  * Generate a unique deterministic production-grade ID for operational logs
- * Format: LOG-{FIELD}-{TIMESTAMP_HEX}-{RAND} e.g. LOG-KTR001-M7A9X2-8F2A
+ * Format: LOG-{FIELD}-{TIMESTAMP_HEX}-{RAND} e.g. LOG-FLDNCY001-M7A9X2-8F2A
  */
 export function generateDeterministicLogId(fieldId) {
-  const cleanField = (fieldId || 'KTR001').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  const cleanField = (fieldId || 'FLD-NCY-001').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
   const timeHex = Date.now().toString(36).toUpperCase();
   const randHex = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `LOG-${cleanField}-${timeHex}-${randHex}`;
@@ -135,7 +177,7 @@ export function generateLogId(fieldId) {
  * Format: DFT-{FIELD}-{TIMESTAMP_HEX}-{RAND}
  */
 export function generateDraftId(fieldId) {
-  const cleanField = (fieldId || 'KTR001').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  const cleanField = (fieldId || 'FLD-NCY-001').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
   const timeHex = Date.now().toString(36).toUpperCase();
   const randHex = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `DFT-${cleanField}-${timeHex}-${randHex}`;

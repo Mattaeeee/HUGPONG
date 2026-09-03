@@ -18,7 +18,7 @@ function ManagerHomeView({
 }) {
   const { t, formatStageName } = useTranslation();
 
-  const targetFarm = session?.farm || 'Nacayao Block Farm A';
+  const targetFarm = session?.farm || 'Nacayao Block Farm';
 
   const { managedFields, totalHectares, totalOperationsCount, fieldsWithRecentLogs } = React.useMemo(() => {
     const mf = fields.filter(f => f.blockFarm === targetFarm);
@@ -57,7 +57,7 @@ function ManagerHomeView({
       <View style={s.summaryCard}>
         <View style={s.summaryHeader}>
           <View>
-            <Text style={s.farmName}>{session?.farm || 'Nacayao Block Farm A'}</Text>
+            <Text style={s.farmName}>{session?.farm || 'Nacayao Block Farm'}</Text>
             <Text style={s.managerTag}>Supervising Manager: {session?.name || 'Manager'}</Text>
           </View>
           <View style={s.totalBadge}>

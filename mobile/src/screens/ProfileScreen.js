@@ -98,37 +98,6 @@ export default function ProfileScreen({ navigation }) {
     );
   };
 
-  const switchDemoRole = () => {
-    Alert.alert(
-      '⚡ Fast Role Switch',
-      'Choose an active role to switch viewpoints immediately:',
-      [
-        {
-          text: '🌿 Member (Juan dela Cruz)',
-          onPress: () => {
-            authenticateUser('09171234567', 'password123');
-            Alert.alert('Role Switched', 'Active session updated to Member (Juan dela Cruz).');
-          }
-        },
-        {
-          text: '🚜 Farm Manager (Jose Reyes)',
-          onPress: () => {
-            authenticateUser('09189876543', 'manager123');
-            Alert.alert('Role Switched', 'Active session updated to Farm Manager (Jose Reyes).');
-          }
-        },
-        {
-          text: '🏛️ SRA Admin (Maria Santos)',
-          onPress: () => {
-            authenticateUser('09194448888', 'admin123');
-            Alert.alert('Role Switched', 'Active session updated to SRA Admin (Maria Santos).');
-          }
-        },
-        { text: 'Cancel', style: 'cancel' }
-      ]
-    );
-  };
-
   const signOut = () => {
     if (session.pendingLogs > 0) {
       Alert.alert(
@@ -186,22 +155,39 @@ export default function ProfileScreen({ navigation }) {
               key: 'farm_agency',
               icon: 'business', 
               label: session.role === 'SRA (Admin)' ? t('profile_regulatory_agency', 'Regulatory Agency') : (session.role === 'Farm Manager' ? t('profile_supervising_farm', 'Supervising Farm') : t('profile_block_farm', 'Block Farm Location')), 
-              value: session.farm 
+              value: session.role === 'SRA (Admin)' ? 'Sugar Regulatory Administration (SRA)' : (session.farm || 'Nacayao Block Farm')
             },
             { 
               key: 'field_scope',
               icon: 'map', 
-              label: session.role === 'SRA (Admin)' ? t('profile_admin_jurisdiction', 'Assigned Block Farms') : (session.role === 'Farm Manager' ? t('profile_supervised_scope', 'Supervised Scope') : t('my_fields', 'My Field(s)')), 
-              value: session.blockFarmScope || (
-                MOCK_FIELDS.filter(f => f.member === session.name).length > 0 
-                  ? MOCK_FIELDS.filter(f => f.member === session.name).map(f => `${f.id} (${f.ha} Ha)`).join(', ') 
-                  : (session.fieldId || 'None assigned')
-              )
+              label: session.role === 'SRA (Admin)' 
+                ? t('profile_admin_jurisdiction', 'Jurisdiction') 
+                : (session.role === 'Farm Manager' ? t('profile_supervised_scope', 'Supervised Scope') : t('my_fields', 'My Field(s)')), 
+              value: (() => {
+                if (session.role === 'SRA (Admin)') {
+                  return 'District 3 · Silay City, Negros Occidental';
+                }
+                if (session.role === 'Farm Manager') {
+                  const totalPlots = MOCK_FIELDS.length || 5;
+                  const totalHa = MOCK_FIELDS.reduce((s, f) => s + (Number(f.ha) || 0), 0) || 15.25;
+                  return `${session.farm || 'Nacayao Block Farm'} (${totalPlots} Plots · ${totalHa.toFixed(1)} Ha)`;
+                }
+                // Member Role: Show assigned plots
+                const memberPlots = MOCK_FIELDS.filter(f => 
+                  f.member === session.name || 
+                  f.memberId === session.employeeId || 
+                  f.id === session.fieldId
+                );
+                if (memberPlots.length > 0) {
+                  return memberPlots.map(f => `${f.id} (${f.ha} Ha)`).join(', ');
+                }
+                return session.fieldId || 'FLD-NCY-001 (1.5 Ha)';
+              })()
             },
-            { key: 'mobile_contact', icon: 'call', label: t('profile_mobile_contact', 'Mobile Contact'), value: session.mobile },
+            { key: 'mobile_contact', icon: 'call', label: t('profile_mobile_contact', 'Mobile Contact'), value: session.mobile || session.contact || '0919 444 8888' },
           ].map(r => (
             <View key={r.key} style={s.infoRow}>
-              <Ionicons name={r.icon} size={15} color={COLORS.primaryLight} style={{ width: 22 }} />
+              <Ionicons name={r.icon} size={16} color={COLORS.primaryLight} style={{ width: 24 }} />
               <Text style={s.infoLabel}>{r.label}</Text>
               <Text style={s.infoValue}>{r.value}</Text>
             </View>
@@ -297,23 +283,6 @@ export default function ProfileScreen({ navigation }) {
                 thumbColor={autoSync ? COLORS.primary : '#f4f3f4'}
               />
             </View>
-
-            {/* Offline Demo Toggle */}
-            <View style={[s.toggleRow, { marginTop: 0, paddingTop: 12, borderTopWidth: 0 }]}>
-              <Ionicons name="airplane-outline" size={16} color={COLORS.textSecondary} />
-              <Text style={s.toggleLabel}>{t('profile_demo_offline', 'Demo: Offline POV')}</Text>
-              <Switch
-                value={!synced}
-                onValueChange={(val) => {
-                  setSynced(!val);
-                  if (val) {
-                    Alert.alert('Offline Mode Sim', 'Connection dropped. New operations will be cached locally until connection restores.');
-                  }
-                }}
-                trackColor={{ false: COLORS.border, true: COLORS.accent }}
-                thumbColor={!synced ? '#fff' : '#f4f3f4'}
-              />
-            </View>
           </View>
         )}
 
@@ -356,7 +325,6 @@ export default function ProfileScreen({ navigation }) {
               color: COLORS.blue, 
               onPress: () => navigation.navigate('SyncMonitor') 
             }] : [])),
-            { icon: 'swap-horizontal-outline', label: '⚡ Fast Role Switch', color: COLORS.primary, onPress: switchDemoRole },
             { icon: 'trash-outline', label: t('profile_cache', 'Clear Local Cache'), color: COLORS.accent, onPress: clearCache },
           ].map(item => (
             <TouchableOpacity key={item.label} style={s.settingRow} onPress={item.onPress}>
@@ -456,7 +424,7 @@ export default function ProfileScreen({ navigation }) {
                     <Text style={s.formLabel}>{t('ticket_subject', 'Subject / Short Summary')}</Text>
                     <TextInput
                       style={s.ticketInput}
-                      placeholder="e.g. Cannot sync FLD-KTR-001 logs"
+                      placeholder="e.g. Cannot sync FLD-NCY-001 logs"
                       placeholderTextColor={COLORS.textMuted}
                       value={ticketForm.title}
                       onChangeText={val => setTicketForm(p => ({ ...p, title: val }))}
@@ -573,9 +541,9 @@ const s = StyleSheet.create({
 
   // Info rows
   cardTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginBottom: SPACING.md },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: 9, borderTopWidth: 1, borderTopColor: COLORS.border },
-  infoLabel: { fontSize: 12, color: COLORS.textMuted, width: 56 },
-  infoValue: { flex: 1, fontSize: 13, fontWeight: '600', color: COLORS.text, textAlign: 'right' },
+  infoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: SPACING.sm, paddingVertical: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
+  infoLabel: { fontSize: 12, color: COLORS.textMuted, flex: 1, paddingRight: 8 },
+  infoValue: { fontSize: 13, fontWeight: '600', color: COLORS.text, textAlign: 'right', flexShrink: 0 },
   formInput: { borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, paddingHorizontal: 12, fontSize: 14, color: COLORS.text, backgroundColor: '#FAFAFA' },
 
   // Sync

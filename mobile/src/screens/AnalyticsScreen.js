@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
-import { SRA_PRICE_HISTORY, MOCK_PRICE, MOCK_MOL, getMemberSyncHealth, subscribe, getCurrentSession, MOCK_FIELDS, MOCK_LOGS } from '../data/dataStore';
+import { SRA_PRICE_HISTORY, MOCK_PRICE, MOCK_MOL, getMemberSyncHealth, subscribe, getCurrentSession, MOCK_FIELDS, MOCK_LOGS, blockFarms, resolveFieldBlockFarm, resolveFieldMember } from '../data/dataStore';
 import { useTranslation } from '../services/i18n';
 
 // ── 6 SRA Growth Stages Definition ─────────────────────────────
@@ -25,6 +25,8 @@ export default function AnalyticsScreen({ navigation, route }) {
   const [session, setSession] = useState(getCurrentSession());
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [expandedLedgerLogId, setExpandedLedgerLogId] = useState(null);
+  const [showPlotPickerModal, setShowPlotPickerModal] = useState(false);
+  const [plotSearchQuery, setPlotSearchQuery] = useState('');
 
   useEffect(() => {
     if (route && route.params && route.params.blockFarm) {
@@ -47,32 +49,36 @@ export default function AnalyticsScreen({ navigation, route }) {
   // 1. Scoped Fields by Role
   const scopedFields = React.useMemo(() => {
     if (isMember) {
-      const myFields = MOCK_FIELDS.filter(f => f.member === session.name);
+      const myFields = MOCK_FIELDS.filter(f => f.member === session.name || f.memberId === session.employeeId);
       return myFields.length > 0 ? myFields : MOCK_FIELDS.slice(0, 1);
     }
     if (isSRA) {
       if (selectedBlockFarm === 'All') return MOCK_FIELDS;
-      return MOCK_FIELDS.filter(f => (f.blockFarm || 'Nacayao Block Farm A') === selectedBlockFarm);
+      return MOCK_FIELDS.filter(f => resolveFieldBlockFarm(f) === selectedBlockFarm || f.blockFarmId === selectedBlockFarm);
     }
     // Farm Manager: scoped to assigned farm
-    const mgrFarm = session.farm || 'Nacayao Block Farm A';
-    const mgrFields = MOCK_FIELDS.filter(f => f.blockFarm === mgrFarm);
+    const mgrFarm = session.blockFarm || session.blockFarmScope || session.farm || 'Nacayao Block Farm';
+    const mgrFields = MOCK_FIELDS.filter(f => resolveFieldBlockFarm(f) === mgrFarm || f.blockFarmId === session.blockFarmId);
     return mgrFields.length > 0 ? mgrFields : MOCK_FIELDS;
-  }, [isMember, isSRA, selectedBlockFarm, session.name, session.farm]);
+  }, [isMember, isSRA, selectedBlockFarm, session.name, session.farm, session.employeeId, session.blockFarmId]);
 
-  // Block farms list for SRA filter
+  // Block farms list for SRA filter (from canonical block_farms collection)
   const blockFarmsList = React.useMemo(() => {
-    const map = {};
-    MOCK_FIELDS.forEach(f => {
-      const name = f.blockFarm || 'Nacayao Block Farm A';
-      if (!map[name]) {
-        map[name] = { name, fields: [], totalHa: 0 };
-      }
-      map[name].fields.push(f);
-      map[name].totalHa += Number(f.ha) || 1.5;
+    const canonical = blockFarms.length > 0
+      ? blockFarms
+      : [{ id: 'BLK-NCY-01', code: 'BLK-NCY', name: 'Nacayao Block Farm', declaredHa: 15.25 }];
+
+    return canonical.map(bf => {
+      const bfFields = MOCK_FIELDS.filter(f => f.blockFarmId === bf.id || f.blockFarm === bf.name || f.blockFarmId === bf.code);
+      const totalHa = bfFields.reduce((s, f) => s + (Number(f.ha || f.area) || 0), 0) || Number(bf.declaredHa) || 15.25;
+      return {
+        id: bf.id,
+        name: bf.name || 'Nacayao Block Farm',
+        fields: bfFields,
+        totalHa
+      };
     });
-    return Object.values(map);
-  }, []);
+  }, [blockFarms, MOCK_FIELDS]);
 
   // Active fields for current calculation
   const activeFields = React.useMemo(() => {
@@ -201,20 +207,36 @@ export default function AnalyticsScreen({ navigation, route }) {
     });
   }, [activeFields, totalHa]);
 
-  // Member current active stage focus
+  // Member current active stage focus (when viewing as Member, or when Manager/SRA has selected a single field)
   const memberCurrentStage = React.useMemo(() => {
-    if (!isMember) return null;
-    const myField = scopedFields[0];
-    const stageKey = myField ? matchFieldToStageKey(myField) : 'stage-2';
-    const stageObj = SRA_GROWTH_STAGES.find(s => s.key === stageKey) || SRA_GROWTH_STAGES[1];
-    return {
-      ...stageObj,
-      fieldId: myField?.id || 'FLD-NCY-001',
-      ha: Number(myField?.ha || 1.5),
-      variety: myField?.variety || 'Phil 2006-2282',
-      blockFarm: myField?.blockFarm || 'Nacayao Block Farm A'
-    };
-  }, [isMember, scopedFields]);
+    if (isMember) {
+      const myField = scopedFields[0];
+      const stageKey = myField ? matchFieldToStageKey(myField) : 'stage-2';
+      const stageObj = SRA_GROWTH_STAGES.find(s => s.key === stageKey) || SRA_GROWTH_STAGES[1];
+      return {
+        ...stageObj,
+        fieldId: myField?.id || 'FLD-NCY-001',
+        member: myField?.member || session.name,
+        ha: Number(myField?.ha || 1.5),
+        variety: myField?.variety || 'Phil 2006-2282',
+        blockFarm: myField?.blockFarm || 'Nacayao Block Farm'
+      };
+    }
+    if (selectedFieldId !== 'All' && activeFields.length === 1) {
+      const field = activeFields[0];
+      const stageKey = field ? matchFieldToStageKey(field) : 'stage-2';
+      const stageObj = SRA_GROWTH_STAGES.find(s => s.key === stageKey) || SRA_GROWTH_STAGES[1];
+      return {
+        ...stageObj,
+        fieldId: field.id,
+        member: field.member || 'Member Farmer',
+        ha: Number(field.ha || 1.5),
+        variety: field.variety || 'Phil 2006-2282',
+        blockFarm: field.blockFarm || 'Nacayao Block Farm'
+      };
+    }
+    return null;
+  }, [isMember, scopedFields, selectedFieldId, activeFields, session.name]);
 
   // Member field logs for member view
   const memberLogs = React.useMemo(() => {
@@ -236,7 +258,7 @@ export default function AnalyticsScreen({ navigation, route }) {
             {isSRA
               ? (selectedBlockFarm === 'All' ? 'District Block Farms Supervision' : `${selectedBlockFarm} Supervision`)
               : isManager
-              ? `${session.farm || 'Block Farm A'} Operations`
+              ? `${session.blockFarm || session.farm || 'Nacayao Block Farm'} Operations`
               : `${scopedFields[0]?.id || 'Field Plot'} · ${session.name || 'Member Farmer'}`}
           </Text>
         </View>
@@ -261,7 +283,9 @@ export default function AnalyticsScreen({ navigation, route }) {
             activeOpacity={0.75}
           >
             <Ionicons name="leaf-outline" size={13} color={tab === 'stages' ? COLORS.primary : COLORS.textMuted} />
-            <Text style={[s.tabText, tab === 'stages' && s.tabTextActive]}>{isMember ? 'Crop Cycle' : 'Crop Stages'}</Text>
+            <Text style={[s.tabText, tab === 'stages' && s.tabTextActive]}>
+              {isMember || selectedFieldId !== 'All' ? 'Crop Cycle' : 'Crop Stages'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -280,7 +304,12 @@ export default function AnalyticsScreen({ navigation, route }) {
         {/* ── SRA ADMIN: Minimal Sleek Block Farm Filter Pill Bar ── */}
         {isSRA && (
           <View style={s.sraFilterContainer}>
-            <Text style={s.sraFilterLabel}>Block Farm Filter:</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={s.sraFilterLabel}>Block Farm Supervision:</Text>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.primary }}>
+                {selectedBlockFarm === 'All' ? 'District-Wide' : selectedBlockFarm}
+              </Text>
+            </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
               <TouchableOpacity
                 style={[s.sraPill, selectedBlockFarm === 'All' && s.sraPillActive]}
@@ -307,6 +336,95 @@ export default function AnalyticsScreen({ navigation, route }) {
           </View>
         )}
 
+        {/* ── FARM MANAGER & SRA: Member Plot Filter Pill Bar ── */}
+        {!isMember && (
+          <View style={s.sraFilterContainer}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="person-circle-outline" size={14} color={COLORS.primary} />
+                <Text style={s.sraFilterLabel}>
+                  {isManager ? 'Nacayao Member Plot Filter:' : 'Member Plot Filter:'}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {selectedFieldId !== 'All' && (
+                  <TouchableOpacity 
+                    onPress={() => setSelectedFieldId('All')}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#FEE2E2', paddingHorizontal: 6, paddingVertical: 2.5, borderRadius: RADIUS.xs }}
+                  >
+                    <Text style={{ fontSize: 9.5, fontWeight: '800', color: COLORS.danger }}>Reset ✕</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => {
+                    setPlotSearchQuery('');
+                    setShowPlotPickerModal(true);
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primaryBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.xs }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="search" size={11} color={COLORS.primary} />
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: COLORS.primary }}>
+                    Search / Show All ({scopedFields.length})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+              {/* All Plots Default Pill */}
+              <TouchableOpacity
+                style={[s.sraPill, selectedFieldId === 'All' && s.sraPillActive]}
+                onPress={() => setSelectedFieldId('All')}
+                activeOpacity={0.7}
+              >
+                <Text style={[s.sraPillText, selectedFieldId === 'All' && s.sraPillTextActive]}>
+                  {isManager ? 'All Nacayao Plots' : 'All Enrolled Plots'} ({scopedFields.reduce((sum, f) => sum + (Number(f.ha) || 1.5), 0).toFixed(1)} Ha)
+                </Text>
+              </TouchableOpacity>
+
+              {/* Individual Member Plot Pills (Top 5) */}
+              {scopedFields.slice(0, 5).map(f => {
+                const isSelected = selectedFieldId === f.id;
+                return (
+                  <TouchableOpacity
+                    key={f.id}
+                    style={[s.sraPill, isSelected && s.sraPillActive]}
+                    onPress={() => setSelectedFieldId(isSelected ? 'All' : f.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      {isSelected && <Ionicons name="checkmark-circle" size={12} color={COLORS.primary} />}
+                      <Text style={[s.sraPillText, isSelected && s.sraPillTextActive]}>
+                        {f.id} · {f.member || 'Member'} ({Number(f.ha || 1.5).toFixed(1)} Ha)
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+
+              {/* + Show More / Search Pill */}
+              {scopedFields.length > 5 && (
+                <TouchableOpacity
+                  style={[s.sraPill, { backgroundColor: '#F3F4F6', borderColor: '#D1D5DB' }]}
+                  onPress={() => {
+                    setPlotSearchQuery('');
+                    setShowPlotPickerModal(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="search" size={12} color={COLORS.primary} />
+                    <Text style={[s.sraPillText, { color: COLORS.primary, fontWeight: '800' }]}>
+                      + {scopedFields.length - 5} More (Search & Pick)
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+          </View>
+        )}
+
         {/* ══════════════════════════════════════════════════════════ */}
         {/* TAB 1: OVERVIEW & COST BREAKDOWN                         */}
         {/* ══════════════════════════════════════════════════════════ */}
@@ -314,7 +432,31 @@ export default function AnalyticsScreen({ navigation, route }) {
           <>
             {/* Role-Dependent KPI Twin Cards */}
             <View style={s.twinRow}>
-              {isSRA ? (
+              {selectedFieldId !== 'All' && activeFields.length === 1 ? (
+                <>
+                  <View style={s.twinCard}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={[s.twinIconBox, { backgroundColor: '#DCFCE7' }]}>
+                        <Ionicons name="person" size={13} color={COLORS.primary} />
+                      </View>
+                      <Text style={s.twinLabel}>Selected Member</Text>
+                    </View>
+                    <Text style={s.twinValue} numberOfLines={1}>{activeFields[0].member || 'Member Farmer'}</Text>
+                    <Text style={s.twinSub}>{activeFields[0].id} · {activeFields[0].blockFarm || 'Nacayao Block Farm'}</Text>
+                  </View>
+
+                  <View style={s.twinCard}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={[s.twinIconBox, { backgroundColor: '#E0F2FE' }]}>
+                        <Ionicons name="leaf" size={13} color="#0284C7" />
+                      </View>
+                      <Text style={s.twinLabel}>Allocated Area</Text>
+                    </View>
+                    <Text style={s.twinValue}>{Number(activeFields[0].ha || 1.5).toFixed(2)} Ha</Text>
+                    <Text style={s.twinSub} numberOfLines={1}>{activeFields[0].variety || 'Phil 84-77'} · {activeFields[0].stage ? activeFields[0].stage.split(':')[0] : 'Active'}</Text>
+                  </View>
+                </>
+              ) : isSRA ? (
                 <>
                   <View style={s.twinCard}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -348,7 +490,7 @@ export default function AnalyticsScreen({ navigation, route }) {
                       <Text style={s.twinLabel}>My Field Plots</Text>
                     </View>
                     <Text style={s.twinValue}>{activeFields.length} Plots</Text>
-                    <Text style={s.twinSub}>Nacayao Block Farm A</Text>
+                    <Text style={s.twinSub}>{session.blockFarm || session.farm || 'Nacayao Block Farm'}</Text>
                   </View>
 
                   <View style={s.twinCard}>
@@ -397,7 +539,9 @@ export default function AnalyticsScreen({ navigation, route }) {
                     <Ionicons name="cash" size={16} color={COLORS.primary} />
                   </View>
                   <View>
-                    <Text style={s.spendCardTitle}>{isMember ? 'My Direct Field Expenditure' : 'Direct Operations Expenditure'}</Text>
+                    <Text style={s.spendCardTitle}>
+                      {isMember ? 'My Direct Field Expenditure' : (selectedFieldId !== 'All' ? `${activeFields[0]?.member || 'Member'}'s Field Spend` : 'Direct Operations Expenditure')}
+                    </Text>
                     <Text style={s.spendCardSub}>Real operational costs recorded on field logs</Text>
                   </View>
                 </View>
@@ -456,12 +600,14 @@ export default function AnalyticsScreen({ navigation, route }) {
         {/* TAB 2: CROP STAGE LIFECYCLE DISTRIBUTION                 */}
         {/* ══════════════════════════════════════════════════════════ */}
         {tab === 'stages' && (
-          isMember && memberCurrentStage ? (
-            /* MEMBER FARMER: Sleek 6-Stage Timeline Stepper & Active Stage Focus */
+          (isMember || (selectedFieldId !== 'All' && memberCurrentStage)) ? (
+            /* SINGLE MEMBER PLOT: Sleek 6-Stage Timeline Stepper & Active Stage Focus */
             <View style={s.sectionCard}>
               <View style={s.sectionHeader}>
                 <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
-                  <Text style={s.sectionTitle}>My Field Crop Cycle Progress</Text>
+                  <Text style={s.sectionTitle}>
+                    {isMember ? 'My Field Crop Cycle Progress' : `${memberCurrentStage.member} · Crop Cycle`}
+                  </Text>
                   <Text style={s.sectionSub}>SRA 6-stage agronomic cycle for {memberCurrentStage.fieldId}</Text>
                 </View>
                 <View style={[s.badgePill, { backgroundColor: `${memberCurrentStage.color}15` }]}>
@@ -549,6 +695,27 @@ export default function AnalyticsScreen({ navigation, route }) {
                       </Text>
                     </View>
                   </View>
+
+                  {/* If manager/SRA is inspecting single plot, provide toggle to view all plots */}
+                  {!isMember && (
+                    <TouchableOpacity
+                      onPress={() => setSelectedFieldId('All')}
+                      style={{
+                        marginTop: 6,
+                        paddingVertical: 8,
+                        backgroundColor: '#F0F9EB',
+                        borderRadius: RADIUS.xs,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderWidth: 1,
+                        borderColor: '#C8E6C9'
+                      }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.primary }}>
+                        ← View All Farm Plots Stage Distribution
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             </View>
@@ -637,13 +804,21 @@ export default function AnalyticsScreen({ navigation, route }) {
                     </Text>
                   ) : (
                     activeFields.filter(f => matchFieldToStageKey(f) === selectedStageKey).map(p => (
-                      <View key={p.id} style={s.drawerPlotItem}>
+                      <TouchableOpacity 
+                        key={p.id} 
+                        style={s.drawerPlotItem}
+                        onPress={() => { setSelectedFieldId(p.id); setSelectedStageKey(null); }}
+                        activeOpacity={0.7}
+                      >
                         <View style={{ flex: 1 }}>
                           <Text style={s.drawerPlotId}>{p.id} · <Text style={{ fontWeight: '600', color: COLORS.textSecondary }}>{p.member || 'Member'}</Text></Text>
                           <Text style={s.drawerPlotSub}>{p.blockFarm || 'Block Farm'} · {p.variety || 'Phil 84-77'}</Text>
                         </View>
-                        <Text style={s.drawerPlotHa}>{Number(p.ha || 1.5).toFixed(1)} Ha</Text>
-                      </View>
+                        <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                          <Text style={s.drawerPlotHa}>{Number(p.ha || 1.5).toFixed(1)} Ha</Text>
+                          <Text style={{ fontSize: 9.5, fontWeight: '700', color: COLORS.primary }}>Inspect Plot →</Text>
+                        </View>
+                      </TouchableOpacity>
                     ))
                   )}
                 </View>
@@ -895,6 +1070,147 @@ export default function AnalyticsScreen({ navigation, route }) {
                 })}
               </View>
             )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ── Searchable Member Plot Picker Modal Sheet ── */}
+      <Modal
+        visible={showPlotPickerModal}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowPlotPickerModal(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
+          {/* Modal Header */}
+          <View style={s.historyModalHeader}>
+            <View>
+              <Text style={s.historyModalTitle}>Select Enrolled Plot</Text>
+              <Text style={s.historyModalSub}>
+                {scopedFields.length} total plots registered in {isManager ? 'Nacayao' : 'supervised district'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowPlotPickerModal(false)}
+              style={s.historyModalCloseBtn}
+            >
+              <Ionicons name="close" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Search Input Bar */}
+          <View style={{ paddingHorizontal: SPACING.lg, paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 8, gap: 8 }}>
+              <Ionicons name="search" size={16} color={COLORS.textMuted} />
+              <TextInput
+                placeholder="Search by Plot ID (e.g. FLD-NCY-001) or Member name..."
+                placeholderTextColor={COLORS.textMuted}
+                value={plotSearchQuery}
+                onChangeText={setPlotSearchQuery}
+                style={{ flex: 1, fontSize: 13, color: COLORS.text, padding: 0 }}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+              {plotSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setPlotSearchQuery('')}>
+                  <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: 10 }}>
+            {/* All Plots Option */}
+            <TouchableOpacity
+              onPress={() => {
+                setSelectedFieldId('All');
+                setShowPlotPickerModal(false);
+              }}
+              style={{
+                backgroundColor: '#fff',
+                borderRadius: RADIUS.md,
+                padding: 14,
+                borderWidth: 1.5,
+                borderColor: selectedFieldId === 'All' ? COLORS.primary : COLORS.border,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                ...SHADOW.xs
+              }}
+            >
+              <View style={{ gap: 2 }}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: selectedFieldId === 'All' ? COLORS.primary : COLORS.text }}>
+                  {isManager ? 'All Nacayao Plots' : 'All Enrolled District Plots'}
+                </Text>
+                <Text style={{ fontSize: 11, color: COLORS.textMuted }}>
+                  Combined summary of {scopedFields.length} plots ({scopedFields.reduce((sum, f) => sum + (Number(f.ha) || 1.5), 0).toFixed(1)} Ha)
+                </Text>
+              </View>
+              {selectedFieldId === 'All' && (
+                <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+              )}
+            </TouchableOpacity>
+
+            {/* Filtered Plot Cards */}
+            {scopedFields
+              .filter(f => {
+                if (!plotSearchQuery) return true;
+                const q = plotSearchQuery.toLowerCase();
+                const idMatch = (f.id || '').toLowerCase().includes(q);
+                const memberMatch = (f.member || '').toLowerCase().includes(q);
+                const varietyMatch = (f.variety || '').toLowerCase().includes(q);
+                const stageMatch = (f.stage || '').toLowerCase().includes(q);
+                return idMatch || memberMatch || varietyMatch || stageMatch;
+              })
+              .map(f => {
+                const isSelected = selectedFieldId === f.id;
+                return (
+                  <TouchableOpacity
+                    key={f.id}
+                    onPress={() => {
+                      setSelectedFieldId(f.id);
+                      setShowPlotPickerModal(false);
+                    }}
+                    style={{
+                      backgroundColor: '#fff',
+                      borderRadius: RADIUS.md,
+                      padding: 14,
+                      borderWidth: 1.5,
+                      borderColor: isSelected ? COLORS.primary : COLORS.border,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      ...SHADOW.xs
+                    }}
+                  >
+                    <View style={{ gap: 4, flex: 1, marginRight: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{ fontSize: 13.5, fontWeight: '800', color: isSelected ? COLORS.primary : COLORS.text }}>
+                          {f.id}
+                        </Text>
+                        <View style={{ backgroundColor: '#F0FDF4', paddingHorizontal: 6, paddingVertical: 2, borderRadius: RADIUS.xs }}>
+                          <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#16A34A' }}>
+                            {Number(f.ha || 1.5).toFixed(1)} Ha
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: COLORS.textSecondary }}>
+                        Member: {f.member || 'Assigned Farmer'}
+                      </Text>
+                      {f.stage && (
+                        <Text style={{ fontSize: 10.5, color: COLORS.textMuted }}>
+                          Stage: {f.stage} {f.variety ? `· ${f.variety}` : ''}
+                        </Text>
+                      )}
+                    </View>
+                    {isSelected ? (
+                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                    ) : (
+                      <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
           </ScrollView>
         </SafeAreaView>
       </Modal>

@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 // HUGPONG — Farm Manager Operations Workspace
-// Role: Farm Manager (Jose Reyes · Nacayao Block Farm A)
+// Role: Farm Manager (Jose Reyes · Nacayao Block Farm)
 // ══════════════════════════════════════════════════════════════
 
 console.log('[HUGPONG] Initializing Farm Manager workspace...');

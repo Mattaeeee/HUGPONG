@@ -26,7 +26,7 @@ router.get('/', async (req, res) => {
 
 // ── POST /api/fields (Managers & Admins) ──────────────────────
 router.post('/', requireAuth, requireRole(['farm manager', 'super admin', 'admin']), async (req, res) => {
-  const { id, member, ha, stage, blockFarm, customStages } = req.body;
+  const { id, memberId, blockFarmId, member, ha, stage, blockFarm, customStages } = req.body;
 
   if (!id) {
     return res.status(400).json({ success: false, error: 'Field ID is required.' });
@@ -34,10 +34,10 @@ router.post('/', requireAuth, requireRole(['farm manager', 'super admin', 'admin
 
   const fieldPayload = {
     id,
-    member: member || 'Unassigned',
+    blockFarmId: blockFarmId || (blockFarm ? 'BLK-NCY-01' : 'BLK-NCY-01'),
+    memberId: memberId || '04000001',
     ha: Number(ha) || 1.5,
     stage: stage || 'Pre-Planting & Land Preparation',
-    blockFarm: blockFarm || 'Nacayao Block Farm A',
     customStages: customStages || [],
     synced: true,
     lastSync: 'Just now',

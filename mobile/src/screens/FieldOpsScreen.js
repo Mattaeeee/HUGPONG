@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
-import { subscribe, getCurrentSession, setSynced, setSession, updateSessionFieldId, getIsSynced, MOCK_ASSIGNMENT_REQUESTS, resolveAssignmentRequest, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS, notifyDataUpdate, SRA_PRICE_HISTORY, addSRAPrice, MOCK_MANAGERS, updateFieldCustomStages, getMemberSyncHealth, performMobileSync, SRA_OPERATIONS_CATALOGUE, SRA_BENCHMARKS, getFieldCustomOperations, saveFieldCustomOperations, MOCK_AUDIT_HISTORY } from '../data/dataStore';
+import { subscribe, getCurrentSession, setSynced, setSession, updateSessionFieldId, getIsSynced, MOCK_ASSIGNMENT_REQUESTS, resolveAssignmentRequest, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS, notifyDataUpdate, SRA_PRICE_HISTORY, addSRAPrice, MOCK_MANAGERS, updateFieldCustomStages, getMemberSyncHealth, performMobileSync, SRA_OPERATIONS_CATALOGUE, getFieldCustomOperations, saveFieldCustomOperations, MOCK_AUDIT_HISTORY, blockFarms, users, resolveFieldBlockFarm, resolveFieldMember } from '../data/dataStore';
 import { enqueueOutboxItem, generateLogId, generateDraftId, generateSubItemId, generateCustomOpId } from '../services/syncEngine';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
@@ -2365,7 +2365,9 @@ export default function FieldOpsScreen({ navigation, route }) {
 
             {/* Farm Selector */}
             {(() => {
-              const availableFarms = ['All Block Farms', ...new Set(MOCK_FIELDS.map(f => f.blockFarm || 'Nacayao Block Farm A'))];
+              const availableFarms = blockFarms.length > 0
+                ? ['All Block Farms', ...blockFarms.map(bf => bf.name)]
+                : ['All Block Farms', ...new Set(MOCK_FIELDS.map(f => f.blockFarm || resolveFieldBlockFarm(f)))];
 
               return (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, marginBottom: SPACING.md }}>
@@ -2374,12 +2376,12 @@ export default function FieldOpsScreen({ navigation, route }) {
                       key={farm}
                       style={{
                         paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
-                        backgroundColor: selectedFarm === farm ? COLORS.primary : COLORS.background,
-                        borderWidth: 1, borderColor: selectedFarm === farm ? COLORS.primary : COLORS.border
+                        backgroundColor: (selectedFarm === farm || (selectedFarm === 'All' && farm === 'All Block Farms')) ? COLORS.primary : COLORS.background,
+                        borderWidth: 1, borderColor: (selectedFarm === farm || (selectedFarm === 'All' && farm === 'All Block Farms')) ? COLORS.primary : COLORS.border
                       }}
-                      onPress={() => setSelectedFarm(farm)}
+                      onPress={() => setSelectedFarm(farm === 'All Block Farms' ? 'All' : farm)}
                     >
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: selectedFarm === farm ? '#fff' : COLORS.text }}>{farm}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: (selectedFarm === farm || (selectedFarm === 'All' && farm === 'All Block Farms')) ? '#fff' : COLORS.text }}>{farm}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -2390,7 +2392,9 @@ export default function FieldOpsScreen({ navigation, route }) {
               <View style={s.receiptHeader}>
                 <View>
                   <Text style={s.receiptTitle}>Descriptive Summary</Text>
-                  <Text style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: '600', marginTop: 2 }}>{selectedFarm}</Text>
+                  <Text style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: '600', marginTop: 2 }}>
+                    {selectedFarm === 'All' ? 'All District Block Farms' : selectedFarm}
+                  </Text>
                 </View>
                 <TouchableOpacity 
                   onPress={() => navigation.navigate('Analytics', { blockFarm: selectedFarm })}
@@ -2403,15 +2407,17 @@ export default function FieldOpsScreen({ navigation, route }) {
               <View style={s.receiptDivider} />
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, padding: SPACING.sm }}>
                 {(() => {
-                  const isAll = selectedFarm === 'All Block Farms';
-                  const farmFields = isAll ? MOCK_FIELDS : MOCK_FIELDS.filter(f => (f.blockFarm || 'Nacayao Block Farm A') === selectedFarm);
+                  const isAll = selectedFarm === 'All' || selectedFarm === 'All Block Farms';
+                  const farmFields = isAll 
+                    ? MOCK_FIELDS 
+                    : MOCK_FIELDS.filter(f => (f.blockFarm || resolveFieldBlockFarm(f)) === selectedFarm || f.blockFarmId === selectedFarm);
                   const farmFieldIds = farmFields.map(f => f.id);
                   const farmLogs = MOCK_LOGS.filter(l => farmFieldIds.includes(l.fieldId));
 
                   const totalHa = farmFields.reduce((sum, f) => sum + (parseFloat(f.ha) || 1.5), 0);
-                  const uniqueFarms = isAll ? new Set(MOCK_FIELDS.map(f => f.blockFarm || 'Nacayao Block Farm A')).size : 1;
-                  const uniqueMembers = new Set(farmFields.map(f => f.member).filter(Boolean)).size || farmFields.length;
-                  const fManagers = isAll ? MOCK_MANAGERS : MOCK_MANAGERS.filter(m => m.blockFarm === selectedFarm);
+                  const uniqueFarms = isAll ? (blockFarms.length || 1) : 1;
+                  const uniqueMembers = new Set(farmFields.map(f => f.member || f.memberName || resolveFieldMember(f)).filter(Boolean)).size || farmFields.length;
+                  const fManagers = isAll ? (users.filter(u => u.role === 'Farm Manager').length || 1) : 1;
                   const totalCost = farmLogs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
                   const costPerHa = totalHa > 0 ? Math.round(totalCost / totalHa) : 0;
                   const compiledLogsCount = farmLogs.length;
@@ -3263,7 +3269,7 @@ export default function FieldOpsScreen({ navigation, route }) {
                     month: 0,
                     synced: false,
                     lastSync: 'Just now',
-                    blockFarm: session.farm || 'Nacayao Block Farm A'
+                    blockFarm: session.farm || 'Nacayao Block Farm'
                   };
                   MOCK_FIELDS.push(newField);
                   setSelectedField(newField);

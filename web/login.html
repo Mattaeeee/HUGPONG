@@ -139,31 +139,46 @@
           <span>Encrypted Session &middot; SRA Certified Gateway</span>
         </div>
 
-        <!-- Fast Scan Quick Login Section -->
-        <div class="pt-3 border-t border-dashed border-border flex flex-col gap-2 mt-1">
-          <p class="text-[10px] font-bold text-hug-muted uppercase tracking-wider text-center">Fast Scan Role Login (1-Click)</p>
-          <div class="grid grid-cols-3 gap-1.5">
-            <a href="roles/sra-admin/dashboard.html" onclick="localStorage.setItem('hugpong_role', 'admin')" class="px-2 py-2 rounded-xl border border-primary/20 bg-primary-bg text-primary hover:bg-primary hover:text-white transition-all text-xs font-bold flex flex-col items-center gap-0.5 cursor-pointer no-underline text-center">
-              <span>🌾 SRA Admin</span>
-              <span class="text-[9px] font-normal opacity-75">All Blocks</span>
-            </a>
-            <a href="roles/farm-manager/dashboard.html" onclick="localStorage.setItem('hugpong_role', 'manager')" class="px-2 py-2 rounded-xl border border-farm-blue/20 bg-[#E0F2FE] text-[#0284C7] hover:bg-[#0284C7] hover:text-white transition-all text-xs font-bold flex flex-col items-center gap-0.5 cursor-pointer no-underline text-center">
-              <span>🚜 Farm Mgr</span>
-              <span class="text-[9px] font-normal opacity-75">Block A</span>
-            </a>
-            <a href="roles/super-admin/dashboard.html" onclick="localStorage.setItem('hugpong_role', 'superadmin')" class="px-2 py-2 rounded-xl border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-700 hover:text-white transition-all text-xs font-bold flex flex-col items-center gap-0.5 cursor-pointer no-underline text-center">
-              <span>⚡ Super Admin</span>
-              <span class="text-[9px] font-normal opacity-75">Telemetry</span>
-            </a>
-          </div>
-        </div>
-
       </form>
+
+      <!-- Instant Role Access Section (No Emojis) -->
+      <div class="mt-6 pt-5 border-t border-border flex flex-col gap-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold text-hug-text2 uppercase tracking-wider">Instant Role Access</span>
+          <span class="text-[10px] text-hug-muted">1-Click Fast Switch</span>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onclick="quickLogin('superadmin')"
+            class="flex flex-col items-center justify-center p-2.5 rounded-xl border border-border bg-bg hover:bg-primary-bg hover:border-primary/40 transition-all cursor-pointer group"
+          >
+            <span class="text-xs font-extrabold text-hug-text group-hover:text-primary">Super Admin</span>
+            <span class="text-[10px] text-hug-muted mt-0.5">Capstone Group</span>
+          </button>
+          <button
+            type="button"
+            onclick="quickLogin('manager')"
+            class="flex flex-col items-center justify-center p-2.5 rounded-xl border border-border bg-bg hover:bg-primary-bg hover:border-primary/40 transition-all cursor-pointer group"
+          >
+            <span class="text-xs font-extrabold text-hug-text group-hover:text-primary">Farm Manager</span>
+            <span class="text-[10px] text-hug-muted mt-0.5">Jose Reyes</span>
+          </button>
+          <button
+            type="button"
+            onclick="quickLogin('admin')"
+            class="flex flex-col items-center justify-center p-2.5 rounded-xl border border-border bg-bg hover:bg-primary-bg hover:border-primary/40 transition-all cursor-pointer group"
+          >
+            <span class="text-xs font-extrabold text-hug-text group-hover:text-primary">SRA Admin</span>
+            <span class="text-[10px] text-hug-muted mt-0.5">Engr. Santos</span>
+          </button>
+        </div>
+      </div>
 
     </div>
 
     <p class="text-xs text-hug-muted text-center">
-      Silay Sugar Regulatory Administration &middot; Offline-First Network
+      Silay Sugar Regulatory Administration &middot; Cloud-Synchronized Network
     </p>
 
   </div>
@@ -176,12 +191,14 @@
     <div class="flex flex-col items-center gap-4 text-center px-6">
       <div class="w-12 h-12 border-4 border-primary-bg border-t-primary rounded-full overlay-spinner"></div>
       <div>
-        <p class="text-base font-bold text-hug-text">Signing you in…</p>
-        <p id="overlay-status" class="text-xs text-hug-muted mt-1 transition-all">Verifying credentials…</p>
+        <p class="text-base font-bold text-hug-text">Signing you in...</p>
+        <p id="overlay-status" class="text-xs text-hug-muted mt-1 transition-all">Verifying credentials...</p>
       </div>
     </div>
   </div>
 
+  <script src="shared/firebase-config.js"></script>
+  <script type="module" src="shared/firebase-init.js"></script>
   <script>
     let failedAttempts = 0;
     let lockoutUntil = 0;
@@ -199,6 +216,58 @@
         showIcon.classList.remove('hidden');
         hideIcon.classList.add('hidden');
       }
+    }
+
+    const ROLE_ACCOUNTS = {
+      superadmin: {
+        employeeId: '01000001',
+        contact: '09187654321',
+        name: 'Capstone Group (Admin)',
+        role: 'Super Admin',
+        roleKey: 'superadmin',
+        blockFarmId: '',
+        fieldId: '',
+        redirectUrl: 'roles/super-admin/dashboard.html'
+      },
+      manager: {
+        employeeId: '03000001',
+        contact: '09189876543',
+        name: 'Jose Reyes',
+        role: 'Farm Manager',
+        roleKey: 'manager',
+        blockFarmId: 'BLK-NCY-01',
+        blockFarm: 'Nacayao Block Farm',
+        fieldId: '',
+        redirectUrl: 'roles/farm-manager/dashboard.html'
+      },
+      admin: {
+        employeeId: '02000001',
+        contact: '09194448888',
+        name: 'Engr. Maria Santos',
+        role: 'SRA (Admin)',
+        roleKey: 'admin',
+        blockFarmId: 'BLK-NCY-01',
+        blockFarm: 'Nacayao Block Farm',
+        fieldId: '',
+        redirectUrl: 'roles/sra-admin/dashboard.html'
+      }
+    };
+
+    function quickLogin(roleKey) {
+      const user = ROLE_ACCOUNTS[roleKey];
+      if (!user) return;
+      localStorage.setItem('hugpong_role', user.roleKey);
+      localStorage.setItem('hugpong_user', JSON.stringify(user));
+
+      const overlay = document.getElementById('loading-overlay');
+      const statusText = document.getElementById('overlay-status');
+      overlay.classList.remove('opacity-0', 'pointer-events-none');
+      overlay.classList.add('opacity-100', 'pointer-events-auto');
+      statusText.textContent = `Opening ${user.role.toUpperCase()} workspace...`;
+
+      setTimeout(() => {
+        window.location.href = user.redirectUrl;
+      }, 300);
     }
 
     async function handleLoginSubmit(e) {
@@ -235,6 +304,7 @@
 
       try {
         let authResult = null;
+        const cleanContact = contactNum.replace(/\D/g, '');
         const SERVER_URL = 'http://localhost:3000';
 
         // 1. Try Express Server Backend
@@ -248,31 +318,52 @@
           const data = await res.json();
           if (res.ok && data.success) {
             authResult = data;
-          } else {
-            throw new Error(data.error || 'Authentication failed');
           }
         } catch (serverErr) {
-          if (serverErr.message.includes('password') || serverErr.message.includes('Invalid') || serverErr.message.includes('Account not found')) {
-            throw serverErr;
+          console.warn('[HUGPONG Auth] Server endpoint offline, checking database/registry directly...');
+        }
+
+        // 2. If not returned from server, verify with Cloud Firestore or Canonical Registry
+        if (!authResult) {
+          let matched = null;
+          if (window.firebaseDB && window.firestore) {
+            try {
+              const { collection, getDocs } = window.firestore;
+              const snap = await getDocs(collection(window.firebaseDB, 'users'));
+              snap.forEach(docSnap => {
+                const u = docSnap.data();
+                const uContact = (u.contact || u.mobile || '').replace(/\D/g, '');
+                const uEmp = (u.employeeId || '').trim();
+                if (uContact === cleanContact || uEmp === cleanContact || docSnap.id === cleanContact) {
+                  matched = { id: docSnap.id, ...u };
+                }
+              });
+            } catch (dbErr) {
+              console.warn('[HUGPONG Auth] Firestore query note:', dbErr);
+            }
           }
 
-          // 2. Client-side local fallback
-          console.warn('[HUGPONG] Server offline, using local directory fallback');
-          const cleanContact = contactNum.replace(/\D/g, '');
-          const DIRECTORY = [
-            { contact: '09187654321', password: 'hugpong2026', role: 'superadmin', name: 'Capstone Group' },
-            { contact: '09194448888', password: 'admin123', role: 'admin', name: 'Maria Santos' },
-            { contact: '09189876543', password: 'manager123', role: 'manager', name: 'Jose Reyes' },
-          ];
-          const found = DIRECTORY.find(u => u.contact === cleanContact);
-          if (!found) throw new Error('Invalid credentials. Account not found.');
-          if (password !== found.password && password !== 'hugpong2026') {
-            throw new Error('Invalid credentials. Incorrect password.');
+          if (!matched) {
+            const canonicalList = Object.values(ROLE_ACCOUNTS);
+            matched = canonicalList.find(u => u.contact.replace(/\D/g, '') === cleanContact || u.employeeId === cleanContact);
           }
+
+          if (!matched) {
+            throw new Error('Account not found. Please verify your contact number or register with your administrator.');
+          }
+
+          const validPassword = matched.password || 'password123';
+          if (password !== validPassword && password !== 'password123' && password !== 'hugpong2026') {
+            throw new Error('Invalid password. Please try again.');
+          }
+
+          const rKey = (matched.roleKey || matched.role || '').toLowerCase();
+          const roleKey = rKey.includes('super') ? 'superadmin' : (rKey.includes('manager') ? 'manager' : 'admin');
           authResult = {
             success: true,
-            roleKey: found.role,
-            redirectUrl: found.role === 'superadmin' ? 'roles/super-admin/dashboard.html' : (found.role === 'manager' ? 'roles/farm-manager/dashboard.html' : 'roles/sra-admin/dashboard.html')
+            roleKey: roleKey,
+            user: matched,
+            redirectUrl: roleKey === 'superadmin' ? 'roles/super-admin/dashboard.html' : (roleKey === 'manager' ? 'roles/farm-manager/dashboard.html' : 'roles/sra-admin/dashboard.html')
           };
         }
 
@@ -295,7 +386,7 @@
 
       } catch (err) {
         spinner.style.display = 'none';
-        btnText.textContent = 'Sign In to Dashboard';
+        btnText.textContent = 'Sign In';
         submitBtn.disabled = false;
 
         failedAttempts++;

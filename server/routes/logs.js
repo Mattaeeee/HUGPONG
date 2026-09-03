@@ -24,6 +24,32 @@ router.get('/', async (req, res) => {
   }
 });
 
+// ── POST /api/logs (Create/Submit Operation Log) ───────────
+router.post('/', async (req, res) => {
+  const logData = req.body;
+  if (!logData || !logData.fieldId) {
+    return res.status(400).json({ success: false, error: 'Field ID and log details are required.' });
+  }
+
+  const logId = logData.id || `LOG-${Date.now()}`;
+  const logPayload = {
+    ...logData,
+    id: logId,
+    status: logData.status || 'Recorded',
+    createdAt: logData.createdAt || new Date().toISOString()
+  };
+
+  try {
+    if (db) {
+      await db.collection('operation_logs').doc(logId).set(logPayload, { merge: true });
+    }
+    console.log(`[HUGPONG Logs] Log Created: ${logId} for Field ${logPayload.fieldId}`);
+    return res.json({ success: true, data: logPayload });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ── POST /api/logs/certify (Managers & SRA Admins) ───────────
 router.post('/certify', requireAuth, requireRole(['farm manager', 'sra (admin)', 'super admin']), async (req, res) => {
   const { logId, status, notes } = req.body;

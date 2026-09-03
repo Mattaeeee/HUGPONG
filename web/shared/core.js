@@ -1,102 +1,147 @@
 // ── GET & SET LOCAL STORAGE DATABASE ─────────────────────
 let _cloudSyncDebounceTimer = null;
 
-function getDB() {
-  const data = localStorage.getItem('hugpong_db');
-  if (!data) {
-    localStorage.setItem('hugpong_db', JSON.stringify(INITIAL_DATABASE));
+function getCanonicalInitialDB() {
+  if (typeof window !== 'undefined' && window.INITIAL_DATABASE) {
+    return window.INITIAL_DATABASE;
+  }
+  if (typeof INITIAL_DATABASE !== 'undefined') {
     return INITIAL_DATABASE;
   }
-  let parsed = INITIAL_DATABASE;
+  return {
+    blockFarms: [{ id: 'BLK-NCY-01', code: 'BLK-NCY', name: 'Nacayao Block Farm', location: 'Silay City, Negros Occidental', farmManagerId: '03000001', farmManagerName: 'Jose Reyes', declaredHa: 15.25, activePlots: 5 }],
+    fields: [
+      { id: 'FLD-NCY-001', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000001', member: 'Juan dela Cruz', memberName: 'Juan dela Cruz', ha: 1.5, stage: 'Pre-Planting & Land Preparation', stageNumber: 1, month: 0.5, batchMonth: 1, synced: true, lastSync: '10 mins ago', variety: 'VMC 84-524', soilType: 'Clay Loam' },
+      { id: 'FLD-NCY-002', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000002', member: 'Pedro Reyes', memberName: 'Pedro Reyes', ha: 2.5, stage: 'Planting & Crop Establishment', stageNumber: 2, month: 1.0, batchMonth: 1, synced: true, lastSync: '15 mins ago', variety: 'Phil 99-1793', soilType: 'Sandy Loam' },
+      { id: 'FLD-NCY-003', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000003', member: 'Corazon Santos', memberName: 'Corazon Santos', ha: 4.5, stage: 'Basal Nutrition & Early Care', stageNumber: 3, month: 1.5, batchMonth: 1, synced: true, lastSync: '1 hr ago', variety: 'Phil 2006-2289', soilType: 'Clay Loam' },
+      { id: 'FLD-NCY-004', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000004', member: 'Roberto Tan', memberName: 'Roberto Tan', ha: 3.5, stage: 'Cultivation & Weed Management', stageNumber: 4, month: 2.5, batchMonth: 2, synced: true, lastSync: '2 hrs ago', variety: 'VMC 84-524', soilType: 'Loam' },
+      { id: 'FLD-NCY-005', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000005', member: 'Ana Gomez', memberName: 'Ana Gomez', ha: 3.25, stage: 'Crop Maintenance & Final Hilling-Up', stageNumber: 5, month: 3.5, batchMonth: 2, synced: true, lastSync: '3 hrs ago', variety: 'Phil 99-1793', soilType: 'Clay Loam' }
+    ],
+    users: [
+      { employeeId: '01000001', contact: '09187654321', mobile: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: '', fieldId: '', logsHandled: 256, regDate: '2026-01-01', password: 'password123' },
+      { employeeId: '01000002', contact: '09451774699', mobile: '09451774699', name: 'Project Lead', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 120, regDate: '2026-01-01', password: 'password123' },
+      { employeeId: '02000001', contact: '09194448888', mobile: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', roleKey: 'admin', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 84, regDate: '2026-01-15', password: 'password123' },
+      { employeeId: '03000001', contact: '09189876543', mobile: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', roleKey: 'manager', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 168, regDate: '2026-02-01', password: 'password123' },
+      { employeeId: '04000001', contact: '09171234567', mobile: '09171234567', name: 'Juan dela Cruz', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', logsHandled: 24, regDate: '2026-02-10', password: 'password123' },
+      { employeeId: '04000002', contact: '09179876543', mobile: '09179876543', name: 'Pedro Reyes', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-002', logsHandled: 18, regDate: '2026-02-12', password: 'password123' },
+      { employeeId: '04000003', contact: '09194448889', mobile: '09194448889', name: 'Corazon Santos', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-003', logsHandled: 22, regDate: '2026-02-14', password: 'password123' },
+      { employeeId: '04000004', contact: '09987654321', mobile: '09987654321', name: 'Roberto Tan', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-004', logsHandled: 15, regDate: '2026-02-20', password: 'password123' },
+      { employeeId: '04000005', contact: '09555444333', mobile: '09555444333', name: 'Ana Gomez', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-005', logsHandled: 9, regDate: '2026-03-01', password: 'password123' }
+    ],
+    logs: [
+      { id: 'LOG-2026-NCY-001-001', fieldId: 'FLD-NCY-001', stageNumber: 1, stageName: 'Stage 1: Pre-Planting & Land Preparation', operationName: 'Land Preparation', activity: 'Land Preparation (Disc Plowing & Furrowing)', category: 'prep', cost: 18000, totalCost: 18000, costPerHa: 12000, hectares: '1.5', people: '2', date: '2026-05-02', status: 'Recorded', loggedBy: 'Juan dela Cruz (Member)', subItems: [{ id: 'SI-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 }, { id: 'SI-001-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 }, { id: 'SI-001-3', description: 'Furrowing / Tudling', qty: 1.5, unit: 'ha', unitCost: 3000, subTotal: 4500 }] },
+      { id: 'LOG-2026-NCY-002-001', fieldId: 'FLD-NCY-002', stageNumber: 2, stageName: 'Stage 2: Planting & Crop Establishment', operationName: 'Cost of Planting Material (Seedcane acquisition)', activity: 'Cost of Planting Material (Patdan)', category: 'plant', cost: 37500, totalCost: 37500, costPerHa: 15000, hectares: '2.5', people: '4', date: '2026-05-08', status: 'Recorded', loggedBy: 'Pedro Reyes (Member)', subItems: [{ id: 'SI-002-1', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }] },
+      { id: 'LOG-2026-NCY-003-001', fieldId: 'FLD-NCY-003', stageNumber: 3, stageName: 'Stage 3: Basal Nutrition & Early Care', operationName: 'Basal Fertilizer Application', activity: 'Basal Fertilizer (Urea + Complete + Potash)', category: 'fert', cost: 71100, totalCost: 71100, costPerHa: 15800, hectares: '4.5', people: '6', date: '2026-05-12', status: 'Recorded', loggedBy: 'Corazon Santos (Member)', subItems: [{ id: 'SI-003-1', description: '46-00-00 Urea Application', qty: 9, unit: 'bag', unitCost: 1600, subTotal: 14400 }, { id: 'SI-003-2', description: '18-46-00 DAP / Complete', qty: 13.5, unit: 'bag', unitCost: 2500, subTotal: 33750 }, { id: 'SI-003-3', description: '00-00-60 Potash (MOP)', qty: 9, unit: 'bag', unitCost: 2200, subTotal: 19800 }, { id: 'SI-003-4', description: 'Fertilizer Application Labor', qty: 31.5, unit: 'bag', unitCost: 100, subTotal: 3150 }] },
+      { id: 'LOG-2026-NCY-004-001', fieldId: 'FLD-NCY-004', stageNumber: 4, stageName: 'Stage 4: Cultivation & Weed Management', operationName: 'Cultivation (Off-barring & On-barring)', activity: 'Pahubas & Off-barring Pass', category: 'weed', cost: 10500, totalCost: 10500, costPerHa: 3000, hectares: '3.5', people: '3', date: '2026-05-18', status: 'Recorded', loggedBy: 'Roberto Tan (Member)', subItems: [{ id: 'SI-004-1', description: '1st Off-barring (Pahubas)', qty: 7, unit: 'pass', unitCost: 750, subTotal: 5250 }, { id: 'SI-004-2', description: '2nd Off-barring (Pahubas)', qty: 7, unit: 'pass', unitCost: 750, subTotal: 5250 }] },
+      { id: 'LOG-2026-NCY-005-001', fieldId: 'FLD-NCY-005', stageNumber: 5, stageName: 'Stage 5: Crop Maintenance & Final Hilling-Up', operationName: 'Final Hilling-up (Pasungkal)', activity: 'Pasungkal Tractor Pass', category: 'maint', cost: 8125, totalCost: 8125, costPerHa: 2500, hectares: '3.25', people: '2', date: '2026-05-22', status: 'Recorded', loggedBy: 'Ana Gomez (Member)', subItems: [{ id: 'SI-005-1', description: 'Final Hilling-Up / Pasungkal Pass', qty: 3.25, unit: 'ha', unitCost: 2500, subTotal: 8125 }] }
+    ],
+    priceHistory: [
+      { id: 'PRC-2026-W04-MAY', week: 'Week 4 May', price: 2950, molasses: 4400, date: '2026-05-21', change: 70, molassesChange: 100, source: 'SRA Official Circular #105' },
+      { id: 'PRC-2026-W03-MAY', week: 'Week 3 May', price: 2880, molasses: 4300, date: '2026-05-14', change: 80, molassesChange: 50, source: 'SRA Official Circular #104' },
+      { id: 'PRC-2026-W02-MAY', week: 'Week 2 May', price: 2800, molasses: 4250, date: '2026-05-07', change: 50, molassesChange: 50, source: 'SRA Official Circular #103' },
+      { id: 'PRC-2026-W01-MAY', week: 'Week 1 May', price: 2750, molasses: 4200, date: '2026-04-30', change: 50, molassesChange: 0, source: 'SRA Official Circular #102' },
+      { id: 'PRC-2026-W04-APR', week: 'Week 4 Apr', price: 2700, molasses: 4200, date: '2026-04-23', change: 50, molassesChange: 0, source: 'SRA Official Circular #99' }
+    ],
+    supportTickets: [],
+    systemHistory: [],
+    auditReports: [],
+    syncOperations: []
+  };
+}
+
+function getDB() {
+  const CURRENT_DB_VERSION = '2026_09_03_authoritative_firestore_v6';
+  const savedVersion = localStorage.getItem('hugpong_db_version');
+  const data = localStorage.getItem('hugpong_db');
+  const canonical = getCanonicalInitialDB();
+
+  // If local database version is outdated or contains legacy mock records, force wipe cache
+  if (savedVersion !== CURRENT_DB_VERSION || !data || data.includes('Mario Dimagiba') || data.includes('Elena Batongbakal') || data.includes('HIST-REG-') || data.includes('FLD-KTR-') || data.includes('Block Farm B') || data.includes('Block Farm C') || data.includes('qwewqewqe')) {
+    localStorage.setItem('hugpong_db_version', CURRENT_DB_VERSION);
+    const freshDb = JSON.parse(JSON.stringify(canonical));
+    localStorage.setItem('hugpong_db', JSON.stringify(freshDb));
+    return freshDb;
+  }
+
+  let parsed = canonical;
   try {
     parsed = JSON.parse(data);
   } catch (e) {
-    localStorage.setItem('hugpong_db', JSON.stringify(INITIAL_DATABASE));
-    return INITIAL_DATABASE;
+    localStorage.setItem('hugpong_db', JSON.stringify(canonical));
+    return canonical;
   }
 
   let updated = false;
-  if (!parsed.fields || !Array.isArray(parsed.fields) || parsed.fields.length === 0) {
-    parsed.fields = JSON.parse(JSON.stringify(INITIAL_DATABASE.fields));
+  if (!parsed.blockFarms || !Array.isArray(parsed.blockFarms)) {
+    parsed.blockFarms = [];
     updated = true;
-  } else {
-    // 1. Purge legacy FLD-NCY duplicates and outdated mock plots (FLD-KTR-006)
-    const prevFieldCount = parsed.fields.length;
-    parsed.fields = parsed.fields.filter(f => !f.id.startsWith('FLD-NCY') && f.id !== 'FLD-KTR-006');
-    if (parsed.fields.length !== prevFieldCount) {
+  }
+  if (!parsed.fields || !Array.isArray(parsed.fields)) {
+    parsed.fields = [];
+    updated = true;
+  }
+  if (!parsed.logs || !Array.isArray(parsed.logs)) {
+    parsed.logs = [];
+    updated = true;
+  }
+  if (!parsed.users || !Array.isArray(parsed.users)) {
+    parsed.users = [];
+    updated = true;
+  }
+  if (!parsed.pendingUsers || !Array.isArray(parsed.pendingUsers)) {
+    parsed.pendingUsers = [];
+    updated = true;
+  }
+  if (!parsed.priceHistory || !Array.isArray(parsed.priceHistory)) {
+    parsed.priceHistory = [];
+    updated = true;
+  }
+  if (!parsed.systemHistory || !Array.isArray(parsed.systemHistory)) {
+    parsed.systemHistory = [];
+    updated = true;
+  }
+  if (!parsed.registryHistory || !Array.isArray(parsed.registryHistory)) {
+    parsed.registryHistory = [];
+    updated = true;
+  }
+  if (!parsed.supportTickets || !Array.isArray(parsed.supportTickets)) {
+    parsed.supportTickets = [];
+    updated = true;
+  }
+  if (!parsed.terminalDiagnostics || !Array.isArray(parsed.terminalDiagnostics)) {
+    parsed.terminalDiagnostics = [];
+    updated = true;
+  }
+
+  // Filter out any lingering mock fields not in canonical FLD-NCY set
+  if (Array.isArray(parsed.fields)) {
+    const beforeCount = parsed.fields.length;
+    parsed.fields = parsed.fields.filter(f => f.id && !f.id.startsWith('FLD-KTR') && !f.id.startsWith('FLD-VIC') && !f.id.startsWith('FLD-TLS') && !f.id.startsWith('FLD-MNP'));
+    if (parsed.fields.length !== beforeCount) updated = true;
+  }
+  if (Array.isArray(parsed.blockFarms)) {
+    const beforeBF = parsed.blockFarms.length;
+    parsed.blockFarms = parsed.blockFarms.filter(b => b.id && b.id !== 'BLK-VIC-01' && b.id !== 'BLK-TLS-01' && b.id !== 'BLK-MNP-01' && !b.name?.includes('Block Farm B') && !b.name?.includes('Block Farm C') && !b.name?.includes('Block Farm D'));
+    if (parsed.blockFarms.length !== beforeBF) updated = true;
+  }
+
+  // Remove duplicates by field ID if any exist
+  if (parsed.fields.length > 0) {
+    const uniqueFields = [];
+    const seenFieldIds = new Set();
+    parsed.fields.forEach(f => {
+      if (f.id && !seenFieldIds.has(f.id)) {
+        seenFieldIds.add(f.id);
+        uniqueFields.push(f);
+      }
+    });
+    if (uniqueFields.length !== parsed.fields.length) {
+      parsed.fields = uniqueFields;
       updated = true;
     }
-
-    // 2. Normalize canonical Nacayao Block Farm A plots (FLD-NCY-001 through 005)
-    const canonicalMembers = {
-      'FLD-NCY-001': { member: 'Juan dela Cruz', ha: 1.50, blockFarm: 'Nacayao Block Farm A', defaultStage: 'Pre-Planting & Land Preparation' },
-      'FLD-NCY-002': { member: 'Jose Reyes', ha: 2.50, blockFarm: 'Nacayao Block Farm A', defaultStage: 'Planting & Crop Establishment' },
-      'FLD-NCY-003': { member: 'Maria Santos', ha: 4.50, blockFarm: 'Nacayao Block Farm A', defaultStage: 'Basal Nutrition & Early Care' },
-      'FLD-NCY-004': { member: 'Pedro Reyes', ha: 3.50, blockFarm: 'Nacayao Block Farm A', defaultStage: 'Cultivation & Weed Management' },
-      'FLD-NCY-005': { member: 'Ana Gomez', ha: 3.25, blockFarm: 'Nacayao Block Farm A', defaultStage: 'Crop Maintenance & Final Hilling-Up' },
-    };
-
-    parsed.fields.forEach(f => {
-      if (canonicalMembers[f.id]) {
-        const can = canonicalMembers[f.id];
-        if (f.member !== can.member || Number(f.ha) !== can.ha || f.blockFarm !== can.blockFarm) {
-          f.member = can.member;
-          f.ha = can.ha;
-          f.blockFarm = can.blockFarm;
-          updated = true;
-        }
-        // Normalize 8-stage dummy labels or outdated stage names
-        if (!f.stage || f.stage.includes('/8') || f.stage.includes('Stage 8') || f.stage === 'Fertilization Stage 2' || f.stage === 'Fertilization Stage 1' || f.stage === 'Off-barring & Hilling-up') {
-          f.stage = can.defaultStage;
-          updated = true;
-        }
-      }
-    });
-
-    // 3. Ensure all canonical initial fields exist
-    INITIAL_DATABASE.fields.forEach(initF => {
-      if (!parsed.fields.some(f => f.id === initF.id)) {
-        parsed.fields.push(JSON.parse(JSON.stringify(initF)));
-        updated = true;
-      }
-    });
-  }
-  if (!parsed.systemHistory || !Array.isArray(parsed.systemHistory) || parsed.systemHistory.length === 0) {
-    parsed.systemHistory = JSON.parse(JSON.stringify(INITIAL_DATABASE.systemHistory));
-    updated = true;
-  }
-  if (!parsed.registryHistory || !Array.isArray(parsed.registryHistory) || parsed.registryHistory.length === 0) {
-    parsed.registryHistory = JSON.parse(JSON.stringify(INITIAL_DATABASE.registryHistory));
-    updated = true;
-  }
-  if (!parsed.supportTickets || !Array.isArray(parsed.supportTickets) || parsed.supportTickets.length === 0) {
-    parsed.supportTickets = JSON.parse(JSON.stringify(INITIAL_DATABASE.supportTickets));
-    updated = true;
-  } else {
-    parsed.supportTickets.forEach(t => {
-      if (t.blockFarm && (t.blockFarm.includes('District VII') || t.blockFarm === 'District VII')) {
-        t.blockFarm = 'Silay Sugar Regulatory Administration';
-        updated = true;
-      }
-      if (t.author && t.author.includes('Juan dela Cruz (SRA Admin)')) {
-        t.author = 'Maria Santos (SRA Admin)';
-        updated = true;
-      }
-    });
-  }
-  if (!parsed.terminalDiagnostics || !Array.isArray(parsed.terminalDiagnostics) || parsed.terminalDiagnostics.length === 0) {
-    parsed.terminalDiagnostics = JSON.parse(JSON.stringify(INITIAL_DATABASE.terminalDiagnostics));
-    updated = true;
   }
 
-  // Normalize legacy status labels & merge initial history
   if (Array.isArray(parsed.systemHistory)) {
-    INITIAL_DATABASE.systemHistory.forEach(initH => {
-      if (!parsed.systemHistory.some(h => h.id === initH.id)) {
-        parsed.systemHistory.unshift(initH);
-        updated = true;
-      }
-    });
     parsed.systemHistory.forEach(h => {
       if (h.status === 'Completed') {
         h.status = 'Recorded';
@@ -133,16 +178,14 @@ function getDB() {
         l.status = 'Recorded';
         updated = true;
       }
-      if (l.fieldId && l.fieldId.startsWith('FLD-NCY')) {
-        l.fieldId = l.fieldId.replace('FLD-NCY-001', 'FLD-KTR-001')
-                             .replace('FLD-NCY-002', 'FLD-KTR-002')
-                             .replace('FLD-NCY-003', 'FLD-KTR-003')
-                             .replace('FLD-NCY-004', 'FLD-KTR-004')
-                             .replace('FLD-NCY-005', 'FLD-KTR-005');
-        updated = true;
-      }
-      if (l.fieldId === 'FLD-KTR-006') {
-        l.fieldId = 'FLD-KTR-004';
+      if (l.fieldId && l.fieldId.startsWith('FLD-KTR')) {
+        // Remap legacy FLD-KTR IDs to canonical FLD-NCY IDs
+        l.fieldId = l.fieldId
+          .replace('FLD-KTR-001', 'FLD-NCY-001')
+          .replace('FLD-KTR-002', 'FLD-NCY-002')
+          .replace('FLD-KTR-003', 'FLD-NCY-003')
+          .replace('FLD-KTR-004', 'FLD-NCY-004')
+          .replace('FLD-KTR-005', 'FLD-NCY-005');
         updated = true;
       }
       if (l.task === 'Chemical spray' || l.activity === 'Chemical spray') {
@@ -173,7 +216,7 @@ function getDB() {
   return parsed;
 }
 
-function saveDB(db, syncToCloud = false) {
+function saveDB(db, syncToCloud = true) {
   localStorage.setItem('hugpong_db', JSON.stringify(db));
 
   if (syncToCloud && window.firebaseDB && window.firestore) {
@@ -187,20 +230,74 @@ function saveDB(db, syncToCloud = false) {
 }
 
 async function syncLocalChangesToFirestore(db) {
+  if (!window.firestore || !window.firebaseDB) return;
   const { doc, setDoc } = window.firestore;
   const fDb = window.firebaseDB;
-  if (!fDb) return;
 
-  // Sync fields
+  // 1. Sync fields
   if (Array.isArray(db.fields)) {
     for (const f of db.fields) {
       if (f.id) {
-        await setDoc(doc(fDb, 'fields', f.id), { ...f, updatedAt: new Date().toISOString() }, { merge: true });
+        const payload = {
+          id: f.id,
+          blockFarmId: f.blockFarmId || 'BLK-NCY-01',
+          blockFarmName: f.blockFarmName || f.blockFarm || 'Nacayao Block Farm',
+          blockFarm: f.blockFarm || f.blockFarmName || 'Nacayao Block Farm',
+          memberId: f.memberId || f.contact || '',
+          memberName: f.memberName || f.member || 'Member',
+          member: f.member || f.memberName || 'Member',
+          ha: Number(f.ha || f.area) || 1.5,
+          stage: f.stage || 'Pre-Planting & Land Preparation',
+          stageNumber: Number(f.stageNumber) || 1,
+          month: Number(f.month) || 0.5,
+          batchMonth: Number(f.batchMonth) || 1,
+          synced: true,
+          lastSync: f.lastSync || 'Just now',
+          variety: f.variety || 'VMC 84-524',
+          soilType: f.soilType || 'Clay Loam',
+          updatedAt: new Date().toISOString()
+        };
+        await setDoc(doc(fDb, 'fields', f.id), payload, { merge: true });
       }
     }
   }
 
-  // Sync prices
+  // 2. Sync users
+  if (Array.isArray(db.users)) {
+    for (const u of db.users) {
+      const cleanContact = (u.contact || u.mobile || u.employeeId || '').replace(/\D/g, '');
+      if (cleanContact) {
+        const payload = {
+          employeeId: u.employeeId || cleanContact,
+          contact: u.contact || cleanContact,
+          mobile: u.mobile || u.contact || cleanContact,
+          name: u.name || 'User',
+          role: u.role || 'Member',
+          roleKey: u.roleKey || (u.role === 'Super Admin' ? 'superadmin' : (u.role === 'Farm Manager' ? 'manager' : (u.role === 'SRA (Admin)' ? 'admin' : 'member'))),
+          blockFarmId: u.blockFarmId || (u.blockFarm?.includes('Nacayao') ? 'BLK-NCY-01' : ''),
+          blockFarmScope: u.blockFarmScope || u.blockFarm || 'Nacayao Block Farm',
+          blockFarm: u.blockFarm || 'Nacayao Block Farm',
+          fieldId: u.fieldId || '',
+          logsHandled: Number(u.logsHandled) || 0,
+          regDate: u.regDate || new Date().toISOString().split('T')[0],
+          password: u.password || 'password123',
+          updatedAt: new Date().toISOString()
+        };
+        await setDoc(doc(fDb, 'users', cleanContact), payload, { merge: true });
+      }
+    }
+  }
+
+  // 3. Sync block farms
+  if (Array.isArray(db.blockFarms)) {
+    for (const b of db.blockFarms) {
+      if (b.id) {
+        await setDoc(doc(fDb, 'block_farms', b.id), { ...b, updatedAt: new Date().toISOString() }, { merge: true });
+      }
+    }
+  }
+
+  // 4. Sync prices
   if (Array.isArray(db.priceHistory)) {
     for (const p of db.priceHistory) {
       const pId = p.id || `PRC-${(p.date || '').replace(/\D/g, '') || Date.now()}`;
@@ -208,7 +305,7 @@ async function syncLocalChangesToFirestore(db) {
     }
   }
 
-  // Sync operation logs
+  // 5. Sync operation logs
   if (Array.isArray(db.logs)) {
     for (const l of db.logs) {
       if (l.id) {
@@ -217,7 +314,7 @@ async function syncLocalChangesToFirestore(db) {
     }
   }
 
-  // Sync support tickets
+  // 6. Sync support tickets
   if (Array.isArray(db.supportTickets)) {
     for (const t of db.supportTickets) {
       if (t.id) {
@@ -229,13 +326,60 @@ async function syncLocalChangesToFirestore(db) {
 
 let firestoreSyncInitialized = false;
 
-function initFirestoreRealtimeSync() {
-  if (firestoreSyncInitialized) return;
-  if (!window.firebaseDB || !window.firestore) {
-    window.addEventListener('hugpong:firebase_ready', initFirestoreRealtimeSync, { once: true });
-    return;
+// ── Relational Derivation Resolvers ──────────────────────────
+function resolveFieldMember(field, db = null) {
+  if (!field) return 'Unassigned';
+  if (field.member && typeof field.member === 'string' && field.member.length > 0 && field.member !== 'Unassigned') return field.member;
+  if (field.memberName && typeof field.memberName === 'string' && field.memberName.length > 0 && field.memberName !== 'Unassigned') return field.memberName;
+  if (field.owner && typeof field.owner === 'string' && field.owner.length > 0 && field.owner !== 'Unassigned') return field.owner;
+
+  const currentDb = db || (typeof getDB === 'function' ? getDB() : null);
+  if (currentDb && Array.isArray(currentDb.users)) {
+    const u = currentDb.users.find(usr => 
+      usr.employeeId === field.memberId || 
+      usr.contact === field.memberId || 
+      usr.fieldId === field.id ||
+      (usr.role === 'Member' && usr.fieldId === field.id)
+    );
+    if (u && u.name) return u.name;
   }
 
+  const fallbackMap = {
+    'FLD-NCY-001': 'Juan dela Cruz',
+    'FLD-NCY-002': 'Pedro Reyes',
+    'FLD-NCY-003': 'Corazon Santos',
+    'FLD-NCY-004': 'Roberto Tan',
+    'FLD-NCY-005': 'Ana Gomez'
+  };
+  if (field.id && fallbackMap[field.id]) return fallbackMap[field.id];
+
+  return 'Unassigned';
+}
+
+function resolveFieldBlockFarm(field, db = null) {
+  if (!field) return 'Unassigned';
+  if (field.blockFarm && typeof field.blockFarm === 'string' && field.blockFarm.length > 0) return field.blockFarm;
+  const currentDb = db || (typeof getDB === 'function' ? getDB() : null);
+  if (currentDb && Array.isArray(currentDb.blockFarms) && currentDb.blockFarms.length > 0) {
+    const bf = currentDb.blockFarms.find(b => b.id === field.blockFarmId || b.code === field.blockFarmId);
+    if (bf) return bf.name;
+    return currentDb.blockFarms[0].name;
+  }
+  return 'Nacayao Block Farm';
+}
+
+function resolveBlockFarmManager(blockFarm, db = null) {
+  if (!blockFarm) return 'Assigned Farm Manager';
+  const currentDb = db || (typeof getDB === 'function' ? getDB() : null);
+  if (currentDb && Array.isArray(currentDb.users)) {
+    const mgr = currentDb.users.find(u => u.employeeId === blockFarm.farmManagerId || u.contact === blockFarm.farmManagerId || (u.role === 'Farm Manager' && (u.blockFarmId === blockFarm.id || u.blockFarm === blockFarm.name)));
+    if (mgr) return mgr.name;
+  }
+  return 'Jose Reyes';
+}
+
+function initFirestoreRealtimeSync() {
+  if (firestoreSyncInitialized || !window.firebaseDB || !window.firestore) return;
   firestoreSyncInitialized = true;
   const { collection, onSnapshot } = window.firestore;
   const fDb = window.firebaseDB;
@@ -249,62 +393,60 @@ function initFirestoreRealtimeSync() {
     });
   }
 
-  // 1. Listen on Fields
+  // 1. Listen on Block Farms
+  onSnapshot(collection(fDb, 'block_farms'), (snapshot) => {
+    if (snapshot.empty) return;
+    const db = getDB();
+    const remoteBF = [];
+    snapshot.forEach(docSnap => remoteBF.push({ id: docSnap.id, ...docSnap.data() }));
+
+    db.blockFarms = remoteBF;
+    saveDB(db, false);
+    if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof renderBlockFarms === 'function') renderBlockFarms();
+  }, (err) => console.warn('[Firestore] block_farms listener notice:', err));
+
+  // 2. Listen on Fields
   onSnapshot(collection(fDb, 'fields'), (snapshot) => {
     if (snapshot.empty) return;
     const db = getDB();
     const remoteFields = [];
-    snapshot.forEach(docSnap => remoteFields.push(docSnap.data()));
-
-    let changed = false;
-    remoteFields.forEach(rf => {
-      const idx = db.fields.findIndex(lf => lf.id === rf.id);
-      if (idx >= 0) {
-        db.fields[idx] = { ...db.fields[idx], ...rf };
-        changed = true;
-      } else {
-        db.fields.push(rf);
-        changed = true;
-      }
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      // Normalize member name: Firestore may store it as memberName
+      if (!data.member && data.memberName) data.member = data.memberName;
+      if (!data.memberName && data.member) data.memberName = data.member;
+      remoteFields.push(data);
     });
 
-    if (changed) {
-      saveDB(db, false);
-      renderDashboard();
-      if (currentPage === 'fields') renderFields();
-      if (currentPage === 'operations') renderOperations();
-      if (currentPage === 'manager') renderManager();
-    }
+    db.fields = remoteFields;
+    saveDB(db, false);
+    if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof renderFields === 'function') renderFields();
+    if (typeof renderOperations === 'function') renderOperations();
+    if (typeof renderManager === 'function') renderManager();
+    if (typeof renderEfficiency === 'function') renderEfficiency();
+    if (typeof renderSync === 'function') renderSync();
   }, (err) => console.warn('[Firestore] fields listener notice:', err));
 
-  // 2. Listen on Operation Logs
+  // 3. Listen on Operation Logs
   onSnapshot(collection(fDb, 'operation_logs'), (snapshot) => {
     if (snapshot.empty) return;
     const db = getDB();
     const remoteLogs = [];
     snapshot.forEach(docSnap => remoteLogs.push(docSnap.data()));
 
-    let changed = false;
-    remoteLogs.forEach(rl => {
-      const idx = db.logs.findIndex(ll => ll.id === rl.id);
-      if (idx >= 0) {
-        db.logs[idx] = { ...db.logs[idx], ...rl };
-        changed = true;
-      } else {
-        db.logs.unshift(rl);
-        changed = true;
-      }
-    });
-
-    if (changed) {
-      saveDB(db, false);
-      renderDashboard();
-      if (currentPage === 'logs') renderLogs();
-      if (currentPage === 'operations') renderOperations();
-    }
+    db.logs = remoteLogs;
+    saveDB(db, false);
+    if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof renderLogs === 'function') renderLogs();
+    if (typeof renderOperations === 'function') renderOperations();
+    if (typeof renderHistory === 'function') renderHistory();
+    if (typeof renderProductionCostChart === 'function') renderProductionCostChart();
+    if (typeof renderFarmOperationsChart === 'function') renderFarmOperationsChart();
   }, (err) => console.warn('[Firestore] operation_logs listener notice:', err));
 
-  // 3. Listen on SRA Sugar Prices
+  // 4. Listen on SRA Sugar Prices
   onSnapshot(collection(fDb, 'sra_prices'), (snapshot) => {
     if (snapshot.empty) return;
     const db = getDB();
@@ -334,38 +476,81 @@ function initFirestoreRealtimeSync() {
     if (remotePrices.length > 0) {
       db.priceHistory = remotePrices;
       saveDB(db, false);
-      // Refresh all price-sensitive UI elements across every role
-      renderPrices();
-      renderPriceHistoryChart();
-      renderDashboard();
+      if (typeof renderPrices === 'function') renderPrices();
+      if (typeof renderPriceHistoryChart === 'function') renderPriceHistoryChart();
+      if (typeof renderDashboard === 'function') renderDashboard();
     }
   }, (err) => console.warn('[Firestore] sra_prices listener notice:', err));
 
-  // 4. Listen on Support Tickets
+  // 5. Listen on Support Tickets
   onSnapshot(collection(fDb, 'support_tickets'), (snapshot) => {
     if (snapshot.empty) return;
     const db = getDB();
     const remoteTickets = [];
     snapshot.forEach(docSnap => remoteTickets.push(docSnap.data()));
 
-    let changed = false;
-    remoteTickets.forEach(rt => {
-      const idx = (db.supportTickets || []).findIndex(lt => lt.id === rt.id);
-      if (idx >= 0) {
-        db.supportTickets[idx] = { ...db.supportTickets[idx], ...rt };
-        changed = true;
-      } else {
-        if (!db.supportTickets) db.supportTickets = [];
-        db.supportTickets.unshift(rt);
-        changed = true;
-      }
+    db.supportTickets = remoteTickets;
+    saveDB(db, false);
+    if (typeof renderSupportTickets === 'function') renderSupportTickets();
+    if (typeof renderDashboard === 'function') renderDashboard();
+  }, (err) => console.warn('[Firestore] support_tickets listener notice:', err));
+
+  // 6. Listen on Users Directory (Syncs mobile registrations immediately to Web Directory)
+  onSnapshot(collection(fDb, 'users'), (snapshot) => {
+    if (snapshot.empty) return;
+    const db = getDB();
+    const remoteUsers = [];
+    snapshot.forEach(docSnap => {
+      const data = { id: docSnap.id, ...docSnap.data() };
+      // Normalize blockFarm: Firestore may store as blockFarmScope
+      if (!data.blockFarm && data.blockFarmScope) data.blockFarm = data.blockFarmScope;
+      if (!data.blockFarmScope && data.blockFarm) data.blockFarmScope = data.blockFarm;
+      // Ensure contact is set
+      if (!data.contact && data.mobile) data.contact = data.mobile;
+      if (!data.mobile && data.contact) data.mobile = data.contact;
+      remoteUsers.push(data);
     });
 
-    if (changed) {
-      saveDB(db, false);
-      if (typeof renderSupportTickets === 'function') renderSupportTickets();
-    }
-  }, (err) => console.warn('[Firestore] support_tickets listener notice:', err));
+    db.users = remoteUsers;
+    saveDB(db, false);
+    if (typeof renderUsers === 'function') renderUsers();
+    if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof renderMembers === 'function') renderMembers();
+  }, (err) => console.warn('[Firestore] users listener notice:', err));
+
+  // 7. Listen on Audit Reports (QR Certified Records)
+  onSnapshot(collection(fDb, 'audit_reports'), (snapshot) => {
+    if (snapshot.empty) return;
+    const db = getDB();
+    const remoteReports = [];
+    snapshot.forEach(docSnap => remoteReports.push({ id: docSnap.id, ...docSnap.data() }));
+    db.auditReports = remoteReports;
+    saveDB(db, false);
+    if (typeof renderAuditDashboard === 'function') renderAuditDashboard();
+    if (typeof renderDashboard === 'function') renderDashboard();
+  }, (err) => console.warn('[Firestore] audit_reports listener notice:', err));
+
+  // 8. Listen on Audit Logs (System Action History)
+  onSnapshot(collection(fDb, 'audit_logs'), (snapshot) => {
+    if (snapshot.empty) return;
+    const db = getDB();
+    const remoteLogs = [];
+    snapshot.forEach(docSnap => remoteLogs.push({ id: docSnap.id, ...docSnap.data() }));
+    db.systemHistory = remoteLogs;
+    saveDB(db, false);
+    if (typeof renderHistory === 'function') renderHistory();
+  }, (err) => console.warn('[Firestore] audit_logs listener notice:', err));
+
+  // 9. Listen on Sync Operations (Offline Reconciliation Stream)
+  onSnapshot(collection(fDb, 'sync_operations'), (snapshot) => {
+    if (snapshot.empty) return;
+    const db = getDB();
+    const remoteSync = [];
+    snapshot.forEach(docSnap => remoteSync.push({ id: docSnap.id, ...docSnap.data() }));
+    db.syncOperations = remoteSync;
+    saveDB(db, false);
+    if (typeof renderSync === 'function') renderSync();
+  }, (err) => console.warn('[Firestore] sync_operations listener notice:', err));
 }
 
 async function verifyBackendSession() {
@@ -385,13 +570,17 @@ async function verifyBackendSession() {
 }
 
 // Auto-start Firestore sync and verify session
+window.addEventListener('hugpong:firebase_ready', () => {
+  initFirestoreRealtimeSync();
+});
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(initFirestoreRealtimeSync, 300);
+    setTimeout(initFirestoreRealtimeSync, 200);
     setTimeout(verifyBackendSession, 350);
   });
 } else {
-  setTimeout(initFirestoreRealtimeSync, 300);
+  setTimeout(initFirestoreRealtimeSync, 200);
   setTimeout(verifyBackendSession, 350);
 }
 
@@ -408,7 +597,7 @@ const PAGES = {
   fields: { heading: 'Block Farm Registry', sub: 'Supervise registered block farms, transfer ownership IDs, and track sync statuses' },
   history: { heading: 'System Audit & Event Ledger', sub: 'Comprehensive auditable ledger of district operations, land registrations, user authorizations, and regulatory events' },
   sync: { heading: 'Sync & Inactivity Monitor', sub: 'Real-time telemetry, offline buffer health, and device connectivity across all district block farms' },
-  synctelemetry: { heading: 'Member Sync & Inactivity Telemetry', sub: 'Real-time mobile offline buffer monitoring and member sync health for Block Farm A' },
+  synctelemetry: { heading: 'Member Sync & Inactivity Telemetry', sub: 'Real-time mobile offline buffer monitoring and member sync health for Nacayao Block Farm' },
   tickets: { heading: 'Support & Issue Ticketing Desk', sub: 'Triage offline sync issues, app crashes, and member support requests' },
   maintenance: { heading: 'System Maintenance & Security', sub: 'Manage global parameters, database health, and security' },
   settings: { heading: 'Settings & Security Console', sub: 'System preferences, account credentials, and platform diagnostics' }
@@ -491,7 +680,7 @@ function navigate(page) {
   if (headingEl && PAGES[page]) {
     if (page === 'fields' && currentRole === 'manager') {
       headingEl.textContent = 'Field Plot Registry';
-      subEl.textContent = 'Direct field management, member plot allocations, and crop stage tracking for Block Farm A';
+      subEl.textContent = 'Direct field management, member plot allocations, and crop stage tracking for Nacayao Block Farm';
     } else {
       headingEl.textContent = PAGES[page].heading;
       subEl.textContent = PAGES[page].sub;
@@ -518,7 +707,7 @@ function navigate(page) {
 function switchRole(role) {
   localStorage.setItem('hugpong_role', role);
   applyRoleLayout(role);
-  const roleName = role === 'superadmin' ? 'Super Admin' : (role === 'manager' ? 'Farm Manager (Block Farm A)' : 'SRA (Admin)');
+  const roleName = role === 'superadmin' ? 'Super Admin' : (role === 'manager' ? 'Farm Manager (Nacayao Block Farm)' : 'SRA (Admin)');
   toast(`Switched identity to: ${roleName}`);
   navigate('dashboard');
 }
@@ -545,9 +734,9 @@ function applyRoleLayout(role) {
   } else if (role === 'manager') {
     if (avatarEl) { avatarEl.textContent = 'J'; avatarEl.style.background = 'linear-gradient(135deg, #1A6B9A, #2A7F8F)'; avatarEl.style.boxShadow = '0 0 8px rgba(26,107,154,0.4)'; }
     if (nameEl) nameEl.textContent = 'Jose Reyes';
-    if (roleEl) roleEl.textContent = 'Farm Manager (Nacayao Block Farm A)';
+    if (roleEl) roleEl.textContent = 'Farm Manager (Nacayao Block Farm)';
     if (popNameEl) popNameEl.textContent = 'Jose Reyes';
-    if (popRoleEl) popRoleEl.textContent = 'Farm Manager · Nacayao Block Farm A';
+    if (popRoleEl) popRoleEl.textContent = 'Farm Manager · Nacayao Block Farm';
     if (subEl) subEl.textContent = 'Farm Workspace';
     document.querySelectorAll('.superadmin-only').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('.sra-only').forEach(el => el.classList.add('hidden'));
@@ -569,24 +758,22 @@ function applyRoleLayout(role) {
 
 // Helper to determine block farm
 function getBlockFarmName(fieldId) {
-  if (!fieldId) return 'Nacayao Block Farm A';
-  if (fieldId.includes('NCY')) return 'Nacayao Block Farm A';
-  if (fieldId.includes('VIC')) return 'Block Farm B';
-  if (fieldId.includes('TLS')) return 'Block Farm C';
-  if (fieldId.includes('MNP')) return 'Block Farm D';
-  const farmMap = {
-    'FLD-KTR-001': 'Nacayao Block Farm A',
-    'FLD-KTR-002': 'Nacayao Block Farm A',
-    'FLD-KTR-003': 'Nacayao Block Farm A',
-    'FLD-KTR-004': 'Nacayao Block Farm A',
-    'FLD-KTR-005': 'Nacayao Block Farm A',
-    'FLD-KTR-006': 'Block Farm B',
-    'FLD-KTR-007': 'Block Farm C',
-    'FLD-KTR-008': 'Block Farm C',
-    'FLD-KTR-009': 'Block Farm D',
-    'FLD-KTR-010': 'Block Farm D'
-  };
-  return farmMap[fieldId] || 'Nacayao Block Farm A';
+  if (!fieldId) return 'Nacayao Block Farm';
+  if (typeof db !== 'undefined' && db && Array.isArray(db.fields)) {
+    const f = db.fields.find(item => item.id === fieldId);
+    if (f) {
+      if (f.blockFarm) return f.blockFarm;
+      if (Array.isArray(db.blockFarms)) {
+        const bf = db.blockFarms.find(b => b.id === f.blockFarmId);
+        if (bf) return bf.name;
+      }
+    }
+  }
+  if (fieldId.includes('NCY')) return 'Nacayao Block Farm';
+  if (fieldId.includes('VIC')) return 'Victorias Block Farm';
+  if (fieldId.includes('TLS')) return 'Talisay Block Farm';
+  if (fieldId.includes('MNP')) return 'Manapla Block Farm';
+  return 'Nacayao Block Farm';
 }
 
 function getBlockId(blockFarmName) {
@@ -626,7 +813,7 @@ function renderDashboard() {
   const currentRole = localStorage.getItem('hugpong_role') || 'admin';
   const isManager = currentRole === 'manager';
   const isSuper = currentRole === 'superadmin';
-  const managerBlockFarm = 'Nacayao Block Farm A';
+  const managerBlockFarm = (db && Array.isArray(db.blockFarms) && db.blockFarms[0]) ? db.blockFarms[0].name : 'Nacayao Block Farm';
 
   // 1. Dynamic Hero Banner Text
   const heroBadge = document.getElementById('hero-badge-role');
@@ -638,7 +825,7 @@ function renderDashboard() {
   if (heroBadge) heroBadge.textContent = isManager ? 'Farm Manager Console' : (isSuper ? 'Capstone System & Telemetry Console' : 'Silay Sugar Regulatory Administration');
   if (heroHeading) heroHeading.textContent = isManager ? 'Welcome back, Jose Reyes' : (isSuper ? 'Capstone Platform Governance & Telemetry' : 'SILAY SRA COMMAND CONSOLE');
   if (heroSubtext) heroSubtext.textContent = isManager 
-    ? 'Nacayao Block Farm A · Silay Cooperative · Supervising 5 member field allocations, crop timelines, and operation logs.' 
+    ? `${managerBlockFarm} · Silay Cooperative · Supervising 5 member field allocations, crop timelines, and operation logs.` 
     : (isSuper
       ? 'Consolidated sync health, mobile terminal hardware telemetry, and database integrity overseen by Capstone Group.'
       : 'Consolidated real-time oversight of block farm operations, field crop stages, member labor logs, and certified benchmarks across Silay Sugar Regulatory Administration.');
@@ -756,7 +943,7 @@ function renderDashboard() {
   if (dashAreaVal) dashAreaVal.textContent = `${totalHa.toFixed(2)} Ha`;
   if (dashAreaSub) {
     dashAreaSub.textContent = isManager 
-      ? `Nacayao Block Farm A · ${visibleFields.filter(f => f.blockFarm?.includes('Nacayao') || f.blockFarm?.includes('Block Farm A')).length} Member Plots`
+      ? `Nacayao Block Farm · ${visibleFields.filter(f => f.blockFarm?.includes('Nacayao') || f.blockFarm?.includes('Nacayao Block Farm')).length} Member Plots`
       : `4 Regional Block Farms · ${visibleFields.length} Registered Plots`;
   }
 
@@ -1024,14 +1211,14 @@ function renderProductionCostChart() {
 
   if (isManager) {
     // ── FARM MANAGER: Show each member field within assigned block farm
-    const scopedFields = db.fields.filter(f => f.blockFarm?.includes('Block Farm A') || f.blockFarm?.includes('Nacayao'));
+    const scopedFields = db.fields.filter(f => (f.blockFarm || resolveFieldBlockFarm(f, db)).includes('Nacayao') || f.blockFarmId === 'BLK-NCY-01' || true);
     data = scopedFields.map(f => {
       const fieldLogs = db.logs.filter(l => l.fieldId === f.id);
       const totalCost = fieldLogs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
       const ha = Number(f.ha || 1.5);
       const costPerHa = ha > 0 ? Math.round(totalCost / ha) : 0;
       return {
-        id: `${f.id} · ${f.member || 'Member'}`,
+        id: `${f.id} · ${resolveFieldMember(f, db)}`,
         rawKey: f.id,
         costPerHa,
         ha,
@@ -1041,16 +1228,13 @@ function renderProductionCostChart() {
       };
     });
   } else {
-    // ── SRA ADMIN: Aggregate by regional Block Farm
-    const blockList = [
-      { id: 'Nacayao Block Farm A', rawKey: 'Nacayao Block Farm A', defaultHa: 15.25 },
-      { id: 'Block Farm B · Victorias', rawKey: 'Block Farm B', defaultHa: 28.0 },
-      { id: 'Block Farm C · Talisay', rawKey: 'Block Farm C', defaultHa: 45.2 },
-      { id: 'Block Farm D · Manapla', rawKey: 'Block Farm D', defaultHa: 22.0 }
-    ];
+    // ── SUPER ADMIN & SRA ADMIN: Aggregate by regional Block Farm
+    const blockList = (db.blockFarms && db.blockFarms.length > 0)
+      ? db.blockFarms.map(bf => ({ id: bf.name, rawKey: bf.name, defaultHa: Number(bf.declaredHa) || 15.25 }))
+      : [{ id: 'Nacayao Block Farm', rawKey: 'Nacayao Block Farm', defaultHa: 15.25 }];
 
     data = blockList.map(b => {
-      const fields = db.fields.filter(f => f.blockFarm === b.rawKey || b.rawKey.includes(f.blockFarm));
+      const fields = db.fields.filter(f => (f.blockFarm || resolveFieldBlockFarm(f, db)) === b.rawKey || b.rawKey.includes(f.blockFarm || ''));
       const fieldIds = fields.map(f => f.id);
       const logs = db.logs.filter(l => fieldIds.includes(l.fieldId));
       const totalCost = logs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
@@ -1126,7 +1310,7 @@ function renderFarmOperationsChart() {
   let logs = db.logs || [];
 
   if (isManager) {
-    const myFieldIds = (db.fields || []).filter(f => f.blockFarm?.includes('Block Farm A') || f.blockFarm?.includes('Nacayao')).map(f => f.id);
+    const myFieldIds = (db.fields || []).filter(f => f.blockFarm?.includes('Nacayao Block Farm') || f.blockFarm?.includes('Nacayao')).map(f => f.id);
     logs = logs.filter(l => myFieldIds.includes(l.fieldId));
   }
 
@@ -1266,26 +1450,25 @@ function renderAllEfficiencyModal() {
   let dataset = [];
 
   if (allEffActiveTab === 'blocks') {
-    const blockList = [
-      { id: 'Nacayao Block Farm A', rawKey: 'Nacayao Block Farm A', defaultHa: 15.25, supervisor: 'Jose Reyes' },
-      { id: 'Block Farm B · Victorias', rawKey: 'Block Farm B', defaultHa: 28.0, supervisor: 'Elena Ramos' },
-      { id: 'Block Farm C · Talisay', rawKey: 'Block Farm C', defaultHa: 45.2, supervisor: 'Elena Batongbakal' },
-      { id: 'Block Farm D · Manapla', rawKey: 'Block Farm D', defaultHa: 22.0, supervisor: 'Ricardo Dalisay' }
-    ];
+    const canonicalBlocks = (db.blockFarms && db.blockFarms.length > 0)
+      ? db.blockFarms
+      : [{ id: 'BLK-NCY-01', code: 'BLK-A', name: 'Nacayao Block Farm', farmManagerId: '03000001', declaredHa: 15.25 }];
 
-    dataset = blockList.map(b => {
-      const fields = db.fields.filter(f => f.blockFarm === b.rawKey || b.rawKey.includes(f.blockFarm));
+    dataset = canonicalBlocks.map(b => {
+      const bName = b.name || b.id;
+      const supervisor = resolveBlockFarmManager(b, db);
+      const fields = (db.fields || []).filter(f => f.blockFarmId === b.id || f.blockFarm === bName || f.blockFarmId === b.code);
       const fieldIds = fields.map(f => f.id);
-      const logs = db.logs.filter(l => fieldIds.includes(l.fieldId));
+      const logs = (db.logs || []).filter(l => fieldIds.includes(l.fieldId));
       const totalCost = logs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
-      const ha = fields.length > 0 ? fields.reduce((s, f) => s + (Number(f.ha) || 0), 0) : b.defaultHa;
+      const ha = fields.length > 0 ? fields.reduce((s, f) => s + (Number(f.ha || f.area) || 0), 0) : (Number(b.declaredHa) || 15.25);
       const costPerHa = ha > 0 ? Math.round(totalCost / ha) : 0;
-      const plotsCount = fields.length || 0;
+      const plotsCount = fields.length;
       const opsCount = logs.length;
       return {
-        title: b.id,
-        sub: `Managed by ${b.supervisor} · ${plotsCount} plots · ${opsCount} recorded ops`,
-        rawKey: b.rawKey,
+        title: bName,
+        sub: `Managed by ${supervisor} · ${plotsCount} plots · ${opsCount} recorded ops`,
+        rawKey: b.id,
         costPerHa,
         ha,
         totalCost,
@@ -1294,15 +1477,17 @@ function renderAllEfficiencyModal() {
       };
     });
   } else {
-    dataset = db.fields.map(f => {
-      const fieldLogs = db.logs.filter(l => l.fieldId === f.id);
+    dataset = (db.fields || []).map(f => {
+      const fieldLogs = (db.logs || []).filter(l => l.fieldId === f.id);
       const totalCost = fieldLogs.reduce((sum, l) => sum + (Number(l.totalCost || l.cost) || 0), 0);
-      const ha = Number(f.ha || 1.5);
+      const ha = Number(f.ha || f.area || 1.5);
       const costPerHa = ha > 0 ? Math.round(totalCost / ha) : 0;
       const opsCount = fieldLogs.length;
+      const memberName = resolveFieldMember(f, db);
+      const blockFarmName = resolveFieldBlockFarm(f, db);
       return {
-        title: `${f.id} — ${f.member || 'Member Farmer'}`,
-        sub: `${f.blockFarm || 'Block Farm'} · ${f.stage || 'Stage 1'} · ${opsCount} ops`,
+        title: `${f.id} — ${memberName}`,
+        sub: `${blockFarmName} · ${f.stage || 'Stage 1'} · ${opsCount} ops`,
         rawKey: f.id,
         costPerHa,
         ha,
@@ -1469,10 +1654,29 @@ function renderCropStageDistribution() {
   let subtitleText = '';
 
   if (isManager) {
-    // ── FARM MANAGER: Scoped strictly to their single assigned block farm
-    scopedFields = db.fields.filter(f => f.blockFarm?.includes('Block Farm A') || f.blockFarm?.includes('Nacayao'));
-    const totalHa = scopedFields.reduce((sum, f) => sum + (Number(f.ha) || 1.5), 0);
-    subtitleText = `${totalHa.toFixed(2)} Ha active across ${scopedFields.length} Member Plots (Nacayao Block Farm A)`;
+    // ── FARM MANAGER: Scoped strictly to their single assigned block farm (Nacayao Block Farm)
+    const nacayaoFields = db.fields.filter(f => f.blockFarm?.includes('Nacayao Block Farm') || f.blockFarm?.includes('Nacayao'));
+    
+    // Populate member filter dropdown if not yet populated or changed
+    const mgrMemberSelect = document.getElementById('mgr-crop-stage-member-filter');
+    if (mgrMemberSelect && mgrMemberSelect.children.length <= 1) {
+      const currentVal = mgrMemberSelect.value;
+      mgrMemberSelect.innerHTML = '<option value="all">All Nacayao Plots</option>' + 
+        nacayaoFields.map(f => `<option value="${f.id}">${f.id} · ${f.member || 'Member'} (${Number(f.ha || 1.5).toFixed(1)} Ha)</option>`).join('');
+      mgrMemberSelect.value = currentVal || 'all';
+    }
+
+    const selectedPlotId = mgrMemberSelect ? mgrMemberSelect.value : 'all';
+    if (selectedPlotId && selectedPlotId !== 'all') {
+      scopedFields = nacayaoFields.filter(f => f.id === selectedPlotId);
+      const selField = scopedFields[0];
+      const totalHa = scopedFields.reduce((sum, f) => sum + (Number(f.ha) || 1.5), 0);
+      subtitleText = `Viewing ${selField?.id || selectedPlotId} · ${selField?.member || 'Member Farmer'} (${totalHa.toFixed(2)} Ha · ${selField?.variety || 'Phil 84-77'})`;
+    } else {
+      scopedFields = nacayaoFields;
+      const totalHa = scopedFields.reduce((sum, f) => sum + (Number(f.ha) || 1.5), 0);
+      subtitleText = `${totalHa.toFixed(2)} Ha active across ${scopedFields.length} Member Plots (Nacayao Block Farm)`;
+    }
   } else {
     // ── SRA ADMIN: Scoped to all regional block farms (or filtered by selected block)
     const blockFilterSelect = document.getElementById('sra-crop-stage-block-filter');
@@ -1578,7 +1782,7 @@ function openDetailedAnalyticsModal(key, isBack = false) {
   const modal = document.getElementById('modal-detailed-analytics');
   if (!modal) return;
 
-  const validKey = key || 'Nacayao Block Farm A';
+  const validKey = key || 'Nacayao Block Farm';
   const isModalCurrentlyClosed = modal.classList.contains('hidden');
 
   // If opening fresh from outside the modal, reset history stack and current key
@@ -1816,7 +2020,7 @@ function renderDetailFieldsTable() {
   const searchInput = document.getElementById('detail-fields-search');
   if (!tableBody) return;
 
-  const key = currentDetailKey || 'Nacayao Block Farm A';
+  const key = currentDetailKey || 'Nacayao Block Farm';
   const isBlockFarm = String(key).startsWith('Block Farm') || String(key).includes('Nacayao') || String(key).includes('Cluster') || String(key).includes('Group') || String(key).includes('Cooperative');
   
   let fields = [];
@@ -1826,7 +2030,7 @@ function renderDetailFieldsTable() {
   } else {
     // For single field, show sister plots within the same Block Farm for seamless browsing
     const currentField = (db.fields || []).find(f => f.id === key);
-    const parentBlock = currentField?.blockFarm || 'Nacayao Block Farm A';
+    const parentBlock = currentField?.blockFarm || 'Nacayao Block Farm';
     fields = (db.fields || []).filter(f => f.blockFarm === parentBlock && f.id !== key);
     if (fields.length === 0) fields = (db.fields || []).filter(f => f.id !== key);
   }
@@ -1889,7 +2093,7 @@ function renderDetailLogsTable() {
   const searchInput = document.getElementById('detail-logs-search');
   if (!tableBody) return;
 
-  const key = currentDetailKey || 'Nacayao Block Farm A';
+  const key = currentDetailKey || 'Nacayao Block Farm';
   const isBlockFarm = String(key).startsWith('Block Farm') || String(key).includes('Nacayao') || String(key).includes('Cluster') || String(key).includes('Group') || String(key).includes('Cooperative');
   
   let fields = isBlockFarm
@@ -1981,7 +2185,7 @@ function openCropStageModal(stageKeyOrName) {
   const plotsListEl = document.getElementById('stage-modal-plots-list');
 
   const scopedFields = isManager
-    ? db.fields.filter(f => f.blockFarm?.includes('Block Farm A') || f.blockFarm?.includes('Nacayao'))
+    ? db.fields.filter(f => f.blockFarm?.includes('Nacayao Block Farm') || f.blockFarm?.includes('Nacayao'))
     : db.fields;
 
   const totalHa = scopedFields.reduce((sum, f) => sum + (Number(f.ha) || 1.5), 0);
@@ -1995,7 +2199,8 @@ function openCropStageModal(stageKeyOrName) {
     phaseBadgeEl.style.color = phase.color;
   }
   if (titleEl) titleEl.textContent = `${phase.fullName} (${phase.ops})`;
-  if (subtitleEl) subtitleEl.textContent = `${phaseHa.toFixed(2)} Ha active across ${isManager ? 'Block Farm A' : SRA_BENCHMARKS.associationName} (${phasePct}% of farm)`;
+  const targetScope = isManager ? 'Nacayao Block Farm' : 'All District Block Farms';
+  if (subtitleEl) subtitleEl.textContent = `${phaseHa.toFixed(2)} Ha active across ${targetScope} (${phasePct}% of farm)`;
   if (haEl) {
     haEl.textContent = `${phaseHa.toFixed(2)} Ha`;
     haEl.style.color = phase.color;
@@ -2035,7 +2240,7 @@ function openCropStageModal(stageKeyOrName) {
                 <span class="font-mono font-bold text-xs text-primary">${p.id}</span>
                 <span class="text-xs font-bold text-hug-text group-hover:text-primary transition-colors">${p.member || 'Member Farmer'}</span>
               </div>
-              <span class="text-[11px] text-hug-muted">${p.blockFarm || 'Block Farm A'} · Age: ${p.age || '1.0 mo'} · Batch ${p.batchMonth || 1}</span>
+              <span class="text-[11px] text-hug-muted">${p.blockFarm || 'Nacayao Block Farm'} · Age: ${p.age || '1.0 mo'} · Batch ${p.batchMonth || 1}</span>
             </div>
           </div>
           <div class="flex items-center gap-3">
@@ -2146,7 +2351,7 @@ function changeMgrLedgerPage(page) {
 
 function renderManager() {
   const db = getDB();
-  const managerBlockFarm = 'Nacayao Block Farm A';
+  const managerBlockFarm = (db && Array.isArray(db.blockFarms) && db.blockFarms[0]) ? db.blockFarms[0].name : 'Nacayao Block Farm';
   const managerName = 'Jose Reyes';
 
   // Update banner labels
@@ -2156,7 +2361,7 @@ function renderManager() {
   if (bannerFarm) bannerFarm.textContent = managerBlockFarm;
 
   // Filter fields & logs for manager's farm
-  const myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A');
+  const myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || (f.blockFarm && f.blockFarm.includes('Nacayao')) || f.blockFarmId === 'BLK-NCY-01');
   myFields.sort((a, b) => a.id.localeCompare(b.id));
   const myFieldIds = new Set(myFields.map(f => f.id));
   const myLogs = db.logs.filter(l => myFieldIds.has(l.fieldId));
@@ -2225,7 +2430,7 @@ function renderManager() {
   if (statHa) statHa.textContent = `${totalHa.toFixed(1)} Ha`;
   if (statMembersVal) statMembersVal.textContent = `${mgrMembers.size || myFields.length} Members`;
   if (statMembersBadge) statMembersBadge.textContent = 'Active';
-  if (statMembersSub) statMembersSub.textContent = myFields[0]?.blockFarm || 'Nacayao Block Farm A';
+  if (statMembersSub) statMembersSub.textContent = myFields[0]?.blockFarm || 'Nacayao Block Farm';
   if (statPendingVal) statPendingVal.textContent = `${myLogs.length} Active`;
   if (statPendingBadge) {
     statPendingBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-success-bg text-success';
@@ -2310,8 +2515,8 @@ function renderManager() {
 
 function renderSyncMonitor() {
   const db = getDB();
-  const managerBlockFarm = 'Nacayao Block Farm A';
-  const myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A');
+  const managerBlockFarm = 'Nacayao Block Farm';
+  const myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Nacayao Block Farm' || getBlockFarmName(f.id) === 'Nacayao Block Farm');
   
   const pillsContainer = document.getElementById('mgr-sync-summary-pills');
   const bannerContainer = document.getElementById('mgr-sync-warning-banner');
@@ -2362,7 +2567,7 @@ function renderSyncMonitor() {
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </div>
           <div>
-            <h4 class="text-xs font-bold text-hug-text">Sync Overdue Action Required: ${totalAlerts} Member(s) in Block Farm A Inactive</h4>
+            <h4 class="text-xs font-bold text-hug-text">Sync Overdue Action Required: ${totalAlerts} Member(s) in Nacayao Block Farm Inactive</h4>
             <p class="text-[11px] text-hug-muted mt-0.5">${topOffender.name} (${topOffender.fieldId}) has not synced in ${topOffender.lagDays} days. Check with member to ensure timely audit submission.</p>
           </div>
         </div>
@@ -2382,7 +2587,7 @@ function renderSyncMonitor() {
       gridContainer.innerHTML = `
         <div class="col-span-full p-6 text-center bg-white border border-border rounded-2xl flex flex-col items-center justify-center gap-2 shadow-xs">
           <div class="w-10 h-10 rounded-full bg-success-bg text-success flex items-center justify-center font-bold text-lg"><i data-lucide="check" class="w-5 h-5"></i></div>
-          <h4 class="font-bold text-xs text-hug-text">All Block Farm A Members Active &amp; Synced</h4>
+          <h4 class="font-bold text-xs text-hug-text">All Nacayao Block Farm Members Active &amp; Synced</h4>
           <p class="text-xs text-hug-muted">No overdue mobile offline buffers or lagging members requiring immediate follow-up.</p>
           <button onclick="navigate('synctelemetry')" class="mt-1 text-xs font-bold text-primary hover:underline cursor-pointer">Open Full Telemetry Hub →</button>
         </div>
@@ -2436,8 +2641,8 @@ function renderSyncMonitor() {
 
 function renderManagerFullSyncTelemetry() {
   const db = getDB();
-  const managerBlockFarm = 'Nacayao Block Farm A';
-  let myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A');
+  const managerBlockFarm = 'Nacayao Block Farm';
+  let myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Nacayao Block Farm' || getBlockFarmName(f.id) === 'Nacayao Block Farm');
 
   const searchInput = document.getElementById('mgr-full-sync-search');
   const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
@@ -2573,8 +2778,8 @@ function toggleOpSortHa() {
 
 function renderMembers() {
   const db = getDB();
-  const managerBlockFarm = 'Nacayao Block Farm A';
-  const myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A');
+  const managerBlockFarm = 'Nacayao Block Farm';
+  const myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Nacayao Block Farm' || getBlockFarmName(f.id) === 'Nacayao Block Farm');
   const membersTbody = document.getElementById('mgr-members-tbody');
   const membersCountBadge = document.getElementById('mgr-members-count-badge');
   
@@ -2667,7 +2872,7 @@ function renderMembers() {
               <div class="w-8 h-8 rounded-full bg-primary-bg text-primary font-bold text-xs flex items-center justify-center flex-shrink-0">${m.name.charAt(0)}</div>
               <div>
                 <p class="font-bold text-hug-text">${m.name}</p>
-                <p class="text-[10px] text-hug-muted font-normal">Block Farm A</p>
+                <p class="text-[10px] text-hug-muted font-normal">Nacayao Block Farm</p>
               </div>
             </div>
           </td>
@@ -2689,8 +2894,8 @@ function renderMembers() {
 
 function renderOperations() {
   const db = getDB();
-  const managerBlockFarm = 'Nacayao Block Farm A';
-  let myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A');
+  const managerBlockFarm = 'Nacayao Block Farm';
+  let myFields = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === managerBlockFarm || f.blockFarm === 'Nacayao Block Farm' || getBlockFarmName(f.id) === 'Nacayao Block Farm');
   const fieldsTbody = document.getElementById('mgr-fields-tbody');
   if (!fieldsTbody) return;
 
@@ -2913,7 +3118,7 @@ function openTakeOverModal(fieldId, targetStageIdOrName = null) {
 
   if (badgeEl) badgeEl.textContent = field.id;
   if (titleEl) titleEl.textContent = `Take Over: ${field.id}`;
-  if (subEl) subEl.textContent = `Assigned to ${field.member || field.owner} · ${field.ha || field.area} Ha · ${field.blockFarm || 'Nacayao Block Farm A'}`;
+  if (subEl) subEl.textContent = `Assigned to ${field.member || field.owner} · ${field.ha || field.area} Ha · ${field.blockFarm || 'Nacayao Block Farm'}`;
   if (stagePillEl) stagePillEl.textContent = `Current Stage: ${field.stage}`;
   if (haInput) haInput.value = field.ha || field.area || '1.5';
 
@@ -3284,7 +3489,7 @@ function takeOverSubmitLog() {
   const newLog = {
     id: `L-${Date.now().toString().slice(-4)}`,
     fieldId: activeTakeOverFieldId,
-    blockFarm: field.blockFarm || 'Nacayao Block Farm A',
+    blockFarm: field.blockFarm || 'Nacayao Block Farm',
     category: category,
     activity: activity,
     task: activity,
@@ -3482,7 +3687,7 @@ function managerAssignField() {
   const fieldId = fieldIdEl ? fieldIdEl.value.trim().toUpperCase() : '';
   const member = memberEl ? memberEl.value.trim() : '';
   const ha = haEl ? parseFloat(haEl.value) : NaN;
-  const blockFarm = 'Block Farm A';
+  const blockFarm = 'Nacayao Block Farm';
 
   if (!fieldId || !member || isNaN(ha) || ha <= 0) {
     toast('Error: Please enter a valid Field ID, Member Name, and positive Hectare size.');
@@ -3612,12 +3817,6 @@ function handleScannedQRCode(rawText) {
   submitManualQR();
 }
 
-function setAuditDemoCode(code) {
-  const input = document.getElementById('manual-qr-input');
-  if (input) input.value = code;
-  submitManualQR();
-}
-
 function submitManualQR() {
   const val = document.getElementById('manual-qr-input').value.trim().toUpperCase();
   if (!val) { toast('Please enter an audit hash code.'); return; }
@@ -3661,7 +3860,7 @@ function loadAuditCertificate(hash) {
           category: 'audit',
           categoryLabel: 'SRA Audit',
           eventType: isFullSeason ? 'Full Season Crop Audit Certified' : 'Field Operations QR Audit Verified',
-          entity: `${hash} (${isFullSeason ? 'Nacayao Block Farm A' : 'FLD-KTR-001'})`,
+          entity: `${hash} (${isFullSeason ? 'Nacayao Block Farm' : 'FLD-NCY-001'})`,
           details: isFullSeason ? 'Verified and certified full-season operations ledger for SRA district compliance.' : 'Cryptographic QR signature verified and certified for official field operations.',
           actor: 'SRA Inspectorate',
           status: 'Verified'
@@ -4315,7 +4514,7 @@ async function submitPublishPrice() {
   };
 
   db.priceHistory.unshift(newPost);
-  saveDB(db);
+  saveDB(db, true);
 
   // Directly push to Firestore if online
   if (window.firebaseDB && window.firestore) {
@@ -4402,17 +4601,19 @@ function renderLogs() {
   const isSuperAdmin = currentRole === 'superadmin';
 
   const labelEl = document.querySelector('label[for="log-field-filter"]');
-  if (labelEl) labelEl.textContent = isManager ? 'Filter Nacayao Block Farm A Plot:' : 'Filter Field / Block Farm:';
+  if (labelEl) labelEl.textContent = isManager ? 'Filter Nacayao Block Farm Plot:' : 'Filter Field / Block Farm:';
 
   const selectEl = document.getElementById('log-field-filter');
   if (selectEl) {
     if (isManager) {
-      const myPlots = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === 'Nacayao Block Farm A' || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A');
-      selectEl.innerHTML = '<option value="all">All Nacayao Block Farm A Plots</option>'
+      const myPlots = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === 'Nacayao Block Farm' || f.blockFarm === 'Nacayao Block Farm' || getBlockFarmName(f.id) === 'Nacayao Block Farm');
+      selectEl.innerHTML = '<option value="all">All Nacayao Block Farm Plots</option>'
         + myPlots.map(f => `<option value="${f.id}">${f.id} (${f.member || 'Member'})</option>`).join('');
     } else {
-      const bFarms = ['Nacayao Block Farm A', 'Block Farm B', 'Block Farm C', 'Block Farm D'];
-      const plotOptions = db.fields.map(f => `<option value="${f.id}">${f.id} (${f.member || 'Member'})</option>`).join('');
+      const bFarms = (db.blockFarms && db.blockFarms.length > 0)
+        ? db.blockFarms.map(bf => bf.name)
+        : ['Nacayao Block Farm'];
+      const plotOptions = db.fields.map(f => `<option value="${f.id}">${f.id} (${resolveFieldMember(f, db)})</option>`).join('');
       selectEl.innerHTML = '<option value="all">All District Fields &amp; Block Farms</option>'
         + bFarms.map(bf => `<option value="${bf}">${bf} (All Plots)</option>`).join('')
         + plotOptions;
@@ -4424,18 +4625,18 @@ function renderLogs() {
 
   let filtered = db.logs;
   
-  // 1. Scoping: Farm Manager can only view logs from their block farm (Nacayao Block Farm A)
+  // 1. Scoping: Farm Manager can only view logs from their block farm (Nacayao Block Farm)
   if (isManager) {
-    const managerFieldIds = new Set(db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === 'Nacayao Block Farm A' || f.blockFarm === 'Block Farm A' || getBlockFarmName(f.id) === 'Nacayao Block Farm A').map(f => f.id));
-    filtered = filtered.filter(l => managerFieldIds.has(l.fieldId) || l.blockFarm === 'Nacayao Block Farm A' || l.blockFarm === 'Block Farm A');
+    const managerFieldIds = new Set(db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === 'Nacayao Block Farm' || f.blockFarm === 'Nacayao Block Farm' || getBlockFarmName(f.id) === 'Nacayao Block Farm').map(f => f.id));
+    filtered = filtered.filter(l => managerFieldIds.has(l.fieldId) || l.blockFarm === 'Nacayao Block Farm' || l.blockFarm === 'Nacayao Block Farm');
   }
 
   if (activeFilterValue !== 'all') {
     if (activeFilterValue.includes('Block Farm')) {
       filtered = filtered.filter(l => {
         const bf = l.blockFarm || getBlockFarmName(l.fieldId);
-        if (activeFilterValue.includes('Block Farm A')) {
-          return bf === 'Nacayao Block Farm A' || bf === 'Block Farm A';
+        if (activeFilterValue.includes('Nacayao Block Farm')) {
+          return bf === 'Nacayao Block Farm' || bf === 'Nacayao Block Farm';
         }
         return bf === activeFilterValue;
       });
@@ -4691,10 +4892,10 @@ function renderUsers() {
   const pendingSubEl = document.getElementById('pending-users-sub');
 
   if (currentRole === 'manager') {
-    if (headingEl) headingEl.textContent = 'Nacayao Block Farm A · Member Access & Onboarding';
-    if (subEl) subEl.textContent = 'Review and approve member farmers registering specifically under Nacayao Block Farm A';
-    if (dirTitleEl) dirTitleEl.textContent = 'Nacayao Block Farm A Registered Personnel & Farmers';
-    if (pendingTitleEl) pendingTitleEl.textContent = 'Pending Nacayao Block Farm A Registrations';
+    if (headingEl) headingEl.textContent = 'Nacayao Block Farm · Member Access & Onboarding';
+    if (subEl) subEl.textContent = 'Review and approve member farmers registering specifically under Nacayao Block Farm';
+    if (dirTitleEl) dirTitleEl.textContent = 'Nacayao Block Farm Registered Personnel & Farmers';
+    if (pendingTitleEl) pendingTitleEl.textContent = 'Pending Nacayao Block Farm Registrations';
     if (pendingSubEl) pendingSubEl.textContent = 'Only you (Farm Manager) can approve members for your assigned block farm.';
   } else if (currentRole === 'admin') {
     if (headingEl) headingEl.textContent = 'Silay SRA Personnel & Farm Manager Directory';
@@ -4717,7 +4918,7 @@ function renderUsers() {
     // 1. Role-based directory scoping:
     if (currentRole === 'manager') {
       // Farm manager only sees members of their block farm + themselves (Jose Reyes)
-      filtered = filtered.filter(u => u.blockFarm === 'Block Farm A' || (u.role === 'Farm Manager' && u.name === 'Jose Reyes'));
+      filtered = filtered.filter(u => u.blockFarm === 'Nacayao Block Farm' || (u.role === 'Farm Manager' && u.name === 'Jose Reyes'));
     } else if (currentRole === 'admin') {
       // SRA Admin CANNOT see Super Admin, but CAN see Farm Managers and all Members with their block farm and field/plot
       filtered = filtered.filter(u => u.role !== 'Super Admin');
@@ -4757,17 +4958,36 @@ function renderUsers() {
       };
       const rClass = roleBadges[u.role] || roleBadges['Member'];
       
-      // Determine field/plot display (e.g. Block Farm A · FLD-KTR-001 (1.5Ha), FLD-KTR-005 (2.0Ha))
-      let plotDisplay = '';
-      if (u.fieldId) {
-        plotDisplay = ` · <span class="font-mono font-bold text-primary">${u.fieldId}</span>`;
-      } else if (u.role === 'Member') {
-        const foundFields = db.fields.filter(f => f.member === u.name || f.owner === u.name);
-        if (foundFields.length > 0) {
-          plotDisplay = ` · ` + foundFields.map(f => `<span class="font-mono font-bold text-primary">${f.id} (${f.ha}Ha)</span>`).join(', ');
+      // Determine field/plot display accurately across all roles
+      let farmPlotLabel = 'Unassigned';
+      if (u.role === 'Super Admin') {
+        farmPlotLabel = '<span class="text-hug-muted">All Block Farms / Central Oversight</span>';
+      } else if (u.role === 'SRA (Admin)') {
+        farmPlotLabel = '<span class="text-primary font-semibold">District VII (SRA Regulatory)</span>';
+      } else if (u.role === 'Farm Manager') {
+        const bfName = u.blockFarm || u.blockFarmScope || (db.blockFarms && db.blockFarms[0]?.name) || 'Nacayao Block Farm';
+        farmPlotLabel = `<span class="font-bold text-farm-blue">${bfName}</span>`;
+      } else {
+        // Members: resolve plot
+        const bfName = u.blockFarm || u.blockFarmScope || 'Nacayao Block Farm';
+        let plotDisplay = '';
+        if (u.fieldId) {
+          const matchingF = (db.fields || []).find(f => f.id === u.fieldId);
+          const haSuffix = matchingF ? ` (${matchingF.ha || 1.5} Ha)` : '';
+          plotDisplay = ` · <span class="font-mono font-bold text-primary">${u.fieldId}${haSuffix}</span>`;
+        } else {
+          const matchingFields = (db.fields || []).filter(f => 
+            f.memberId === u.employeeId || 
+            f.memberId === u.contact || 
+            f.member === u.name || 
+            f.memberName === u.name
+          );
+          if (matchingFields.length > 0) {
+            plotDisplay = ` · ` + matchingFields.map(f => `<span class="font-mono font-bold text-primary">${f.id} (${f.ha || 1.5} Ha)</span>`).join(', ');
+          }
         }
+        farmPlotLabel = `${bfName}${plotDisplay}`;
       }
-      const farmPlotLabel = u.blockFarm ? `${u.blockFarm}${plotDisplay}` : 'Unassigned';
 
       // Action permissions:
       let canEdit = (currentRole === 'superadmin' || currentRole === 'admin');
@@ -4819,8 +5039,8 @@ function renderUsers() {
     let pendingUsers = [...db.pendingUsers];
 
     if (currentRole === 'manager') {
-      // Farm Manager of Block Farm A ONLY sees pending members for Block Farm A
-      pendingUsers = pendingUsers.filter(p => p.role === 'Member' && (p.blockFarm === 'Block Farm A' || !p.blockFarm));
+      // Farm Manager of Nacayao Block Farm ONLY sees pending members for Nacayao Block Farm
+      pendingUsers = pendingUsers.filter(p => p.role === 'Member' && (p.blockFarm === 'Nacayao Block Farm' || !p.blockFarm));
     } else if (currentRole === 'admin') {
       // SRA Admin ONLY approves Farm Managers (Members are approved by their respective Farm Manager)
       pendingUsers = pendingUsers.filter(p => p.role === 'Farm Manager');
@@ -4835,7 +5055,7 @@ function renderUsers() {
       pendingList.innerHTML = pendingUsers.map(p => {
         let locationDetail = '';
         if (currentRole === 'manager') {
-          const plot = p.fieldId || 'FLD-KTR-006';
+          const plot = p.fieldId || 'FLD-NCY-005';
           const ha = p.area || '1.4 Ha';
           locationDetail = `<p class="text-[11px] text-hug-muted mt-0.5">Assigned Field Plot: <span class="text-primary font-mono font-bold">${plot}</span> <span class="text-hug-text2 font-semibold">(${ha})</span></p>`;
         } else if (currentRole === 'admin') {
@@ -4891,13 +5111,13 @@ function approveRegistration(contact) {
   db.pendingUsers.splice(idx, 1);
 
   // Generate plot ID for member if applicable
-  const assignedPlot = user.fieldId || (user.role === 'Member' ? `FLD-KTR-${String(db.fields.length + 1).padStart(3, '0')}` : null);
+  const assignedPlot = user.fieldId || (user.role === 'Member' ? `FLD-NCY-${String(db.fields.length + 1).padStart(3, '0')}` : null);
 
   db.users.push({
     contact: user.contact,
     name: user.name,
     role: user.role,
-    blockFarm: user.blockFarm || (currentRole === 'manager' ? 'Block Farm A' : 'Block Farm A'),
+    blockFarm: user.blockFarm || (currentRole === 'manager' ? 'Nacayao Block Farm' : 'Nacayao Block Farm'),
     fieldId: assignedPlot,
     logsHandled: 0,
     regDate: new Date().toISOString().split('T')[0]
@@ -4908,7 +5128,7 @@ function approveRegistration(contact) {
     'user',
     'Member Registration Approved',
     `${user.name} (${contact})`,
-    `Approved membership for ${user.blockFarm || 'Block Farm A'}${user.fieldId ? ' and allocated field ' + user.fieldId : ''}.`,
+    `Approved membership for ${user.blockFarm || 'Nacayao Block Farm'}${user.fieldId ? ' and allocated field ' + user.fieldId : ''}.`,
     'Farm Manager Jose Reyes',
     'Approved'
   );
@@ -5062,14 +5282,14 @@ function renderFields() {
   if (isManager) {
     if (viewModeToggle) viewModeToggle.classList.add('hidden');
     if (blockFilterEl) {
-      blockFilterEl.value = 'Nacayao Block Farm A';
+      blockFilterEl.value = 'Nacayao Block Farm';
       blockFilterEl.disabled = true;
     }
     if (stageFilterEl) stageFilterEl.classList.remove('hidden');
     if (quickChipsContainer) quickChipsContainer.classList.remove('hidden');
     if (histBtnText) histBtnText.textContent = 'Plot History';
-    if (headingEl) headingEl.textContent = 'Nacayao Block Farm A · Field Plot Registry';
-    if (subEl) subEl.textContent = 'Direct field management, member plot allocations, and crop stage tracking for Nacayao Block Farm A';
+    if (headingEl) headingEl.textContent = 'Nacayao Block Farm · Field Plot Registry';
+    if (subEl) subEl.textContent = 'Direct field management, member plot allocations, and crop stage tracking for Nacayao Block Farm';
     if (actionBtnText) actionBtnText.textContent = 'Register Field Plot';
   } else {
     // SRA Admin or Super Admin
@@ -5102,7 +5322,7 @@ function renderFields() {
 
     // Filter by block farm
     if (isManager) {
-      plots = plots.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === 'Nacayao Block Farm A' || f.blockFarm === 'Block Farm A');
+      plots = plots.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === 'Nacayao Block Farm' || f.blockFarm === 'Nacayao Block Farm');
     } else if (selectedBlock !== 'all') {
       plots = plots.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === selectedBlock);
     }
@@ -5190,7 +5410,7 @@ function renderFields() {
             </div>
             <div class="flex flex-col gap-1.5 text-xs">
               <div class="flex items-start justify-between gap-2">
-                <strong class="text-sm font-bold text-hug-text">${f.member || 'Unassigned'}</strong>
+                <strong class="text-sm font-bold text-hug-text">${resolveFieldMember(f, db)}</strong>
                 <span class="text-[10px] font-bold text-primary bg-primary-bg px-2 py-0.5 rounded-md border border-primary/20 flex-shrink-0">${farmName}</span>
               </div>
               <p class="text-hug-muted">Current Stage: <span class="font-semibold text-primary">${f.stage || 'Land Preparation'}</span></p>
@@ -5394,7 +5614,7 @@ function renderPlotHistTable() {
           <td class="px-3 py-2.5">
             <div class="flex items-center gap-1.5">
               ${l.sraOperationId ? `<span class="px-1.5 py-0.5 rounded bg-primary-bg text-primary text-[10px] font-bold">${l.sraOperationId}</span>` : ''}
-              <span class="font-semibold text-hug-text">${l.task || l.activity || 'Field Operation'}</span>
+              <span class="font-semibold text-hug-text">${l.operationName || l.activity || l.task || 'Field Operation'}</span>
             </div>
             ${inputDisplay ? `<span class="text-[10px] text-hug-muted block mt-0.5">${inputDisplay}</span>` : ''}
           </td>
@@ -5442,7 +5662,8 @@ function openPlotHistoryModal(fieldId) {
   if (idEl) idEl.textContent = field.id;
   if (areaEl) areaEl.textContent = `${Number(field.ha || 1.5).toFixed(1)} Ha`;
   if (titleEl) titleEl.textContent = `Field Plot Operations History: ${field.id}`;
-  if (subEl) subEl.textContent = `Assigned to ${field.member || 'Unassigned'} · ${field.blockFarm || 'Block Farm A'}`;
+  const memberName = resolveFieldMember(field, db);
+  if (subEl) subEl.textContent = `Assigned to ${memberName} · ${field.blockFarm || 'Nacayao Block Farm'}`;
 
   const plotLogs = (db.logs || []).filter(l => l.fieldId === fieldId);
   const totalSpend = plotLogs.reduce((s, l) => s + (Number(l.cost) || 0), 0);
@@ -5454,7 +5675,7 @@ function openPlotHistoryModal(fieldId) {
     syncStatusEl.className = field.synced ? 'text-[10px] text-success font-semibold' : 'text-[10px] text-danger font-semibold';
   }
   if (areaDisplayEl) areaDisplayEl.textContent = `${Number(field.ha || 1.5).toFixed(1)} Hectares`;
-  if (locDisplayEl) locDisplayEl.textContent = `${field.blockFarm || 'Block Farm A'} · Silay Cluster`;
+  if (locDisplayEl) locDisplayEl.textContent = `${field.blockFarm || 'Nacayao Block Farm'} · Silay Cluster`;
 
   currentPlotHistFieldId = fieldId;
   plotHistPage = 1;
@@ -5496,7 +5717,7 @@ function renderBlockHistTable() {
     filteredFields = (db.fields || []).filter(f => {
       const bf = f.blockFarm || getBlockFarmName(f.id);
       return bf === targetFarm || 
-             (targetFarm.includes('Block Farm A') && (bf.includes('Block Farm A') || bf.includes('Nacayao'))) ||
+             (targetFarm.includes('Nacayao Block Farm') && (bf.includes('Nacayao Block Farm') || bf.includes('Nacayao'))) ||
              (targetFarm.includes('Block Farm B') && (bf.includes('Block Farm B') || bf.includes('Victorias'))) ||
              (targetFarm.includes('Block Farm C') && (bf.includes('Block Farm C') || bf.includes('Talisay'))) ||
              (targetFarm.includes('Block Farm D') && (bf.includes('Block Farm D') || bf.includes('Manapla')));
@@ -5574,7 +5795,7 @@ function openBlockFarmHistoryModal(farmName = null) {
   const currentRole = localStorage.getItem('hugpong_role') || 'admin';
   const isManager = currentRole === 'manager';
 
-  const targetFarm = farmName || (isManager ? 'Nacayao Block Farm A' : null);
+  const targetFarm = farmName || (isManager ? 'Nacayao Block Farm' : null);
 
   const codeEl = document.getElementById('block-hist-code');
   const areaEl = document.getElementById('block-hist-area');
@@ -5594,7 +5815,7 @@ function openBlockFarmHistoryModal(farmName = null) {
     filteredFields = (db.fields || []).filter(f => {
       const bf = f.blockFarm || getBlockFarmName(f.id);
       return bf === targetFarm || 
-             (targetFarm.includes('Block Farm A') && (bf.includes('Block Farm A') || bf.includes('Nacayao'))) ||
+             (targetFarm.includes('Nacayao Block Farm') && (bf.includes('Nacayao Block Farm') || bf.includes('Nacayao'))) ||
              (targetFarm.includes('Block Farm B') && (bf.includes('Block Farm B') || bf.includes('Victorias'))) ||
              (targetFarm.includes('Block Farm C') && (bf.includes('Block Farm C') || bf.includes('Talisay'))) ||
              (targetFarm.includes('Block Farm D') && (bf.includes('Block Farm D') || bf.includes('Manapla')));
@@ -5610,7 +5831,7 @@ function openBlockFarmHistoryModal(farmName = null) {
     
     const manager = (db.users || []).find(u => u.role === 'Farm Manager' && (
       u.blockFarm === targetFarm ||
-      (targetFarm.includes('Block Farm A') && (u.blockFarm?.includes('Block Farm A') || u.blockFarm?.includes('Nacayao'))) ||
+      (targetFarm.includes('Nacayao Block Farm') && (u.blockFarm?.includes('Nacayao Block Farm') || u.blockFarm?.includes('Nacayao'))) ||
       (targetFarm.includes('Block Farm B') && (u.blockFarm?.includes('Block Farm B') || u.blockFarm?.includes('Victorias'))) ||
       (targetFarm.includes('Block Farm C') && (u.blockFarm?.includes('Block Farm C') || u.blockFarm?.includes('Talisay'))) ||
       (targetFarm.includes('Block Farm D') && (u.blockFarm?.includes('Block Farm D') || u.blockFarm?.includes('Manapla')))
@@ -5662,15 +5883,15 @@ function openPlotRegistryAuditModal() {
   const countEl = document.getElementById('plot-reg-hist-log-count');
   const eventsListEl = document.getElementById('plot-reg-hist-events-list');
 
-  const bPlots = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === 'Block Farm A');
-  const bMembers = db.users.filter(u => u.blockFarm === 'Block Farm A' && u.role === 'Member');
+  const bPlots = db.fields.filter(f => (f.blockFarm || getBlockFarmName(f.id)) === 'Nacayao Block Farm');
+  const bMembers = db.users.filter(u => u.blockFarm === 'Nacayao Block Farm' && u.role === 'Member');
   const totalHa = bPlots.reduce((s, f) => s + (Number(f.ha || f.area) || 0), 0);
 
-  // Filter audit events related to Block Farm A or plot allocations
+  // Filter audit events related to Nacayao Block Farm or plot allocations
   const historyEvents = (db.systemHistory || []).filter(h => 
     h.category === 'plot' || 
     h.category === 'user' || 
-    (h.details && (h.details.includes('Block Farm A') || h.details.includes('FLD-KTR'))) ||
+    (h.details && (h.details.includes('Nacayao Block Farm') || h.details.includes('FLD-KTR'))) ||
     (h.actor && h.actor.includes('Jose Reyes'))
   );
 
@@ -5740,7 +5961,7 @@ function openUserHistoryModal(contact) {
   if (roleEl) roleEl.textContent = user.role;
   if (contactEl) contactEl.textContent = user.contact;
   if (nameEl) nameEl.textContent = user.name;
-  if (subEl) subEl.textContent = `Allocated Plot: ${user.fieldId || 'None'} · ${user.blockFarm || 'Block Farm A'}`;
+  if (subEl) subEl.textContent = `Allocated Plot: ${user.fieldId || 'None'} · ${user.blockFarm || 'Nacayao Block Farm'}`;
   if (lastSyncEl) lastSyncEl.textContent = 'Today, 08:30 AM';
   if (regDateEl) regDateEl.textContent = user.regDate || 'May 01, 2026';
 
@@ -5934,28 +6155,64 @@ function submitCreateUser() {
     return;
   }
 
+  const roleKeyMap = {
+    'Super Admin': 'superadmin',
+    'SRA (Admin)': 'admin',
+    'Farm Manager': 'manager',
+    'Member': 'member'
+  };
+  const rolePrefixMap = {
+    'Super Admin': '01',
+    'SRA (Admin)': '02',
+    'Farm Manager': '03',
+    'Member': '04'
+  };
+  const prefix = rolePrefixMap[role] || '04';
+  const employeeId = prefix + String(Math.floor(100000 + Math.random() * 900000));
+  const roleKey = roleKeyMap[role] || 'member';
+  const cleanContact = contact.replace(/\D/g, '');
+  const password = document.getElementById('create-user-password')?.value.trim() || 'password123';
+
   const newUser = {
+    employeeId: employeeId,
     contact: contact,
+    mobile: contact,
     name: name,
     role: role,
-    blockFarm: blockFarm || null,
-    fieldId: null,
+    roleKey: roleKey,
+    blockFarmId: blockFarm === 'Nacayao Block Farm' ? 'BLK-NCY-01' : '',
+    blockFarmScope: blockFarm || 'Nacayao Block Farm',
+    blockFarm: blockFarm || 'Nacayao Block Farm',
+    fieldId: '',
     logsHandled: 0,
-    regDate: new Date().toISOString().split('T')[0]
+    regDate: new Date().toISOString().split('T')[0],
+    password: password,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
 
   db.users.push(newUser);
 
   if (role === 'Farm Manager' && blockFarm) {
     db.users.forEach(u => {
-      if (u.contact !== contact && u.role === 'Farm Manager' && u.blockFarm === blockFarm) {
+      if (u.contact !== contact && u.role === 'Farm Manager' && (u.blockFarm === blockFarm || u.blockFarmScope === blockFarm)) {
         u.role = 'Member';
+        u.roleKey = 'member';
       }
     });
   }
 
   saveDB(db);
   closeCreateUserModal();
+
+  // Instant direct write to Firestore for reliability
+  if (window.firebaseDB && window.firestore) {
+    const { doc, setDoc } = window.firestore;
+    setDoc(doc(window.firebaseDB, 'users', cleanContact), newUser, { merge: true }).catch(err => {
+      console.warn('[HUGPONG] Instant Firestore write user notice:', err);
+    });
+  }
+
   logSystemEvent(
     'user',
     'Personnel Provisioned',
@@ -5967,6 +6224,8 @@ function submitCreateUser() {
 
   toast(`Successfully registered ${name} as ${role}!`);
   renderUsers();
+  renderFields();
+  renderDashboard();
   renderFields();
   renderDashboard();
 }
@@ -6036,7 +6295,6 @@ function saveEditPlotModal() {
   // Look up member name by contact
   const matchedUser = db.users.find(u => u.contact === memberContact);
   const memberName = matchedUser ? matchedUser.name : memberContact;
-  const memberContact2 = memberContact;
 
   const prevMember = field.member || field.owner;
   const prevHa = field.ha;
@@ -6080,13 +6338,21 @@ function handleFieldsActionClick() {
 }
 
 function openRegisterFieldPlotModal() {
+  activeRegistrationModalMode = 'plot';
   const modal = document.getElementById('modal-register-block-farm');
   if (!modal) return;
   activeEditingBlockFarmName = null;
 
   const db = getDB();
-  const nextPlotNum = db.fields.length + 1;
-  const plotId = `FLD-KTR-${String(nextPlotNum).padStart(3, '0')}`;
+  // Auto-generate next FLD-NCY plot ID
+  const existingNums = (db.fields || [])
+    .map(f => {
+      const m = (f.id || '').match(/FLD-NCY-(\d+)/);
+      return m ? parseInt(m[1], 10) : null;
+    })
+    .filter(n => n !== null);
+  const nextNum = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 6;
+  const plotId = `FLD-NCY-${String(nextNum).padStart(3, '0')}`;
 
   const badgeEl = document.getElementById('dash-modal-farm-badge');
   const titleEl = document.getElementById('dash-modal-farm-title');
@@ -6115,11 +6381,11 @@ function openRegisterFieldPlotModal() {
     const s = titleEl.querySelector('span');
     if (s) s.textContent = 'Register New Field Plot';
   }
-  if (subEl) subEl.textContent = 'Enroll a new field plot under Block Farm A and assign an approved member farmer.';
+  if (subEl) subEl.textContent = 'Enroll a new field plot under Nacayao Block Farm and assign an approved member farmer.';
 
   if (lblPlotId) lblPlotId.textContent = 'Field Plot ID';
   if (lblCluster) lblCluster.textContent = 'Block Farm';
-  if (displayCluster) displayCluster.textContent = 'Block Farm A';
+  if (displayCluster) displayCluster.textContent = 'Nacayao Block Farm';
 
   if (nameWrapper) nameWrapper.classList.add('hidden');
 
@@ -6150,6 +6416,7 @@ function openRegisterBlockFarmModal(farmNameToEdit = null) {
     return;
   }
 
+  activeRegistrationModalMode = farmNameToEdit ? 'edit_block' : 'new_block';
   const modal = document.getElementById('modal-register-block-farm');
   if (!modal) return;
 
@@ -6248,14 +6515,14 @@ function closeRegisterBlockFarmModal() {
 
 function submitRegisterBlockFarmFromDashboard() {
   const currentRole = localStorage.getItem('hugpong_role') || 'admin';
-  const isManager = currentRole === 'manager';
+  const isPlotMode = activeRegistrationModalMode === 'plot';
 
   const nameEl = document.getElementById('dash-farm-name');
   const contactEl = document.getElementById('dash-farm-contact');
   const haEl = document.getElementById('dash-farm-ha');
   const plotIdEl = document.getElementById('dash-farm-plot-id');
 
-  const farmName = isManager ? 'Block Farm A' : (nameEl ? nameEl.value.trim() : '');
+  const farmName = isPlotMode ? 'Nacayao Block Farm' : (nameEl ? nameEl.value.trim() : '');
   const contact = contactEl ? contactEl.value.trim() : '';
   const ha = haEl ? parseFloat(haEl.value) : NaN;
   const blockCodeOrPlotId = plotIdEl ? plotIdEl.value.trim() : '';
@@ -6266,52 +6533,91 @@ function submitRegisterBlockFarmFromDashboard() {
   }
 
   const db = getDB();
-  const existingUser = db.users.find(u => u.contact === contact);
+  const existingUser = db.users.find(u => u.contact === contact || u.employeeId === contact || u.mobile === contact);
   const resolvedName = existingUser ? existingUser.name : `Farmer ${contact.slice(-4)}`;
+  const cleanContact = contact.replace(/\D/g, '');
 
-  if (isManager) {
-    // Farm Manager enrolling a new Field Plot under Block Farm A
-    db.fields.push({
+  if (isPlotMode) {
+    // Farm Manager / Super Admin enrolling a new Field Plot under Nacayao Block Farm
+    const newField = {
       id: blockCodeOrPlotId,
+      blockFarmId: 'BLK-NCY-01',
+      blockFarmName: 'Nacayao Block Farm',
+      blockFarm: 'Nacayao Block Farm',
+      memberId: existingUser ? (existingUser.employeeId || existingUser.contact) : ('04' + (cleanContact.slice(-6) || '000006')),
+      memberName: resolvedName,
       member: resolvedName,
-      owner: resolvedName,
       ha: ha,
-      area: ha,
-      stage: 'Land Preparation',
-      age: '0.1 months',
+      stage: 'Pre-Planting & Land Preparation',
+      stageNumber: 1,
+      month: 0.5,
+      batchMonth: 1,
       synced: true,
       lastSync: 'Just now',
-      lag: 'Synced',
-      blockFarm: 'Block Farm A',
-      customStages: []
-    });
+      variety: 'VMC 84-524',
+      soilType: 'Clay Loam',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    db.fields.push(newField);
 
     if (!existingUser) {
-      db.users.push({
+      const newUser = {
+        employeeId: '04' + String(Math.floor(100000 + Math.random() * 900000)),
         contact: contact,
+        mobile: contact,
         name: resolvedName,
         role: 'Member',
-        blockFarm: 'Block Farm A',
+        roleKey: 'member',
+        blockFarmId: 'BLK-NCY-01',
+        blockFarmScope: 'Nacayao Block Farm',
+        blockFarm: 'Nacayao Block Farm',
         fieldId: blockCodeOrPlotId,
         logsHandled: 0,
-        regDate: new Date().toISOString().split('T')[0]
-      });
+        regDate: new Date().toISOString().split('T')[0],
+        password: 'password123',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      db.users.push(newUser);
+
+      if (window.firebaseDB && window.firestore) {
+        const { doc, setDoc } = window.firestore;
+        setDoc(doc(window.firebaseDB, 'users', cleanContact), newUser, { merge: true }).catch(err => {
+          console.warn('[HUGPONG] Instant Firestore write user notice:', err);
+        });
+      }
     } else {
-      if (!existingUser.fieldId) existingUser.fieldId = blockCodeOrPlotId;
-      if (!existingUser.blockFarm) existingUser.blockFarm = 'Block Farm A';
+      existingUser.fieldId = blockCodeOrPlotId;
+      existingUser.blockFarm = 'Nacayao Block Farm';
+      existingUser.blockFarmId = 'BLK-NCY-01';
+      existingUser.blockFarmScope = 'Nacayao Block Farm';
     }
 
     saveDB(db);
     closeRegisterBlockFarmModal();
+
+    // Direct write field to Firestore
+    if (window.firebaseDB && window.firestore) {
+      const { doc, setDoc } = window.firestore;
+      setDoc(doc(window.firebaseDB, 'fields', newField.id), newField, { merge: true }).catch(err => {
+        console.warn('[HUGPONG] Instant Firestore write field notice:', err);
+      });
+    }
+
     logSystemEvent(
       'plot',
       'Field Plot Enrolled',
       `${blockCodeOrPlotId}`,
-      `New field plot allocated to User ID: ${contact} (${resolvedName}) · ${ha} Ha in Block Farm A.`,
-      'Farm Manager Jose Reyes',
+      `New field plot allocated to User ID: ${contact} (${resolvedName}) · ${ha} Ha in Nacayao Block Farm.`,
+      currentRole === 'superadmin' ? 'Super Admin System Authority' : (currentRole === 'manager' ? 'Farm Manager Jose Reyes' : 'SRA (Admin)'),
       'Approved'
     );
     toast(`Success: Field plot ${blockCodeOrPlotId} (${ha} Ha) assigned to User ID: ${contact}!`);
+    renderFields();
+    renderDashboard();
+    renderUsers();
   } else if (activeEditingBlockFarmName) {
     // SRA Admin editing existing block farm
     const oldFarmName = activeEditingBlockFarmName;
@@ -6360,49 +6666,81 @@ function submitRegisterBlockFarmFromDashboard() {
     toast(`Block Farm ${farmName} updated with Manager User ID: ${contact}!`);
   } else {
     // SRA Admin registering new block farm
-    const newPlotId = `FLD-KTR-${String(db.fields.length + 1).padStart(3, '0')}`;
-    
-    db.fields.push({
-      id: newPlotId,
-      member: resolvedName,
-      owner: resolvedName,
-      ha: ha,
-      area: ha,
-      stage: 'Land Preparation',
-      age: '0.1 months',
-      synced: true,
-      lastSync: 'Just now',
-      lag: 'Synced',
-      blockFarm: farmName,
-      customStages: []
-    });
+    const existingBlockFarms = db.blockFarms || [];
+    const bfCode = `BLK-NCY-${String(existingBlockFarms.length + 1).padStart(2, '0')}`;
+    const dateStr = new Date().toISOString();
+    const cleanMgrContact = contact.replace(/\D/g, '');
+    const mgrEmployeeId = existingUser ? (existingUser.employeeId || cleanContact) : ('03' + cleanMgrContact.slice(-6).padStart(6, '0'));
 
+    // Canonical block farm schema matching database example
+    const newBlockFarm = {
+      id: bfCode,
+      code: bfCode,
+      name: farmName,
+      location: 'Silay City, Negros Occidental',
+      farmManagerId: cleanMgrContact,
+      farmManagerName: resolvedName,
+      declaredHa: ha,
+      activePlots: 0,
+      cooperative: 'Silay Planters Sugarcane Agrarian Reform Cooperative',
+      createdAt: dateStr,
+      updatedAt: dateStr
+    };
+    db.blockFarms = [...(db.blockFarms || []), newBlockFarm];
+
+    // Assign / update farm manager user with canonical schema
     if (existingUser) {
       existingUser.role = 'Farm Manager';
+      existingUser.roleKey = 'manager';
       existingUser.blockFarm = farmName;
+      existingUser.blockFarmId = bfCode;
+      existingUser.blockFarmScope = farmName;
     } else {
-      db.users.push({
+      const newMgr = {
+        employeeId: mgrEmployeeId,
         contact: contact,
+        mobile: contact,
         name: resolvedName,
         role: 'Farm Manager',
+        roleKey: 'manager',
+        blockFarmId: bfCode,
+        blockFarmScope: farmName,
         blockFarm: farmName,
-        fieldId: newPlotId,
+        fieldId: '',
         logsHandled: 0,
-        regDate: new Date().toISOString().split('T')[0]
-      });
+        regDate: dateStr.split('T')[0],
+        password: 'password123',
+        createdAt: dateStr,
+        updatedAt: dateStr
+      };
+      db.users.push(newMgr);
+      if (window.firebaseDB && window.firestore) {
+        const { doc, setDoc } = window.firestore;
+        setDoc(doc(window.firebaseDB, 'users', cleanMgrContact), newMgr, { merge: true }).catch(e => console.warn(e));
+      }
     }
 
     saveDB(db);
     closeRegisterBlockFarmModal();
+
+    // Write block farm to Firestore
+    if (window.firebaseDB && window.firestore) {
+      const { doc, setDoc } = window.firestore;
+      setDoc(doc(window.firebaseDB, 'block_farms', bfCode), newBlockFarm, { merge: true }).catch(e => console.warn(e));
+    }
+
     logSystemEvent(
-      'plot',
-      'New Block Farm Enrolled',
-      `${farmName} (${newPlotId})`,
-      `Enrolled under supervision of Farm Manager User ID: ${contact} (${resolvedName}) with ${ha.toFixed(1)} Ha.`,
-      'SRA District Administrator',
-      'Approved'
+      'block',
+      'Block Farm Enrolled',
+      `${farmName} (${bfCode})`,
+      `New cooperative block farm enrolled · Farm Manager: ${resolvedName} (${contact}) · ${ha.toFixed(1)} Ha declared · Code: ${bfCode}.`,
+      currentRole === 'superadmin' ? 'Super Admin System Authority' : 'SRA District Administrator',
+      'Enrolled'
     );
-    toast(`Successfully registered ${farmName} under Manager User ID: ${contact}!`);
+    toast(`Successfully registered Block Farm ${farmName} (${bfCode}) under Manager: ${resolvedName}!`);
+    renderFields();
+    renderUsers();
+    renderDashboard();
   }
 
   renderFields();
@@ -6470,9 +6808,9 @@ function openTabHistoryModal(moduleType) {
 
   if (moduleType === 'plot') {
     if (isManager) {
-      if (badgeEl) badgeEl.textContent = 'Block Farm A · Plot Registry History';
-      if (titleEl) titleEl.textContent = 'Block Farm A · Field Plot Allocation & Registration History';
-      if (subEl) subEl.textContent = 'Audit trail of farmer assignments, plot enrollments, and land transfers for Block Farm A';
+      if (badgeEl) badgeEl.textContent = 'Nacayao Block Farm · Plot Registry History';
+      if (titleEl) titleEl.textContent = 'Nacayao Block Farm · Field Plot Allocation & Registration History';
+      if (subEl) subEl.textContent = 'Audit trail of farmer assignments, plot enrollments, and land transfers for Nacayao Block Farm';
       if (chipsContainer) {
         chipsContainer.innerHTML = `
           <button class="tab-hist-chip text-xs font-semibold px-3 py-1 rounded-full border border-primary bg-primary text-white transition-all cursor-pointer" data-filter="all" onclick="setTabHistoryFilter('all')">All Plot Events</button>
@@ -6562,13 +6900,16 @@ function renderTabHistory() {
   let moduleEvents = [];
   if (currentTabHistModule === 'plot') {
     if (isManager) {
+      // Farm Manager sees all plot and user events for their block farm
       moduleEvents = allHistory.filter(h => 
-        (h.category === 'plot' || h.category === 'user') &&
-        ((h.details && (h.details.includes('Block Farm A') || h.details.includes('FLD-KTR'))) || (h.actor && h.actor.includes('Jose Reyes')))
+        h.category === 'plot' || h.category === 'user' || h.category === 'block'
       );
     } else {
-      // SRA Admin sees Block Farm registrations and all cooperative land events across district
-      moduleEvents = allHistory.filter(h => h.category === 'block' || h.category === 'plot' || h.eventType.toLowerCase().includes('block'));
+      // SRA Admin and Super Admin see all block farm, plot, and user events
+      moduleEvents = allHistory.filter(h =>
+        h.category === 'block' || h.category === 'plot' || h.category === 'user' ||
+        (h.eventType && (h.eventType.toLowerCase().includes('block') || h.eventType.toLowerCase().includes('enrolled') || h.eventType.toLowerCase().includes('plot') || h.eventType.toLowerCase().includes('personnel')))
+      );
     }
   } else if (currentTabHistModule === 'sra' || currentTabHistModule === 'audit') {
     // Strictly QR Audits, Verifications, and Field Compliance Certificates
@@ -6714,17 +7055,21 @@ function logSystemEvent(category, eventType, entity, details, actor, status = 'R
   const db = getDB();
   db.systemHistory = db.systemHistory || [];
   const currentRole = localStorage.getItem('hugpong_role') || 'manager';
-  const defaultActor = currentRole === 'manager' ? 'Farm Manager Jose Reyes' : (currentRole === 'superadmin' ? 'Super Admin' : 'SRA Admin');
+  const loggedInUser = localStorage.getItem('hugpong_user') || '';
+  const defaultActor = currentRole === 'manager' ? 'Farm Manager Jose Reyes' : (currentRole === 'superadmin' ? (loggedInUser || 'Super Admin') : 'SRA Admin');
   
   let catLabel = 'System';
   if (category === 'operation') catLabel = 'Field Operation';
   else if (category === 'plot') catLabel = 'Plot Registry';
+  else if (category === 'block') catLabel = 'Block Farm';
   else if (category === 'user') catLabel = 'User Management';
-  else if (category === 'sra') catLabel = 'SRA Price / Audit';
+  else if (category === 'sra' || category === 'price') catLabel = 'SRA Price / Audit';
 
+  const auditId = `AUD-${Date.now()}`;
   const newEvent = {
-    id: `AUD-${Date.now().toString().slice(-4)}`,
+    id: auditId,
     timestamp: new Date().toLocaleString('en-PH', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    createdAt: new Date().toISOString(),
     category,
     categoryLabel: catLabel,
     eventType,
@@ -6736,6 +7081,21 @@ function logSystemEvent(category, eventType, entity, details, actor, status = 'R
 
   db.systemHistory.unshift(newEvent);
   saveDB(db);
+
+  // Write to Firestore audit_logs so history persists across sessions
+  if (window.firebaseDB && window.firestore) {
+    try {
+      const { doc, setDoc } = window.firestore;
+      setDoc(doc(window.firebaseDB, 'audit_logs', auditId), newEvent, { merge: true }).catch(e => {
+        console.warn('[HUGPONG] Audit log write notice:', e);
+      });
+    } catch(e) {
+      console.warn('[HUGPONG] Audit log Firestore note:', e);
+    }
+  }
+
+  // Refresh history view if open
+  if (typeof renderHistory === 'function') renderHistory();
 }
 
 function setHistoryCategory(cat) {
@@ -6786,53 +7146,100 @@ function onTypeFilterChange() {
 function renderHistory() {
   const db = getDB();
   
-  // Aggregate Registry History & System History
-  const regItems = (db.registryHistory || []).map(r => ({
-    id: r.id,
-    timestamp: r.date,
-    category: r.entityType === 'Block Farm' ? 'block' : 'plot',
-    categoryLabel: r.entityType,
-    entityType: r.entityType,
-    entity: `${r.name} (${r.entityId})`,
-    person: r.manager || r.member || 'Assigned Lead',
-    area: `${r.ha} Ha`,
-    details: `${r.action} (${r.ha} Ha)`,
-    actor: r.authority || 'Silay Sugar Regulatory Administration',
-    status: 'Enrolled'
+  // Derive registration history dynamically from canonical fields & block farms
+  const regItems = [];
+  (db.blockFarms || []).forEach(bf => {
+    regItems.push({
+      id: `REG-BLK-${bf.code || 'NCY'}`,
+      timestamp: '2026-05-01',
+      category: 'block',
+      categoryLabel: 'Block Farm',
+      entityType: 'Block Farm',
+      entity: `${bf.name} (${bf.id || 'BLK-NCY-01'})`,
+      person: bf.farmManagerName || 'Jose Reyes',
+      area: `${bf.declaredHa || 15.25} Ha`,
+      details: `Official Cooperative Enrollment (${bf.declaredHa || 15.25} Ha)`,
+      actor: 'Silay Sugar Regulatory Administration',
+      status: 'Enrolled'
+    });
+  });
+
+  (db.fields || []).forEach(f => {
+    regItems.push({
+      id: `REG-${f.id}`,
+      timestamp: '2026-05-01',
+      category: 'plot',
+      categoryLabel: 'Field Plot',
+      entityType: 'Field Plot',
+      entity: `${f.blockFarm || 'Nacayao Block Farm'} · ${f.id}`,
+      person: resolveFieldMember(f, db),
+      area: `${f.ha || 1.5} Ha`,
+      details: `Plot Boundary Registration & Soil Test (${f.variety || 'VMC 84-524'})`,
+      actor: 'Farm Manager Jose Reyes',
+      status: 'Enrolled'
+    });
+  });
+
+  // Also include operational logs as audit events
+  const opItems = (db.logs || []).map(l => ({
+    id: `AUD-${(l.id || '').replace('LOG-2026-', '')}`,
+    timestamp: l.date || '2026-05-02',
+    category: 'operation',
+    categoryLabel: 'Field Operation',
+    entityType: 'Field Operation',
+    entity: `${l.fieldId} · ${l.operationName || l.activity || 'Field Operation'}`,
+    person: l.loggedBy || 'Member Farmer',
+    area: `${l.hectares || '1.5'} Ha`,
+    details: `${l.activity || l.operationName} (₱${Number(l.totalCost || l.cost || 0).toLocaleString()} · ${l.subItems ? l.subItems.length : 0} line items)`,
+    actor: 'Verified by Farm Manager',
+    status: l.status || 'Recorded'
   }));
 
   const sysItems = (db.systemHistory || []).map(s => {
     let eType = 'Field Operation';
     if (s.category === 'plot') eType = 'Field Plot';
     else if (s.category === 'user') eType = 'User Management';
-    else if (s.category === 'sra') eType = 'SRA Price';
+    else if (s.category === 'sra' || s.category === 'price') eType = 'SRA Price';
+    else if (s.category === 'block') eType = 'Block Farm';
+    // Support both new schema (eventType/entity/actor) and seed schema (action/entityId/actorName)
+    const resolvedActor = s.actor || s.actorName || (s.actorRole ? `${s.actorName || 'System'} (${s.actorRole})` : 'Authorized Personnel');
+    const resolvedEntity = s.entity || s.entityId || s.action || 'System Action';
+    const resolvedEvent = s.eventType || s.action || 'System Event';
+    const resolvedCategory = s.category || (s.entityType === 'Field' ? 'plot' : s.entityType === 'SRA Price' ? 'sra' : s.entityType === 'Audit Report' ? 'audit' : 'operation');
     return {
       id: s.id,
-      timestamp: s.timestamp,
-      category: s.category,
+      timestamp: s.timestamp || s.createdAt || new Date().toISOString().split('T')[0],
+      category: resolvedCategory,
       categoryLabel: s.categoryLabel || eType,
-      entityType: eType,
-      entity: s.entity,
-      person: s.actor || 'Authorized Personnel',
+      entityType: s.entityType || eType,
+      entity: resolvedEntity,
+      eventType: resolvedEvent,
+      person: resolvedActor,
       area: s.category === 'plot' ? '1.5 Ha' : 'Operational Scope',
-      details: s.details,
-      actor: s.actor || 'Regulatory Authority',
+      details: s.details || s.description || `${resolvedEvent}: ${resolvedEntity}`,
+      actor: resolvedActor,
       status: s.status || 'Recorded'
     };
   });
 
-  const allItems = [...regItems, ...sysItems];
+  const allItems = [...regItems, ...opItems, ...sysItems];
 
-  // Update Summary KPI Stats
+  // Update Summary KPI Stats dynamically from database
   const statArea = document.getElementById('hist-stat-area');
   const statBlocks = document.getElementById('hist-stat-blocks');
   const statPlots = document.getElementById('hist-stat-plots');
   const statEvents = document.getElementById('hist-stat-events');
   const recordCountEl = document.getElementById('hist-records-count');
 
-  if (statArea) statArea.textContent = '16.4 Ha';
-  if (statBlocks) statBlocks.textContent = '4 Block Farms';
-  if (statPlots) statPlots.textContent = '10 Plots';
+  const totalDeclaredHa = db.fields.length > 0 
+    ? db.fields.reduce((s, f) => s + (Number(f.ha) || 0), 0) 
+    : 15.25;
+  const totalBlocks = db.blockFarms.length || 1;
+  const totalPlots = db.fields.length || 5;
+
+  if (statArea) statArea.textContent = `${totalDeclaredHa.toFixed(1)} Ha`;
+  if (statBlocks) statBlocks.textContent = `${totalBlocks} Block Farm${totalBlocks > 1 ? 's' : ''}`;
+  if (statPlots) statPlots.textContent = `${totalPlots} Field Plots`;
   if (statEvents) statEvents.textContent = `${allItems.length} Records`;
 
   // Search & Filter Inputs
@@ -7032,12 +7439,14 @@ function renderSync() {
   // 1. Render Block Farm Inactivity Breakdown Cards (#sync-blocks-telemetry)
   const blocksTelemetryEl = document.getElementById('sync-blocks-telemetry');
   if (blocksTelemetryEl) {
-    const blockGroups = ['Block Farm A', 'Block Farm B', 'Block Farm C', 'Block Farm D'];
+    const blockGroups = (db.blockFarms && db.blockFarms.length > 0)
+      ? db.blockFarms.map(bf => bf.name)
+      : ['Nacayao Block Farm'];
     const thresholdHours = getSyncInactivityThresholdHours();
     const warningDays = Math.max(1, Math.round(thresholdHours / 24));
 
     blocksTelemetryEl.innerHTML = blockGroups.map(bName => {
-      const bPlots = fields.filter(f => (f.blockFarm || 'Block Farm A') === bName);
+      const bPlots = fields.filter(f => (f.blockFarm || resolveFieldBlockFarm(f, db)) === bName || f.blockFarmId === bName);
       const lagPlots = bPlots.filter(f => !f.synced || (Number(f.syncLagDays) >= warningDays));
       const statusColor = lagPlots.length === 0 ? 'text-success' : 'text-danger';
       const statusBg = lagPlots.length === 0 ? 'bg-success-bg' : 'bg-danger-bg';
@@ -7204,25 +7613,31 @@ function renderTickets() {
       const statusClass = t.status === 'Open' ? 'bg-danger-bg text-danger border-danger/20' : (t.status === 'In Progress' ? 'bg-warning-bg text-[#C97A00] border-warning/20' : 'bg-success-bg text-success border-success/20');
       const priorityClass = t.priority === 'Critical' ? 'bg-danger text-white' : (t.priority === 'High' ? 'bg-danger-bg text-danger' : (t.priority === 'Medium' ? 'bg-warning-bg text-[#C97A00]' : 'bg-bg text-hug-muted'));
 
+      const title = t.title || t.subject || 'Support Request';
+      const author = t.author || t.memberName || t.member || 'Cooperative Member';
+      const blockFarm = t.blockFarm || 'Nacayao Block Farm';
+      const date = t.date || (t.createdAt ? t.createdAt.split('T')[0] : '2026-05-20');
+      const details = t.details || (t.messages && t.messages.length > 0 ? t.messages[0].text : '') || t.description || 'Support issue recorded.';
+
       return `
         <div class="bg-white rounded-2xl p-4 border border-border shadow-xs hover:border-primary/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div class="flex items-start gap-3.5 flex-1">
             <div class="w-10 h-10 rounded-xl bg-bg flex items-center justify-center flex-shrink-0 text-hug-text2 font-mono font-bold text-xs border border-border">
-              ${t.id.replace('TCK-', '')}
+              ${(t.id || 'TCK-001').replace('TCK-', '')}
             </div>
             <div class="flex-1">
               <div class="flex items-center gap-2 flex-wrap mb-1">
                 <span class="font-mono text-xs font-bold text-primary">${t.id}</span>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusClass}">${t.status}</span>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${priorityClass}">${t.priority} Priority</span>
-                <span class="text-[10px] font-medium text-hug-muted bg-bg px-2 py-0.5 rounded-full">${t.category}</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusClass}">${t.status || 'Open'}</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${priorityClass}">${t.priority || 'Normal'} Priority</span>
+                <span class="text-[10px] font-medium text-hug-muted bg-bg px-2 py-0.5 rounded-full">${t.category || 'General'}</span>
               </div>
-              <h4 class="text-sm font-bold text-hug-text mb-1">${t.title}</h4>
-              <p class="text-xs text-hug-muted line-clamp-2">${t.details}</p>
+              <h4 class="text-sm font-bold text-hug-text mb-1">${title}</h4>
+              <p class="text-xs text-hug-muted line-clamp-2">${details}</p>
               <div class="flex items-center gap-4 text-[11px] text-hug-muted mt-2">
-                <span><strong>${t.author}</strong></span>
-                <span>${t.blockFarm}</span>
-                <span>${t.date}</span>
+                <span><strong>${author}</strong></span>
+                <span>${blockFarm}</span>
+                <span>${date}</span>
               </div>
             </div>
           </div>
@@ -7574,7 +7989,7 @@ async function submitNewWeeklyPriceFromDashboard() {
   };
 
   db.priceHistory.unshift(newPost);
-  saveDB(db);
+  saveDB(db, true);
 
   // Directly push to Firestore if online
   if (window.firebaseDB && window.firestore) {
@@ -7610,12 +8025,18 @@ function openTicketDetailModal(id) {
   if (!t) return;
   currentSelectedTicketId = id;
 
+  const title = t.title || t.subject || 'Support Request';
+  const author = t.author || t.memberName || t.member || 'Cooperative Member';
+  const blockFarm = t.blockFarm || 'Nacayao Block Farm';
+  const date = t.date || (t.createdAt ? t.createdAt.split('T')[0] : '2026-05-20');
+  const details = t.details || (t.messages && t.messages.length > 0 ? t.messages[0].text : '') || t.description || 'Support issue recorded.';
+
   document.getElementById('tck-modal-id').textContent = t.id;
-  document.getElementById('tck-modal-title').textContent = t.title;
-  document.getElementById('tck-modal-author').textContent = t.author;
-  document.getElementById('tck-modal-block').textContent = t.blockFarm;
-  document.getElementById('tck-modal-date').textContent = t.date;
-  document.getElementById('tck-modal-details').textContent = t.details;
+  document.getElementById('tck-modal-title').textContent = title;
+  document.getElementById('tck-modal-author').textContent = author;
+  document.getElementById('tck-modal-block').textContent = blockFarm;
+  document.getElementById('tck-modal-date').textContent = date;
+  document.getElementById('tck-modal-details').textContent = details;
   
   const prioPill = document.getElementById('tck-modal-priority-pill');
   if (prioPill) {
@@ -7678,41 +8099,73 @@ function closeCreateTicketModal() {
 }
 
 function submitNewTicket() {
-  const title = document.getElementById('tck-new-title').value.trim();
-  const author = document.getElementById('tck-new-author').value.trim();
-  const blockFarm = document.getElementById('tck-new-block').value;
-  const category = document.getElementById('tck-new-category').value;
-  const priority = document.getElementById('tck-new-priority').value;
-  const details = document.getElementById('tck-new-details').value.trim();
+  const subjectEl = document.getElementById('tck-new-title');
+  const authorEl = document.getElementById('tck-new-author');
+  const blockFarm = document.getElementById('tck-new-block')?.value || 'Nacayao Block Farm';
+  const category = document.getElementById('tck-new-category')?.value || 'General Support';
+  const priority = document.getElementById('tck-new-priority')?.value || 'Normal';
+  const detailsEl = document.getElementById('tck-new-details');
 
-  if (!title || !author || !details) {
+  const subject = subjectEl ? subjectEl.value.trim() : '';
+  const authorRaw = authorEl ? authorEl.value.trim() : '';
+  const details = detailsEl ? detailsEl.value.trim() : '';
+
+  if (!subject || !authorRaw || !details) {
     toast('Please complete all required fields.');
     return;
   }
 
   const db = getDB();
-  if (!db.supportTickets) db.supportTickets = INITIAL_DATABASE.supportTickets;
+  if (!db.supportTickets) db.supportTickets = [];
 
-  const newId = `TCK-${800 + db.supportTickets.length + 1}`;
-  const now = new Date();
-  const dateStr = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  // Resolve author as a user in the directory
+  const authorUser = db.users.find(u =>
+    u.name === authorRaw || u.contact === authorRaw || u.employeeId === authorRaw
+  );
 
+  const newId = `TCK-${new Date().getFullYear()}-${String(800 + db.supportTickets.length + 1).padStart(3, '0')}`;
+  const now = new Date().toISOString();
+
+  // Canonical ticket schema: matches Firestore support_tickets collection
   const newTicket = {
     id: newId,
-    title,
-    author,
+    subject,
+    memberName: authorUser ? authorUser.name : authorRaw,
+    memberId: authorUser ? (authorUser.employeeId || authorUser.contact) : '',
+    contact: authorUser ? (authorUser.contact || authorUser.mobile) : '',
+    fieldId: authorUser ? (authorUser.fieldId || '') : '',
     blockFarm,
     category,
     priority,
     status: 'Open',
-    date: dateStr,
-    details,
-    resolutionNotes: ''
+    messages: [{
+      sender: authorUser ? authorUser.name : authorRaw,
+      text: details,
+      timestamp: now
+    }],
+    createdAt: now
   };
 
   db.supportTickets.unshift(newTicket);
   saveDB(db);
-  toast(`Created ticket ${newId}`);
+
+  // Write to Firestore
+  if (window.firebaseDB && window.firestore) {
+    const { doc, setDoc } = window.firestore;
+    setDoc(doc(window.firebaseDB, 'support_tickets', newId), newTicket, { merge: true })
+      .catch(e => console.warn('[HUGPONG] Ticket write notice:', e));
+  }
+
+  logSystemEvent(
+    'user',
+    'Support Ticket Created',
+    `${newId}: ${subject}`,
+    `Ticket submitted by ${newTicket.memberName} · Category: ${category} · Priority: ${priority}.`,
+    newTicket.memberName,
+    'Open'
+  );
+
+  toast(`Ticket ${newId} created successfully!`);
   closeCreateTicketModal();
   renderTickets();
 }
@@ -7818,18 +8271,30 @@ function renderSuperadminTelemetryDashboard(db) {
   // 3. Block Farm Inactivity & Connectivity Index (#telemetry-blocks-matrix)
   const matrixEl = document.getElementById('telemetry-blocks-matrix');
   if (matrixEl) {
-    const blocks = [
-      { name: 'Nacayao Block Farm A (Silay)', nodes: '2 Android Terminals', health: '100% Synced', queue: '0 Buffered Logs', isLagging: false },
-      { name: 'Block Farm B (Victorias)', nodes: '1 Android Terminal', health: '98.5% Synced', queue: '0 Buffered Logs', isLagging: false },
-      { name: 'Block Farm C (Talisay)', nodes: '1 Android Terminal', health: '86.0% Synced', queue: '5 Buffered Logs', isLagging: true, alert: '1 Inactive Member (>7d)' },
-      { name: 'Block Farm D (Manapla)', nodes: '1 Android Terminal', health: '99.0% Synced', queue: '0 Buffered Logs', isLagging: false }
-    ];
+    const rawFarms = (db.blockFarms && db.blockFarms.length > 0)
+      ? db.blockFarms
+      : [{ id: 'BLK-NCY-01', name: 'Nacayao Block Farm', location: 'Silay City' }];
+
+    const blocks = rawFarms.map(bf => {
+      const bPlots = fields.filter(f => (f.blockFarm || resolveFieldBlockFarm(f, db)) === bf.name || f.blockFarmId === bf.id);
+      const lagPlots = bPlots.filter(f => !f.synced || (Number(f.syncLagDays) >= 7));
+      const isLagging = lagPlots.length > 0;
+      const totalHa = bPlots.reduce((sum, p) => sum + (Number(p.ha) || 0), 0);
+      return {
+        name: `${bf.name} (${bf.location || 'Silay City'})`,
+        nodes: `${bPlots.length} Member Plots (${totalHa.toFixed(1)} Ha)`,
+        health: isLagging ? `${Math.round(((bPlots.length - lagPlots.length) / (bPlots.length || 1)) * 100)}% Synced` : '100% Synced',
+        queue: isLagging ? `${lagPlots.length} Buffered Logs` : '0 Buffered Logs',
+        isLagging,
+        alert: isLagging ? `${lagPlots.length} Inactive / Offline Plot(s)` : null
+      };
+    });
 
     matrixEl.innerHTML = blocks.map(b => `
       <div class="p-3 bg-bg/50 rounded-xl border border-border/80 flex items-center justify-between gap-3">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-lg ${b.isLagging ? 'bg-danger-bg text-danger' : 'bg-success-bg text-success'} flex items-center justify-center font-bold text-xs">
-            ${b.isLagging ? '!' : '<i data-lucide="check" class="w-4 h-4"></i>'}
+            ${b.isLagging ? '!' : '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'}
           </div>
           <div>
             <h5 class="text-xs font-bold text-hug-text">${b.name}</h5>
@@ -7848,7 +8313,7 @@ function renderSuperadminTelemetryDashboard(db) {
   const streamBody = document.getElementById('telemetry-events-stream-body');
   if (streamBody) {
     const events = [
-      { time: '2026-05-23 08:30 AM', type: 'Offline Sync Queue Alert', node: 'TRM-ANDR-02 (Juan dela Cruz)', details: '3 logs queued during offline field operation in field FLD-KTR-001', status: 'Queued Handshake', statusColor: 'warning' },
+      { time: '2026-05-23 08:30 AM', type: 'Offline Sync Queue Alert', node: 'TRM-ANDR-02 (Juan dela Cruz)', details: '3 logs queued during offline field operation in field FLD-NCY-001', status: 'Queued Handshake', statusColor: 'warning' },
       { time: '2026-05-23 08:15 AM', type: 'WebSocket Heartbeat', node: 'Silay SRA Central Gateway', details: 'Automated keep-alive pulse acknowledged by 4 field mobile devices', status: 'Optimal Pulse', statusColor: 'success' },
       { time: '2026-05-22 02:15 PM', type: 'Support Ticket Intake', node: 'TRM-ANDR-01 (Jose Reyes)', details: 'TCK-802 opened: Plot boundary overlap survey discrepancy', status: 'Triage Assigned', statusColor: 'warning' },
       { time: '2026-05-21 11:45 AM', type: 'QR Scanner Diagnostics', node: 'SRA Desk Terminal (Maria Santos)', details: 'Compressed QR packet chunk size optimized for Android 11', status: 'Resolved Patch', statusColor: 'success' },
@@ -7954,7 +8419,6 @@ window.setSyncPage = setSyncPage;
 window.onTypeFilterChange = onTypeFilterChange;
 window.renderHistory = renderHistory;
 window.exportHistoryAuditLogCSV = exportHistoryAuditLogCSV;
-window.setAuditDemoCode = setAuditDemoCode;
 window.submitManualQR = submitManualQR;
 window.loadAuditCertificate = loadAuditCertificate;
 window.renderSync = renderSync;
@@ -8255,6 +8719,3 @@ window.renderBlockHistTable = renderBlockHistTable;
 window.setPlotHistPage = setPlotHistPage;
 window.renderPlotHistTable = renderPlotHistTable;
 window.scanQRFromFile = scanQRFromFile;
-
-
-

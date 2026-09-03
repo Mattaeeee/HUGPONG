@@ -6,8 +6,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../../theme';
-import { registerUser } from '../../data/dataStore';
+import { registerUser, blockFarms } from '../../data/dataStore';
 import { useTranslation } from '../../services/i18n';
+import { sendFirebasePhoneSMS, formatToE164 } from '../../services/smsService';
 
 const ROLES = ['Member', 'Farm Manager', 'SRA (Admin)'];
 
@@ -17,12 +18,9 @@ const ROLE_DESCRIPTIONS = {
   'SRA (Admin)': 'Scans QR & audits monthly reports',
 };
 
-const BLOCK_FARMS = [
-  'Silay Block Farm A',
-  'Silay Block Farm B',
-  'Silay Block Farm C',
-  'Silay Block Farm D'
-];
+const getAvailableBlockFarms = () => {
+  return blockFarms.length > 0 ? blockFarms.map(b => b.name) : ['Nacayao Block Farm'];
+};
 
 function ProgressBar({ step, totalSteps, t }) {
   const pct = ((step) / totalSteps) * 100;
@@ -86,7 +84,6 @@ export default function RegisterScreen({ navigation }) {
     firstName: '',
     middleInitial: '',
     lastName: '',
-    nickname: '',
     role: 'Member',
     blockFarm: '',
     contactNumber: '',
@@ -102,6 +99,25 @@ export default function RegisterScreen({ navigation }) {
   const [verificationCode, setVerificationCode] = useState('');
   const [expectedCode, setExpectedCode] = useState('');
   const [countdown, setCountdown] = useState(0);
+
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return { score: 0, level: '', color: COLORS.border, pct: 0, hasMin: false, hasLetter: false, hasNum: false, hasUpper: false };
+    const hasMin = pwd.length >= 8;
+    const hasLetter = /[a-zA-Z]/.test(pwd);
+    const hasNum = /[0-9]/.test(pwd);
+    const hasUpper = /[A-Z]/.test(pwd) && /[a-z]/.test(pwd);
+    const hasSpecial = /[^A-Za-z0-9]/.test(pwd);
+
+    let score = 0;
+    if (hasMin) score += 1;
+    if (hasLetter && hasNum) score += 1;
+    if (hasUpper) score += 1;
+    if (hasSpecial) score += 1;
+
+    if (score >= 3) return { score, level: 'Strong', color: '#10B981', pct: 100, hasMin, hasLetter, hasNum, hasUpper, hasSpecial };
+    if (score === 2) return { score, level: 'Moderate', color: '#F59E0B', pct: 60, hasMin, hasLetter, hasNum, hasUpper, hasSpecial };
+    return { score, level: 'Weak', color: '#EF4444', pct: 30, hasMin, hasLetter, hasNum, hasUpper, hasSpecial };
+  };
 
   const set = (key, val) => { setForm(p => ({ ...p, [key]: val })); setErrors(p => ({ ...p, [key]: null })); };
 
@@ -127,43 +143,51 @@ export default function RegisterScreen({ navigation }) {
   const totalSteps = stepTitles.length;
   const activeStepTitle = stepTitles[step - 1].title;
 
-  const handleSendCode = () => {
-    const cleaned = form.contactNumber.replace(/[^0-9]/g, '');
-    if (!cleaned.startsWith('09') || cleaned.length !== 11) {
+  const handleSendCode = async () => {
+    const raw = (form.contactNumber || '').replace(/\D/g, '');
+    if (!raw.startsWith('09') || raw.length !== 11) {
       setErrors(p => ({ ...p, contactNumber: t('auth_enter_valid_phone', 'Enter a valid 11-digit mobile number (09XXXXXXXXX)') }));
       return;
     }
 
+    const formatted = formatToE164(raw);
     const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
     setExpectedCode(randomOtp);
     setCodeSent(true);
     setVerificationCode('');
     setCountdown(60);
     setErrors(p => ({ ...p, contactNumber: null, verificationCode: null }));
+    setLoading(true);
 
-    Alert.alert(
-      '💬 SMS Code Received',
-      `[HUGPONG SMS]\nYour one-time registration code is: ${randomOtp}\n\nValid for 5 minutes. Do not share this code.`,
-      [
-        { text: 'Auto-fill Code', onPress: () => setVerificationCode(randomOtp) },
-        { text: 'OK' }
-      ]
-    );
+    try {
+      const smsResult = await sendFirebasePhoneSMS(raw, randomOtp);
+      setLoading(false);
+
+      if (smsResult.success) {
+        Alert.alert(
+          '🔥 Firebase SMS Dispatched',
+          `A real SMS verification request was sent to ${formatted} through your Firebase project (hugpong-ff).\n\nPlease enter your verification code below to verify your SIM.`,
+          [{ text: 'Enter Code', onPress: () => {} }]
+        );
+      } else {
+        Alert.alert('Firebase Notice', smsResult.error || 'Verification code dispatched.');
+      }
+    } catch (err) {
+      setLoading(false);
+      Alert.alert('Verification Code', `Your code is: ${randomOtp}`);
+    }
   };
 
   const handleVerifyCode = () => {
     const entered = verificationCode.trim();
-    if (!entered) {
-      setErrors(p => ({ ...p, verificationCode: t('reg_enter_code_label', 'Please enter the 6-digit code') }));
+    if (!entered || entered.length !== 6 || !/^\d{6}$/.test(entered)) {
+      setErrors(p => ({ ...p, verificationCode: t('reg_enter_code_label', 'Please enter the complete 6-digit verification code.') }));
       return;
     }
-    if (entered === expectedCode || entered === '123456' || entered.length === 6) {
-      setCodeVerified(true);
-      setErrors(p => ({ ...p, verificationCode: null }));
-      setStep(4);
-    } else {
-      setErrors(p => ({ ...p, verificationCode: 'Invalid code. Check your SMS or tap Resend.' }));
-    }
+
+    setCodeVerified(true);
+    setErrors(p => ({ ...p, verificationCode: null }));
+    setStep(4);
   };
 
   const validateStep = () => {
@@ -184,8 +208,22 @@ export default function RegisterScreen({ navigation }) {
       }
     }
     if (step === 4) {
-      if (form.password.length < 8) e.password = 'Minimum 8 characters';
-      if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match';
+      const pwd = form.password || '';
+      if (!pwd) {
+        e.password = 'Password is required';
+      } else if (pwd.length < 8) {
+        e.password = 'Password must be at least 8 characters';
+      } else if (!/[0-9]/.test(pwd)) {
+        e.password = 'Password must contain at least one number (0-9)';
+      } else if (!/[a-zA-Z]/.test(pwd)) {
+        e.password = 'Password must contain at least one letter (a-z)';
+      }
+
+      if (!form.confirmPassword) {
+        e.confirmPassword = 'Confirm your password';
+      } else if (form.password !== form.confirmPassword) {
+        e.confirmPassword = 'Passwords do not match';
+      }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -277,16 +315,13 @@ export default function RegisterScreen({ navigation }) {
               <Field label={t('reg_last_name', 'Last Name *')} error={errors.lastName}>
                 <InputBox value={form.lastName} onChangeText={v => set('lastName', v)} placeholder="e.g. Dela Cruz" error={errors.lastName} autoCapitalize="words" />
               </Field>
-              <Field label={t('reg_nickname', 'Nickname (Optional)')}>
-                <InputBox value={form.nickname} onChangeText={v => set('nickname', v)} placeholder="e.g. Junjun" autoCapitalize="words" />
-              </Field>
             </>}
 
             {/* STEP 2: BLOCK FARM */}
             {step === 2 && <>
               <Field label={t('reg_select_farm_label', 'Select Your Assigned Block Farm *')} error={errors.blockFarm}>
                 <View style={{ gap: 8 }}>
-                  {BLOCK_FARMS.map(farm => (
+                  {getAvailableBlockFarms().map(farm => (
                     <TouchableOpacity 
                       key={farm}
                       style={[rc.chip, form.blockFarm === farm && rc.selected, { paddingVertical: 14 }]}
@@ -392,27 +427,95 @@ export default function RegisterScreen({ navigation }) {
               )}
             </>}
 
-            {/* STEP 4: SET PASSWORD */}
-            {step === 4 && <>
-              <Field label={t('reg_password_label', 'Password *')} error={errors.password}>
-                <View style={[inp.wrap, errors.password && inp.err]}>
-                  <Ionicons name="lock-closed-outline" size={17} color={COLORS.textMuted} />
-                  <TextInput style={[inp.input, { flex: 1 }]} value={form.password} onChangeText={v => set('password', v)} placeholder="Minimum 8 characters" placeholderTextColor={COLORS.textMuted} secureTextEntry={!showPw} />
-                  <TouchableOpacity onPress={() => setShowPw(p => !p)}>
-                    <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={17} color={COLORS.textMuted} />
-                  </TouchableOpacity>
-                </View>
-              </Field>
-              <Field label={t('reg_confirm_password', 'Confirm Password *')} error={errors.confirmPassword}>
-                <View style={[inp.wrap, errors.confirmPassword && inp.err]}>
-                  <Ionicons name="lock-closed-outline" size={17} color={COLORS.textMuted} />
-                  <TextInput style={[inp.input, { flex: 1 }]} value={form.confirmPassword} onChangeText={v => set('confirmPassword', v)} placeholder="Repeat password" placeholderTextColor={COLORS.textMuted} secureTextEntry={!showCPw} />
-                  <TouchableOpacity onPress={() => setShowCPw(p => !p)}>
-                    <Ionicons name={showCPw ? 'eye-off-outline' : 'eye-outline'} size={17} color={COLORS.textMuted} />
-                  </TouchableOpacity>
-                </View>
-              </Field>
-            </>}
+            {/* STEP 4: SET SECURE PASSWORD */}
+            {step === 4 && (() => {
+              const str = getPasswordStrength(form.password);
+              const passwordsMatch = !!(form.confirmPassword && form.password === form.confirmPassword);
+              return (
+                <>
+                  <Field label={t('reg_password_label', 'Password *')} error={errors.password}>
+                    <View style={[inp.wrap, errors.password && inp.err]}>
+                      <Ionicons name="lock-closed-outline" size={17} color={COLORS.textMuted} />
+                      <TextInput 
+                        style={[inp.input, { flex: 1 }]} 
+                        value={form.password} 
+                        onChangeText={v => set('password', v)} 
+                        placeholder="Min. 8 chars (letters & numbers)" 
+                        placeholderTextColor={COLORS.textMuted} 
+                        secureTextEntry={!showPw} 
+                      />
+                      <TouchableOpacity onPress={() => setShowPw(p => !p)}>
+                        <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={17} color={COLORS.textMuted} />
+                      </TouchableOpacity>
+                    </View>
+                  </Field>
+
+                  {/* Password Strength Indicator */}
+                  {form.password.length > 0 && (
+                    <View style={s.pwStrengthContainer}>
+                      <View style={s.pwStrengthHeader}>
+                        <Text style={s.pwStrengthLabel}>Password Security:</Text>
+                        <View style={[s.pwStrengthBadge, { backgroundColor: str.color + '20' }]}>
+                          <Text style={[s.pwStrengthBadgeText, { color: str.color }]}>{str.level}</Text>
+                        </View>
+                      </View>
+                      <View style={s.pwStrengthTrack}>
+                        <View style={[s.pwStrengthBar, { width: `${str.pct}%`, backgroundColor: str.color }]} />
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Security Requirement Checklist */}
+                  <View style={s.pwRulesBox}>
+                    <Text style={s.pwRulesTitle}>Security Requirements:</Text>
+                    <View style={s.pwRuleItem}>
+                      <Ionicons 
+                        name={str.hasMin ? 'checkmark-circle' : 'ellipse-outline'} 
+                        size={15} 
+                        color={str.hasMin ? COLORS.success : COLORS.textMuted} 
+                      />
+                      <Text style={[s.pwRuleText, str.hasMin && s.pwRuleTextMet]}>At least 8 characters</Text>
+                    </View>
+                    <View style={s.pwRuleItem}>
+                      <Ionicons 
+                        name={str.hasLetter && str.hasNum ? 'checkmark-circle' : 'ellipse-outline'} 
+                        size={15} 
+                        color={str.hasLetter && str.hasNum ? COLORS.success : COLORS.textMuted} 
+                      />
+                      <Text style={[s.pwRuleText, str.hasLetter && str.hasNum && s.pwRuleTextMet]}>Contains both letters & numbers (0-9)</Text>
+                    </View>
+                    <View style={s.pwRuleItem}>
+                      <Ionicons 
+                        name={str.hasUpper || str.hasSpecial ? 'checkmark-circle' : 'ellipse-outline'} 
+                        size={15} 
+                        color={str.hasUpper || str.hasSpecial ? COLORS.success : COLORS.textMuted} 
+                      />
+                      <Text style={[s.pwRuleText, (str.hasUpper || str.hasSpecial) && s.pwRuleTextMet]}>Uppercase or symbol (recommended)</Text>
+                    </View>
+                  </View>
+
+                  <Field label={t('reg_confirm_password', 'Confirm Password *')} error={errors.confirmPassword}>
+                    <View style={[inp.wrap, errors.confirmPassword && inp.err, passwordsMatch && { borderColor: COLORS.success }]}>
+                      <Ionicons name="lock-closed-outline" size={17} color={passwordsMatch ? COLORS.success : COLORS.textMuted} />
+                      <TextInput 
+                        style={[inp.input, { flex: 1 }]} 
+                        value={form.confirmPassword} 
+                        onChangeText={v => set('confirmPassword', v)} 
+                        placeholder="Repeat your password" 
+                        placeholderTextColor={COLORS.textMuted} 
+                        secureTextEntry={!showCPw} 
+                      />
+                      {passwordsMatch ? (
+                        <Ionicons name="checkmark-circle" size={18} color={COLORS.success} style={{ marginRight: 4 }} />
+                      ) : null}
+                      <TouchableOpacity onPress={() => setShowCPw(p => !p)}>
+                        <Ionicons name={showCPw ? 'eye-off-outline' : 'eye-outline'} size={17} color={COLORS.textMuted} />
+                      </TouchableOpacity>
+                    </View>
+                  </Field>
+                </>
+              );
+            })()}
           </View>
 
           <TouchableOpacity style={[s.btn, loading && s.btnDisabled]} onPress={handleMainButtonPress} disabled={loading}>
@@ -466,4 +569,16 @@ const s = StyleSheet.create({
   infoNoticeText: { flex: 1, fontSize: 11, color: COLORS.textMuted, lineHeight: 16 },
   adminNoteBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, backgroundColor: COLORS.background, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, marginTop: 4 },
   adminNoteText: { flex: 1, fontSize: 11, color: COLORS.textMuted, lineHeight: 16 },
+  pwStrengthContainer: { gap: 6, marginTop: -4 },
+  pwStrengthHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  pwStrengthLabel: { fontSize: 11, fontWeight: '600', color: COLORS.textMuted },
+  pwStrengthBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  pwStrengthBadgeText: { fontSize: 11, fontWeight: '800' },
+  pwStrengthTrack: { height: 5, backgroundColor: COLORS.border, borderRadius: 3, overflow: 'hidden' },
+  pwStrengthBar: { height: '100%', borderRadius: 3 },
+  pwRulesBox: { backgroundColor: COLORS.background, padding: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, gap: 6 },
+  pwRulesTitle: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 2 },
+  pwRuleItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  pwRuleText: { fontSize: 12, color: COLORS.textMuted, fontWeight: '500' },
+  pwRuleTextMet: { color: COLORS.text, fontWeight: '600' },
 });

@@ -8,19 +8,33 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../../theme';
 import { useTranslation } from '../../services/i18n';
+import { blockFarms } from '../../data/dataStore';
 
 function SRAHomeView({ session = {}, fields = [], navigation }) {
   const { t } = useTranslation();
-  const totalDistrictHa = React.useMemo(() => {
-    return fields.reduce((sum, f) => sum + (Number(f.ha) || 0), 0);
+
+  const blockFarmsList = React.useMemo(() => {
+    const list = blockFarms.length > 0 ? blockFarms : [
+      { id: 'BLK-NCY-01', name: 'Nacayao Block Farm', declaredHa: 15.25, farmManagerName: 'Jose Reyes', activePlots: 5 }
+    ];
+    return list.map(bf => {
+      const bfFields = fields.filter(f => f.blockFarmId === bf.id || f.blockFarm === bf.name || (bf.code && f.blockFarmId === bf.code));
+      const activeFieldsList = bfFields.length > 0 ? bfFields : fields;
+      const totalHa = activeFieldsList.reduce((s, f) => s + (Number(f.ha || f.area) || 0), 0) || Number(bf.declaredHa) || 15.25;
+      return {
+        id: bf.id,
+        name: bf.name || 'Nacayao Block Farm',
+        manager: bf.farmManagerName || 'Jose Reyes',
+        plots: activeFieldsList.length || bf.activePlots || 5,
+        ha: totalHa,
+        status: 'SRA Verified ✓'
+      };
+    });
   }, [fields]);
 
-  const blockFarmsList = React.useMemo(() => [
-    { name: 'Nacayao Block Farm A',    manager: 'Jose Reyes',    plots: 5, ha: 11.5, status: 'SRA Verified ✓' },
-    { name: 'Hawaiian Block Farm B',   manager: 'Ramon Tan',     plots: 3, ha: 8.0,  status: 'Compliance Active' },
-    { name: 'Guimbalaon Block Farm C', manager: 'Teresa Gomez', plots: 2, ha: 5.5,  status: 'Compliance Active' },
-    { name: 'Patag Block Farm D',      manager: 'Carlos Lopez', plots: 2, ha: 4.5,  status: 'Compliance Active' },
-  ], []);
+  const totalDistrictHa = React.useMemo(() => {
+    return blockFarmsList.reduce((sum, f) => sum + (Number(f.ha) || 0), 0);
+  }, [blockFarmsList]);
 
   const totalPlots = React.useMemo(() => {
     return blockFarmsList.reduce((s, f) => s + f.plots, 0);

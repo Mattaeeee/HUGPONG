@@ -15,6 +15,7 @@ const { isInitialized } = require('./firebase-admin');
 const authRoutes = require('./routes/auth');
 const priceRoutes = require('./routes/prices');
 const userRoutes = require('./routes/users');
+const blockFarmRoutes = require('./routes/blockFarms');
 const fieldRoutes = require('./routes/fields');
 const logRoutes = require('./routes/logs');
 const ticketRoutes = require('./routes/tickets');
@@ -63,9 +64,13 @@ app.use((req, res, next) => {
 app.use('/auth', authRoutes);
 app.use('/api/prices', priceRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/block-farms', blockFarmRoutes);
 app.use('/api/fields', fieldRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/tickets', ticketRoutes);
+
+// ── Static Web Dashboard Serving ────────────────────────────
+app.use(express.static(path.join(__dirname, '../web')));
 
 // ── Health Check & System Status ────────────────────────────
 app.get('/health', (req, res) => {

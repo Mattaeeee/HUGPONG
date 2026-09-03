@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const STORAGE_KEYS = {
   SESSION: '@hugpong_session',
+  USERS: '@hugpong_users',
   LOGS: '@hugpong_logs',
   DRAFTS: '@hugpong_drafts',
   FIELDS: '@hugpong_fields',
