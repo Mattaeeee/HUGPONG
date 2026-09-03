@@ -1633,7 +1633,39 @@ const SRA_CROP_PHASES = {
 };
 
 function matchFieldToPhaseKey(field) {
+  if (!field) return 'phase-1';
+  
+  // 1. Explicit Stage Number Check
+  const num = Number(field.stageNumber);
+  if (num === 1) return 'phase-1';
+  if (num === 2) return 'phase-2';
+  if (num === 3) return 'phase-3';
+  if (num === 4) return 'phase-4';
+  if (num === 5) return 'phase-5';
+  if (num === 6 || num === 7 || num === 8) return 'phase-6';
+
+  // 2. Stage Name and Keyword Matching
   const stageStr = (field.stage || '').toLowerCase();
+  
+  if (stageStr.includes('stage 6') || stageStr.includes('phase 6') || stageStr.includes('harvest') || stageStr.includes('milling') || stageStr.includes('hauling') || stageStr.includes('cutting')) {
+    return 'phase-6';
+  }
+  if (stageStr.includes('stage 5') || stageStr.includes('phase 5') || stageStr.includes('top-dress') || stageStr.includes('top dress') || stageStr.includes('final hilling') || stageStr.includes('crop maintenance') || stageStr.includes('2nd dose') || stageStr.includes('pasungkal')) {
+    return 'phase-5';
+  }
+  if (stageStr.includes('stage 4') || stageStr.includes('phase 4') || stageStr.includes('cultivation') || stageStr.includes('off-barring') || stageStr.includes('on-barring') || stageStr.includes('pahubas') || stageStr.includes('weed')) {
+    return 'phase-4';
+  }
+  if (stageStr.includes('stage 3') || stageStr.includes('phase 3') || stageStr.includes('basal') || stageStr.includes('abono') || stageStr.includes('fertiliz')) {
+    return 'phase-3';
+  }
+  if (stageStr.includes('stage 2') || stageStr.includes('phase 2') || stageStr.includes('plant') || stageStr.includes('patdan') || stageStr.includes('canepoint') || stageStr.includes('seedcane')) {
+    return 'phase-2';
+  }
+  if (stageStr.includes('stage 1') || stageStr.includes('phase 1') || stageStr.includes('prep') || stageStr.includes('plow') || stageStr.includes('furrow') || stageStr.includes('tudling')) {
+    return 'phase-1';
+  }
+
   for (const [pKey, meta] of Object.entries(SRA_CROP_PHASES)) {
     if (meta.keywords.some(kw => stageStr.includes(kw))) {
       return pKey;
@@ -1646,7 +1678,7 @@ function renderCropStageDistribution() {
   const currentRole = localStorage.getItem('hugpong_role') || 'admin';
   const isManager = currentRole === 'manager';
   const el = isManager ? document.getElementById('mgr-crop-stage-visual') : document.getElementById('crop-stage-visual');
-  const subEl = document.getElementById('crop-stage-subtitle');
+  const subEl = isManager ? (document.getElementById('mgr-crop-stage-subtitle') || document.getElementById('crop-stage-subtitle')) : document.getElementById('crop-stage-subtitle');
   if (!el) return;
 
   const db = getDB();
@@ -4693,15 +4725,15 @@ function renderLogs() {
     }
 
     const catBadges = {
-      prep: '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">Land Prep</span>',
-      plant: '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Planting</span>',
-      fert: '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">Fertilization</span>',
-      weed: '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">Weeding & Care</span>',
-      harvest: '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">Harvesting</span>',
+      prep: '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 whitespace-nowrap">Land Prep</span>',
+      plant: '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap">Planting</span>',
+      fert: '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 whitespace-nowrap">Fertilization</span>',
+      weed: '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap">Weeding & Care</span>',
+      harvest: '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200 whitespace-nowrap">Harvesting</span>',
     };
     const catBadge = catBadges[l.category] || catBadges.weed;
 
-    const statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-bg text-primary border border-primary/20">Recorded</span>';
+    const statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-bg text-primary border border-primary/20 whitespace-nowrap">Recorded</span>';
 
     return `
       <tr class="hover:bg-bg/50 transition-colors border-b border-border/50">
@@ -4718,7 +4750,7 @@ function renderLogs() {
         <td class="px-4 py-3">
           <div class="flex items-center gap-2">
             ${catBadge}
-            <span class="font-medium text-hug-text text-xs">${l.task || l.activity}</span>
+            <span class="font-medium text-hug-text text-xs">${l.activity || l.operationName || l.task || (l.subItems && l.subItems[0] && l.subItems[0].description) || 'Custom Operation'}</span>
           </div>
         </td>
         <td class="px-4 py-3 font-bold text-hug-text text-xs">Php ${(l.cost || 0).toLocaleString()}</td>
@@ -4893,22 +4925,18 @@ function renderUsers() {
 
   if (currentRole === 'manager') {
     if (headingEl) headingEl.textContent = 'Nacayao Block Farm · Member Access & Onboarding';
-    if (subEl) subEl.textContent = 'Review and approve member farmers registering specifically under Nacayao Block Farm';
+    if (subEl) subEl.textContent = 'Review, assign sugarcane plots, and approve member farmers registering specifically under Nacayao Block Farm';
     if (dirTitleEl) dirTitleEl.textContent = 'Nacayao Block Farm Registered Personnel & Farmers';
-    if (pendingTitleEl) pendingTitleEl.textContent = 'Pending Nacayao Block Farm Registrations';
-    if (pendingSubEl) pendingSubEl.textContent = 'Only you (Farm Manager) can approve members for your assigned block farm.';
+    if (pendingTitleEl) pendingTitleEl.textContent = 'Pending Member Registrations';
+    if (pendingSubEl) pendingSubEl.textContent = 'Review farmer applications and approve plot allocations for your block farm.';
   } else if (currentRole === 'admin') {
     if (headingEl) headingEl.textContent = 'Silay SRA Personnel & Farm Manager Directory';
-    if (subEl) subEl.textContent = 'Supervise registered farm managers, oversee member block allocations, and verify access under Silay Sugar Regulatory Administration';
+    if (subEl) subEl.textContent = 'Supervise registered farm managers, oversee member block allocations, and verify regulatory access under Silay SRA';
     if (dirTitleEl) dirTitleEl.textContent = 'Silay SRA Active Personnel & Farmers Directory';
-    if (pendingTitleEl) pendingTitleEl.textContent = 'Pending Farm Manager Appointments';
-    if (pendingSubEl) pendingSubEl.textContent = 'SRA Admin approval required for Farm Manager appointments. Member approvals are handled by their respective Farm Managers.';
   } else {
     if (headingEl) headingEl.textContent = 'System User & Credentials Directory';
     if (subEl) subEl.textContent = 'Global credential management across Super Admin, SRA Admin, Farm Managers, and Members';
     if (dirTitleEl) dirTitleEl.textContent = 'System-wide User Directory';
-    if (pendingTitleEl) pendingTitleEl.textContent = 'All Pending Registrations';
-    if (pendingSubEl) pendingSubEl.textContent = 'Super Admin root approval for all tiers.';
   }
 
   // DIRECTORY TABLE FILTERING
@@ -5008,13 +5036,13 @@ function renderUsers() {
 
       return `
         <tr class="hover:bg-bg/50 transition-colors border-b border-border/50">
-          <td class="px-4 py-3 font-mono font-bold text-hug-text text-xs">${u.contact}</td>
-          <td class="px-4 py-3 font-semibold text-hug-text text-sm">${u.name}</td>
+          <td class="px-4 py-3 font-mono font-bold text-hug-text text-xs whitespace-nowrap">${u.contact}</td>
+          <td class="px-4 py-3 font-semibold text-hug-text text-sm whitespace-nowrap">${u.name}</td>
           <td class="px-4 py-3 text-xs text-hug-text2 font-medium">${farmPlotLabel}</td>
-          <td class="px-4 py-3"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${rClass}">${u.role}</span></td>
-          <td class="px-4 py-3 text-xs font-semibold text-hug-text2">${u.logsHandled} logs</td>
-          <td class="px-4 py-3 text-xs text-hug-muted">${u.regDate}</td>
-          <td class="px-4 py-3 text-right">${actions}</td>
+          <td class="px-4 py-3 whitespace-nowrap"><span class="inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider whitespace-nowrap shrink-0 shadow-2xs ${rClass}">${u.role}</span></td>
+          <td class="px-4 py-3 text-xs font-semibold text-hug-text2 whitespace-nowrap">${u.logsHandled} logs</td>
+          <td class="px-4 py-3 text-xs text-hug-muted whitespace-nowrap">${u.regDate}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">${actions}</td>
         </tr>
       `;
     }).join('') || '<tr><td colspan="7" class="text-center py-8 text-hug-muted text-xs">No users matched your criteria.</td></tr>';
@@ -5039,18 +5067,14 @@ function renderUsers() {
     let pendingUsers = [...db.pendingUsers];
 
     if (currentRole === 'manager') {
-      // Farm Manager of Nacayao Block Farm ONLY sees pending members for Nacayao Block Farm
+      // Farm Manager of Nacayao Block Farm reviews and approves pending members
       pendingUsers = pendingUsers.filter(p => p.role === 'Member' && (p.blockFarm === 'Nacayao Block Farm' || !p.blockFarm));
-    } else if (currentRole === 'admin') {
-      // SRA Admin ONLY approves Farm Managers (Members are approved by their respective Farm Manager)
-      pendingUsers = pendingUsers.filter(p => p.role === 'Farm Manager');
+    } else {
+      pendingUsers = [];
     }
 
     if (pendingUsers.length === 0) {
-      const emptyNotice = currentRole === 'admin'
-        ? 'No pending Farm Manager applications. (Member farmer registrations are routed directly to their respective Farm Manager for review).'
-        : 'No pending member registrations for your block farm.';
-      pendingList.innerHTML = `<div class="text-center py-6 px-3 text-xs text-hug-muted border border-dashed border-border rounded-xl leading-relaxed">${emptyNotice}</div>`;
+      pendingList.innerHTML = `<div class="text-center py-6 px-3 text-xs text-hug-muted border border-dashed border-border rounded-xl leading-relaxed">No pending member registrations for your block farm.</div>`;
     } else {
       pendingList.innerHTML = pendingUsers.map(p => {
         let locationDetail = '';

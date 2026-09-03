@@ -135,8 +135,14 @@ export default function PlannerScreen({ navigation }) {
 
   const displayedFields = useMemo(() => {
     if (isMember || fieldScope === 'my') {
-      const filtered = allFields.filter(f => f.memberId === session.employeeId || f.member === session.name || f.owner === session.name || (session.fieldId && f.id === session.fieldId));
-      return filtered.length > 0 ? filtered : (allFields.length > 0 ? [allFields[0]] : []);
+      const filtered = allFields.filter(f => 
+        f.memberId === session.employeeId || 
+        f.member === session.name || 
+        f.memberName === session.name || 
+        f.owner === session.name || 
+        (session.fieldId && f.id === session.fieldId)
+      );
+      return filtered;
     }
     return allFields;
   }, [session, isMember, fieldScope, allFields]);
@@ -626,20 +632,25 @@ export default function PlannerScreen({ navigation }) {
                       style={[{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.xs }, fieldScope === 'my' && { backgroundColor: '#fff', ...SHADOW.card }]}
                       onPress={() => {
                         setFieldScope('my');
-                        const myF = MOCK_FIELDS.find(f => f.member === session.name || f.id === session.fieldId) || MOCK_FIELDS[0];
-                        setSelectedField(myF);
+                        const myF = MOCK_FIELDS.find(f => f.memberId === session.employeeId || f.member === session.name || f.memberName === session.name || (session.fieldId && f.id === session.fieldId));
+                        setSelectedField(myF || null);
                       }}
                     >
                       <Text style={{ fontSize: 11, fontWeight: fieldScope === 'my' ? '800' : '600', color: fieldScope === 'my' ? COLORS.primary : COLORS.textMuted }}>
-                        My Plot
+                        My Plot ({allFields.filter(f => f.memberId === session.employeeId || f.member === session.name || f.memberName === session.name || (session.fieldId && f.id === session.fieldId)).length})
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.xs }, fieldScope === 'all' && { backgroundColor: '#fff', ...SHADOW.card }]}
-                      onPress={() => setFieldScope('all')}
+                      onPress={() => {
+                        setFieldScope('all');
+                        if (!selectedField && allFields.length > 0) {
+                          setSelectedField(allFields[0]);
+                        }
+                      }}
                     >
                       <Text style={{ fontSize: 11, fontWeight: fieldScope === 'all' ? '800' : '600', color: fieldScope === 'all' ? COLORS.primary : COLORS.textMuted }}>
-                        All Plots ({MOCK_FIELDS.length})
+                        All Plots ({allFields.length})
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -647,37 +658,44 @@ export default function PlannerScreen({ navigation }) {
               )}
 
               {/* Field Chips with clean 3-item cut-off and +More modal button */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: 2 }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8 }}>
-                {displayedFields.slice(0, 3).map(f => (
-                  <TouchableOpacity
-                    key={f.id}
-                    style={[
-                      { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff' },
-                      selectedField?.id === f.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }
-                    ]}
-                    onPress={() => setSelectedField(f)}
-                    activeOpacity={0.75}
-                  >
-                    <Ionicons name="leaf" size={13} color={selectedField?.id === f.id ? COLORS.primary : COLORS.textMuted} />
-                    <Text style={{ fontSize: 12.5, fontWeight: selectedField?.id === f.id ? '900' : '600', color: selectedField?.id === f.id ? COLORS.primary : COLORS.textSecondary }}>
-                      {f.id} ({f.ha} Ha)
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              {displayedFields.length === 0 ? (
+                <View style={{ padding: 12, backgroundColor: '#F8FAF5', borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.md }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.text }}>No Personal Plots Assigned</Text>
+                  <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>You do not have a personal plot allocated. Switch to "All Plots" above to plan for block farm member plots.</Text>
+                </View>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: 2 }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8 }}>
+                  {displayedFields.slice(0, 3).map(f => (
+                    <TouchableOpacity
+                      key={f.id}
+                      style={[
+                        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: '#fff' },
+                        selectedField?.id === f.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }
+                      ]}
+                      onPress={() => setSelectedField(f)}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="leaf" size={13} color={selectedField?.id === f.id ? COLORS.primary : COLORS.textMuted} />
+                      <Text style={{ fontSize: 12.5, fontWeight: selectedField?.id === f.id ? '900' : '600', color: selectedField?.id === f.id ? COLORS.primary : COLORS.textSecondary }}>
+                        {f.id} ({f.ha} Ha)
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
 
-                {displayedFields.length > 3 && (
-                  <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }}
-                    onPress={() => setShowFieldPickerModal(true)}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.primary }}>
-                      + {displayedFields.length - 3} More
-                    </Text>
-                    <Ionicons name="chevron-forward" size={13} color={COLORS.primary} />
-                  </TouchableOpacity>
-                )}
-              </ScrollView>
+                  {displayedFields.length > 3 && (
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg }}
+                      onPress={() => setShowFieldPickerModal(true)}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.primary }}>
+                        + {displayedFields.length - 3} More
+                      </Text>
+                      <Ionicons name="chevron-forward" size={13} color={COLORS.primary} />
+                    </TouchableOpacity>
+                  )}
+                </ScrollView>
+              )}
             </View>
 
             {/* Selected Field & Land Area Card */}

@@ -137,7 +137,6 @@ export default function SyncMonitorScreen({ navigation }) {
         {
           text: t('btn_take_over', 'Proceed to Take Over'),
           onPress: () => {
-            updateSessionFieldId(member.id);
             navigation.navigate('Field Ops', {
               screen: 'SchedMain',
               params: { takeOverFieldId: member.id, isTakeOver: true }

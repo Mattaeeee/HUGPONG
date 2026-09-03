@@ -24,61 +24,15 @@ export default function ProfileScreen({ navigation }) {
   const [ticketTab, setTicketTab] = useState('submit');
   const [ticketForm, setTicketForm] = useState({ title: '', category: 'Offline Sync', priority: 'Normal', details: '' });
   const [ticketsList, setTicketsList] = useState(MOCK_TICKETS);
-  const getCounts = (sess) => {
-    const myFields = MOCK_FIELDS.filter(f => f.member === sess.name).map(f => f.id);
-    const drafts = DRAFT_LOGS.filter(l => myFields.includes(l.fieldId));
-    const unapproved = MOCK_LOGS.filter(l => myFields.includes(l.fieldId) && !l.approved);
-    
-    const pCount = drafts.length + unapproved.length;
-    const sCount = MOCK_LOGS.filter(l => myFields.includes(l.fieldId) && l.approved).length;
-    
-    const pendingItems = [
-      ...drafts.map(d => ({ id: d.id, type: 'Draft Log', desc: d.activity, time: 'Unsubmitted' })),
-      ...unapproved.map(m => ({ id: m.id, type: 'Awaiting Approval', desc: m.activity, time: m.date }))
-    ];
-
-    return { pCount, sCount, pendingItems };
-  };
-
-  const initialCounts = getCounts(getCurrentSession());
-  const [pendingCount, setPendingCount] = useState(initialCounts.pCount);
-  const [syncedCount, setSyncedCount] = useState(initialCounts.sCount);
-  const [pendingItems, setPendingItems] = useState(initialCounts.pendingItems);
 
   useEffect(() => {
     const unsubscribe = subscribe(() => {
       const sess = getCurrentSession();
       setSessionState({ ...sess });
       setSyncedState(getIsSynced());
-      const { pCount, sCount, pendingItems: pItems } = getCounts(sess);
-      setPendingCount(pCount);
-      setSyncedCount(sCount);
-      setPendingItems(pItems);
     });
     return unsubscribe;
   }, []);
-
-
-  const doSync = () => {
-    if (syncing) return;
-    if (synced && pendingCount === 0) {
-      Alert.alert(
-        t('synced', 'Synced'),
-        t('sync_toast_synced', 'Your sugarcane records are fully synchronized with the HUGPONG cloud.')
-      );
-      return;
-    }
-    setSyncing(true);
-    setTimeout(() => {
-      setSynced(true);
-      setSyncing(false);
-      setLastSync('Just now');
-      Alert.alert(
-        t('sync_status_synced', 'Sync Successful'),
-        t('sync_toast_complete', 'All local sugarcane operation logs have been successfully uploaded and compiled.')
-      );
-    }, 1500);
-  };
 
   const clearCache = () => {
     Alert.alert(
@@ -216,75 +170,26 @@ export default function ProfileScreen({ navigation }) {
           </View>
         )}
 
-        {/* ── Sync Dashboard (Farm Manager & Member only) ── */}
-        {session.role !== 'SRA (Admin)' && (
-          <View style={s.card}>
-            <View style={s.syncHeader}>
-              <Text style={s.cardTitle}>{t('profile_sync_dashboard', 'Sync Dashboard')}</Text>
-              <View style={[s.syncStatusDot, { backgroundColor: synced ? COLORS.success : '#C97A00' }]} />
-            </View>
-
-            {/* Stats Row */}
-            <View style={s.syncStats}>
-              <View style={s.syncStat}>
-                <Text style={s.syncStatNum}>{pendingCount}</Text>
-                <Text style={s.syncStatLabel}>{t('profile_pending', 'Pending')}</Text>
+        {/* ── Auto Sync Option ── */}
+        <View style={s.card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
+              <View style={{ width: 36, height: 36, borderRadius: RADIUS.sm, backgroundColor: COLORS.primaryBg, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="cloud-upload-outline" size={18} color={COLORS.primary} />
               </View>
-              <View style={s.syncStatDivider} />
-              <View style={s.syncStat}>
-                <Text style={s.syncStatNum}>{syncedCount}</Text>
-                <Text style={s.syncStatLabel}>{t('profile_synced', 'Synced')}</Text>
-              </View>
-              <View style={s.syncStatDivider} />
-              <View style={s.syncStat}>
-                <Text style={[s.syncStatNum, { color: synced ? COLORS.success : '#C97A00' }]}>
-                  {synced ? 'OK' : 'SYNC'}
-                </Text>
-                <Text style={s.syncStatLabel}>{t('status', 'Status')}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13.5, fontWeight: '800', color: COLORS.text }}>{t('profile_auto_sync', 'Automatic Cloud Sync')}</Text>
+                <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 1 }}>Sync records automatically when online</Text>
               </View>
             </View>
-
-            <Text style={s.lastSyncText}>{t('profile_last_synced', 'Last synced')}: {formatSyncTime(lastSync)}</Text>
-
-            {/* Pending Logs */}
-            <Text style={s.pendingTitle}>{t('sync_status_pending', 'Pending Local Logs')}</Text>
-            {pendingItems.length > 0 ? (
-              pendingItems.map((p, i) => (
-                <View key={p.id || i} style={s.pendingRow}>
-                  <View style={[s.pendingDot, { backgroundColor: '#C97A00' }]} />
-                  <View style={s.pendingBody}>
-                    <Text style={s.pendingType}>{p.type}</Text>
-                    <Text style={s.pendingDesc}>{p.desc}</Text>
-                  </View>
-                  <Text style={s.pendingTime}>{p.time}</Text>
-                </View>
-              ))
-            ) : (
-              <View style={s.emptySyncState}>
-                <Ionicons name="cloud-done-outline" size={16} color="#267326" />
-                <Text style={s.emptySyncText}>{t('profile_no_pending_sync', 'No pending logs to sync')}</Text>
-              </View>
-            )}
-
-            {/* Sync Button */}
-            <TouchableOpacity style={[s.syncBtn, syncing && s.syncBtnDisabled]} onPress={doSync} disabled={syncing}>
-              <Ionicons name={syncing ? 'cloud-upload' : 'cloud-upload-outline'} size={18} color="#fff" />
-              <Text style={s.syncBtnText}>{syncing ? t('profile_syncing', 'Syncing...') : t('profile_sync_now', 'Sync Now')}</Text>
-            </TouchableOpacity>
-
-            {/* Auto Sync Toggle */}
-            <View style={s.toggleRow}>
-              <Ionicons name="refresh-circle-outline" size={16} color={COLORS.textSecondary} />
-              <Text style={s.toggleLabel}>{t('profile_auto_sync', 'Auto Sync')}</Text>
-              <Switch
-                value={autoSync}
-                onValueChange={setAutoSync}
-                trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
-                thumbColor={autoSync ? COLORS.primary : '#f4f3f4'}
-              />
-            </View>
+            <Switch
+              value={autoSync}
+              onValueChange={setAutoSync}
+              trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
+              thumbColor={autoSync ? COLORS.primary : '#f4f3f4'}
+            />
           </View>
-        )}
+        </View>
 
         {/* ── Language ── */}
         <TouchableOpacity style={[s.card, s.expandRow]} onPress={() => setLangExpanded(e => !e)}>

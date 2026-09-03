@@ -768,15 +768,20 @@
 
           <!-- Crop Stage Distribution Card for Manager -->
           <div class="bg-white rounded-2xl p-6 border border-border shadow-xs">
-            <div class="flex items-center justify-between mb-4 border-b border-border pb-3">
+            <div class="flex items-center justify-between mb-4 border-b border-border pb-3 flex-wrap gap-3">
               <div>
                 <h3 class="text-sm font-bold text-hug-text flex items-center gap-2">
                   <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   Nacayao Block Farm Crop Stage Distribution
                 </h3>
-                <p class="text-xs text-hug-muted">Current growth stages across your assigned member plots</p>
+                <p class="text-xs text-hug-muted" id="mgr-crop-stage-subtitle">Active growth stages across assigned member plots</p>
               </div>
-              <button onclick="navigate('operations')" class="text-xs font-bold text-primary hover:underline cursor-pointer">Field Console →</button>
+              <div class="flex items-center gap-3">
+                <select id="mgr-crop-stage-member-filter" onchange="renderCropStageDistribution()" class="border border-border rounded-xl px-3 py-1.5 text-xs font-bold bg-bg focus:outline-none focus:border-primary shadow-xs text-primary cursor-pointer">
+                  <option value="all">All Nacayao Plots</option>
+                </select>
+                <button onclick="navigate('operations')" class="text-xs font-bold text-primary hover:underline cursor-pointer">Field Console →</button>
+              </div>
             </div>
             <div id="mgr-crop-stage-visual" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5"></div>
           </div>
@@ -1327,7 +1332,7 @@
           <h2 class="text-xl font-bold text-hug-text" id="user-mgmt-heading">User &amp; Member Management</h2>
           <p class="text-xs text-hug-muted" id="user-mgmt-sub">Directory credentials, block farm allocations, and onboarding authorizations</p>
         </div>
-        <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5 items-start">
+        <div class="w-full">
           <div class="bg-white rounded-2xl border border-border shadow-xs overflow-hidden">
             <div class="px-5 py-4 border-b border-border flex items-center justify-between flex-wrap gap-3">
               <h3 class="text-sm font-bold text-hug-text" id="user-directory-title">Active Personnel &amp; Member Directory</h3>
@@ -1357,11 +1362,6 @@
               <tbody id="users-table-body"></tbody>
             </table></div>
             <div id="user-pagination" class="flex items-center justify-center gap-3 p-3 border-t border-border bg-white"></div>
-          </div>
-          <div class="bg-white rounded-2xl border border-border shadow-xs p-5">
-            <h3 class="text-sm font-bold text-hug-text mb-1" id="pending-users-title">Pending Mobile Registrations</h3>
-            <p class="text-xs text-hug-muted mb-4" id="pending-users-sub">Review and grant authorization for new user accounts.</p>
-            <div class="flex flex-col gap-3" id="pending-users-list"></div>
           </div>
         </div>
       </section>

@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
-import { MOCK_PRICE, MOCK_MOL, MOCK_WEEKLY_CHART, subscribe, getIsSynced, getCurrentSession, MOCK_FIELDS, performMobileSync, getSortedPrices, operationLogs } from '../data/dataStore';
+import { MOCK_PRICE, MOCK_MOL, MOCK_WEEKLY_CHART, subscribe, getIsSynced, getCurrentSession, MOCK_FIELDS, performMobileSync, getSortedPrices, operationLogs, DRAFT_LOGS, publishSraPrice } from '../data/dataStore';
 import { getOutboxCount } from '../services/syncEngine';
 import { useTranslation } from '../services/i18n';
 import AppHeader from '../components/AppHeader';
@@ -21,36 +21,86 @@ const BAR_COLORS = ['#B8D4A0', '#8FBF6A', '#6BA045', '#4A7C2F', '#2D5016'];
 const MAX_PRICE = 3000;
 const MIN_PRICE = 1000;
 
-const generateDynamicNotifications = () => {
+const generateDynamicNotifications = (session, customDrafts, customLogs) => {
   const notifs = [];
   const outboxCount = getOutboxCount();
   const sortedPrices = getSortedPrices();
+  const allLogs = customLogs || operationLogs || [];
+  const allDrafts = customDrafts || DRAFT_LOGS || [];
 
-  if (outboxCount > 0) {
+  const userRole = session?.role || 'Member';
+  const managerBlockFarm = (session?.blockFarmScope || session?.blockFarm || 'Nacayao Block Farm').toLowerCase();
+  
+  // Resolve fields belonging to this manager's block farm
+  const managerFieldIds = MOCK_FIELDS.filter(f => {
+    const fFarm = (f.blockFarm || f.blockFarmScope || 'Nacayao Block Farm').toLowerCase();
+    return fFarm.includes(managerBlockFarm) || managerBlockFarm.includes(fFarm);
+  }).map(f => f.id);
+
+  // 1. Offline Logs Alert (Pending Cloud Sync - Scoped by Role)
+  let scopedLogs = allLogs;
+  if (userRole === 'Member') {
+    const userFieldId = session?.fieldId || 'FLD-NCY-001';
+    scopedLogs = allLogs.filter(l => l.fieldId === userFieldId || l.authorName === session?.name || (l.loggedBy && l.loggedBy.includes(session?.name)));
+  } else if (userRole === 'Farm Manager') {
+    scopedLogs = allLogs.filter(l => managerFieldIds.includes(l.fieldId) || (l.loggedBy && l.loggedBy.includes(session?.name)));
+  }
+
+  const offlineLogsCount = scopedLogs.filter(l => l.isOffline || l.synced === false).length + (userRole !== 'SRA (Admin)' ? outboxCount : 0);
+  if (offlineLogsCount > 0) {
     notifs.push({
-      id: 'notif-sync',
-      type: 'alert',
-      icon: 'warning',
-      color: COLORS.accent,
-      title: 'Sync Advisory',
-      msg: `${outboxCount} offline records are currently queued for Cloud Firestore sync.`,
-      time: 'Real-time',
-      unread: true
+      id: 'notif-offline-sync',
+      type: 'sync',
+      icon: 'cloud-offline-outline',
+      color: '#D97706',
+      title: 'Offline Logs Pending Sync',
+      msg: `${offlineLogsCount} field operation log(s) for your block farm are stored locally on your device. Connect to internet and tap to synchronize to Cloud Firestore.`,
+      time: 'Ready to sync',
+      badgeText: 'Tap to Sync',
+      unread: true,
+      actionType: 'sync'
     });
   }
 
+  // 2. New SRA Price Circular Notification
   if (sortedPrices.length > 0) {
     const latest = sortedPrices[0];
+    const prev = sortedPrices[1];
+    const diff = prev ? (Number(latest.price) - Number(prev.price)) : 0;
+    const diffStr = diff !== 0 ? ` (${diff > 0 ? '+' : ''}₱${diff.toLocaleString()} vs previous)` : '';
+
     notifs.push({
-      id: 'notif-price',
+      id: `notif-price-${latest.id || latest.date || 'latest'}`,
       type: 'price',
       icon: 'trending-up',
-      color: COLORS.success,
-      title: 'SRA Market Circular',
-      msg: `HPCo Raw Sugar price is ₱${Number(latest.price).toLocaleString()}/Lkg (${latest.week || 'Current Circular'}).`,
-      time: latest.date || 'Latest',
-      unread: false
+      color: '#267326',
+      title: 'New SRA Price Circular Broadcast',
+      msg: `HPCo Silay benchmark: Raw Sugar is ₱${Number(latest.price || 2950).toLocaleString()}/Lkg${diffStr}, Molasses at ₱${Number(latest.molasses || 4400).toLocaleString()}/MT (${latest.week || 'Current Circular'}).`,
+      time: latest.date || 'Live Circular',
+      unread: false,
     });
+  }
+
+  // 3. Unsubmitted Drafts Alert (Only for Member and their Block Farm Manager)
+  if (userRole === 'Member' || userRole === 'Farm Manager') {
+    const scopedDrafts = userRole === 'Member'
+      ? allDrafts.filter(d => (session?.fieldId && d.fieldId === session.fieldId) || d.authorName === session?.name)
+      : allDrafts.filter(d => managerFieldIds.includes(d.fieldId) || d.authorName === session?.name);
+
+    if (scopedDrafts.length > 0) {
+      notifs.push({
+        id: 'notif-unsubmitted-drafts',
+        type: 'draft',
+        icon: 'document-text-outline',
+        color: '#0284C7',
+        title: 'Unsubmitted Field Drafts',
+        msg: `You have ${scopedDrafts.length} unsubmitted draft log(s) for ${userRole === 'Member' ? (session?.fieldId || 'your plot') : (session?.blockFarmScope || 'Nacayao Block Farm')}. Tap to review, edit, and record operations.`,
+        time: `${scopedDrafts.length} draft${scopedDrafts.length !== 1 ? 's' : ''}`,
+        badgeText: 'Review Drafts',
+        unread: true,
+        actionType: 'drafts'
+      });
+    }
   }
 
   return notifs;
@@ -60,10 +110,10 @@ export default function HomeScreen({ navigation }) {
   const { t } = useTranslation();
   const [chartMode, setChartMode] = useState('weekly');
   const [showNotifs, setShowNotifs] = useState(false);
-  const [notifs, setNotifs] = useState(generateDynamicNotifications());
-  const [synced, setSyncedState] = useState(getIsSynced());
   const [session, setSessionState] = useState(getCurrentSession());
+  const [synced, setSyncedState] = useState(getIsSynced());
   const [fields, setFields] = useState([...MOCK_FIELDS]);
+  const [notifs, setNotifs] = useState(generateDynamicNotifications(getCurrentSession(), DRAFT_LOGS, operationLogs));
   
   // Consolidated Dynamic SRA Price State
   const [priceData, setPriceData] = useState({
@@ -80,15 +130,22 @@ export default function HomeScreen({ navigation }) {
   const [inputBag, setInputBag] = useState('2950');
   const [inputMol, setInputMol] = useState('4400');
   const [inputCircular, setInputCircular] = useState('SRA Circular #105');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncTimeStr, setSyncTimeStr] = useState('Just now');
+
+  const pendingSyncCount = React.useMemo(() => {
+    return operationLogs.filter(l => l.isOffline || l.synced === false).length + getOutboxCount();
+  }, [operationLogs, synced]);
 
   const unreadCount = React.useMemo(() => notifs.filter(n => n.unread).length, [notifs]);
 
   React.useEffect(() => {
     const unsubscribe = subscribe(() => {
+      const sess = getCurrentSession();
       setSyncedState(getIsSynced());
-      setSessionState(getCurrentSession());
+      setSessionState(sess);
       setFields(MOCK_FIELDS);
-      setNotifs(generateDynamicNotifications());
+      setNotifs(generateDynamicNotifications(sess, DRAFT_LOGS, operationLogs));
       setPriceData({
         livePrice: MOCK_PRICE.value,
         liveMol: MOCK_MOL.value,
@@ -119,9 +176,33 @@ export default function HomeScreen({ navigation }) {
   const openNotifs = () => setShowNotifs(true);
   const closeNotifs = () => setShowNotifs(false);
 
+  const handleNotifPress = (notif) => {
+    setShowNotifs(false);
+    if (notif.actionType === 'sync') {
+      handleHomeSync();
+    } else if (notif.actionType === 'drafts') {
+      navigation.navigate('FieldOps', { openLedger: true, tab: 'drafts' });
+    } else if (notif.actionType === 'price') {
+      navigation.navigate('Analytics');
+    }
+  };
+
+  const handleHomeSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await performMobileSync();
+      setSyncTimeStr('Just now');
+      Alert.alert('Sync Successful', 'Your local field logs and records are synchronized with Cloud Firestore.');
+    } catch (e) {
+      console.warn('Sync error:', e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleManualSync = () => {
-    performMobileSync();
-    Alert.alert('Sync Complete', `All offline records and field logs have been synchronized.`);
+    handleHomeSync();
   };
 
   const handleOpenPriceModal = () => {
@@ -217,39 +298,72 @@ export default function HomeScreen({ navigation }) {
             {synced ? `Last synced: May 21, 2026 · 6:30 PM ✓ Cached` : t('sync_cached_stamp', 'Last synced: Cached')}
           </Text>
 
-          {/* Bar Chart */}
-          <View style={s.chartWrap}>
-            <View style={s.chartYAxis}>
-              {['3,000', '2,500', '2,000', '1,500'].map(v => <Text key={v} style={s.yLabel}>{v}</Text>)}
-            </View>
-            <View style={s.chartPlotArea}>
-              <View style={s.chartBarsRow}>
-                {MOCK_WEEKLY_CHART.months.map((month, mi) => (
-                  <View key={mi} style={s.barGroup}>
-                    {chartMode === 'weekly' ? (
-                      MOCK_WEEKLY_CHART.weeks.map((wk, wi) => {
-                        const h = Math.max(4, ((wk[mi] - MIN_PRICE) / (MAX_PRICE - MIN_PRICE)) * 110);
-                        return <View key={wi} style={[s.bar, { height: h, backgroundColor: BAR_COLORS[wi] }]} />;
-                      })
-                    ) : (
-                      (() => {
-                        const avg = MOCK_WEEKLY_CHART.weeks.reduce((sum, wk) => sum + wk[mi], 0) / MOCK_WEEKLY_CHART.weeks.length;
-                        const h = Math.max(4, ((avg - MIN_PRICE) / (MAX_PRICE - MIN_PRICE)) * 110);
-                        return <View style={[s.bar, { width: 14, height: h, backgroundColor: COLORS.primary }]} />;
-                      })()
-                    )}
+          {/* Bar Chart with Dynamic Headroom Scaling & Overflow Protection */}
+          {(() => {
+            const allVals = [];
+            if (Array.isArray(MOCK_WEEKLY_CHART.weeks)) {
+              MOCK_WEEKLY_CHART.weeks.forEach(wk => {
+                if (Array.isArray(wk)) {
+                  wk.forEach(v => {
+                    const num = Number(v);
+                    if (!isNaN(num) && num > 0) allVals.push(num);
+                  });
+                }
+              });
+            }
+            const highest = allVals.length > 0 ? Math.max(...allVals) : 3000;
+            const lowest = allVals.length > 0 ? Math.min(...allVals) : 1000;
+            
+            const dynamicMax = Math.max(3000, Math.ceil((highest * 1.12) / 500) * 500);
+            const dynamicMin = Math.max(0, Math.floor((Math.min(lowest, 1000) * 0.7) / 500) * 500);
+            const priceRange = dynamicMax - dynamicMin || 1;
+            const step = priceRange / 3;
+
+            const yLabels = [
+              dynamicMax >= 10000 ? `${Math.round(dynamicMax / 1000)}k` : `${Math.round(dynamicMax).toLocaleString()}`,
+              (dynamicMin + step * 2) >= 10000 ? `${Math.round((dynamicMin + step * 2) / 1000)}k` : `${Math.round(dynamicMin + step * 2).toLocaleString()}`,
+              (dynamicMin + step * 1) >= 10000 ? `${Math.round((dynamicMin + step * 1) / 1000)}k` : `${Math.round(dynamicMin + step * 1).toLocaleString()}`,
+              dynamicMin >= 10000 ? `${Math.round(dynamicMin / 1000)}k` : `${Math.round(dynamicMin).toLocaleString()}`,
+            ];
+
+            return (
+              <View style={[s.chartWrap, { overflow: 'hidden' }]}>
+                <View style={s.chartYAxis}>
+                  {yLabels.map((v, i) => <Text key={i} style={s.yLabel}>{v}</Text>)}
+                </View>
+                <View style={[s.chartPlotArea, { overflow: 'hidden' }]}>
+                  <View style={[s.chartBarsRow, { overflow: 'hidden' }]}>
+                    {MOCK_WEEKLY_CHART.months.map((month, mi) => (
+                      <View key={mi} style={[s.barGroup, { overflow: 'hidden', height: 110, justifyContent: 'flex-end' }]}>
+                        {chartMode === 'weekly' ? (
+                          MOCK_WEEKLY_CHART.weeks.map((wk, wi) => {
+                            const val = Number(wk[mi]) || 0;
+                            const rawH = ((val - dynamicMin) / priceRange) * 105;
+                            const h = Math.min(105, Math.max(6, Math.round(rawH)));
+                            return <View key={wi} style={[s.bar, { height: h, backgroundColor: BAR_COLORS[wi] }]} />;
+                          })
+                        ) : (
+                          (() => {
+                            const avg = MOCK_WEEKLY_CHART.weeks.reduce((sum, wk) => sum + (Number(wk[mi]) || 0), 0) / (MOCK_WEEKLY_CHART.weeks.length || 1);
+                            const rawH = ((avg - dynamicMin) / priceRange) * 105;
+                            const h = Math.min(105, Math.max(6, Math.round(rawH)));
+                            return <View style={[s.bar, { width: 14, height: h, backgroundColor: COLORS.primary }]} />;
+                          })()
+                        )}
+                      </View>
+                    ))}
                   </View>
-                ))}
-              </View>
-              <View style={s.chartXAxisRow}>
-                {MOCK_WEEKLY_CHART.months.map((month, mi) => (
-                  <View key={mi} style={s.chartXAxisCol}>
-                    <Text style={s.xLabel}>{month}</Text>
+                  <View style={s.chartXAxisRow}>
+                    {MOCK_WEEKLY_CHART.months.map((month, mi) => (
+                      <View key={mi} style={s.chartXAxisCol}>
+                        <Text style={s.xLabel}>{month}</Text>
+                      </View>
+                    ))}
                   </View>
-                ))}
+                </View>
               </View>
-            </View>
-          </View>
+            );
+          })()}
 
           {/* Legend (Weeks 1 to 4) */}
           {chartMode === 'weekly' ? (
@@ -295,7 +409,54 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* ── 2. Role-Specific Modular Views ── */}
+        {/* ── 2. Sleek Compact Sync Dashboard ── */}
+        <View style={s.syncCard}>
+          <View style={s.syncHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: synced && pendingSyncCount === 0 ? '#DCFCE7' : '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={synced && pendingSyncCount === 0 ? "cloud-done" : "cloud-offline"} size={16} color={synced && pendingSyncCount === 0 ? COLORS.success : '#D97706'} />
+              </View>
+              <Text style={s.syncTitle}>Cloud &amp; Device Sync</Text>
+            </View>
+            <View style={[s.syncBadge, { backgroundColor: synced && pendingSyncCount === 0 ? '#DCFCE7' : '#FEF3C7' }]}>
+              <View style={[s.syncDot, { backgroundColor: synced && pendingSyncCount === 0 ? COLORS.success : '#D97706' }]} />
+              <Text style={[s.syncBadgeText, { color: synced && pendingSyncCount === 0 ? '#15803D' : '#B45309' }]}>
+                {synced && pendingSyncCount === 0 ? 'Fully Synced' : `${pendingSyncCount} Pending`}
+              </Text>
+            </View>
+          </View>
+
+          <View style={s.syncMetricsRow}>
+            <View style={s.syncMetricCol}>
+              <Text style={s.syncMetricLabel}>Pending</Text>
+              <Text style={[s.syncMetricVal, pendingSyncCount > 0 && { color: '#D97706' }]}>{pendingSyncCount}</Text>
+            </View>
+            <View style={s.syncMetricDivider} />
+            <View style={s.syncMetricCol}>
+              <Text style={s.syncMetricLabel}>Last Synced</Text>
+              <Text style={s.syncMetricVal}>{syncTimeStr}</Text>
+            </View>
+            <View style={s.syncMetricDivider} />
+            <View style={s.syncMetricCol}>
+              <Text style={s.syncMetricLabel}>Status</Text>
+              <Text style={[s.syncMetricVal, { color: synced ? COLORS.success : '#D97706' }]}>
+                {synced ? 'Online' : 'Offline'}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity 
+            style={[s.syncBtnCompact, isSyncing && { opacity: 0.6 }]} 
+            onPress={handleHomeSync}
+            disabled={isSyncing}
+            activeOpacity={0.8}
+          >
+            <Ionicons name={isSyncing ? "refresh" : "cloud-upload-outline"} size={15} color="#fff" />
+            <Text style={s.syncBtnTextCompact}>{isSyncing ? 'Syncing...' : 'Sync Now'}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── 3. Role-Specific Modular Views ── */}
         {session.role === 'Member' && (
           <MemberHomeView
             session={session}
@@ -352,22 +513,40 @@ export default function HomeScreen({ navigation }) {
 
             <TouchableOpacity 
               style={s.saveModalBtn}
-              onPress={() => {
+              onPress={async () => {
                 const b = parseFloat(inputBag);
                 const m = parseFloat(inputMol);
                 if (isNaN(b) || isNaN(m)) {
                   Alert.alert(t('error_title', 'Error'), t('invalid_numbers_error', 'Please enter valid numbers'));
                   return;
                 }
-                setPriceData(prev => ({
-                  ...prev,
-                  livePrice: b,
-                  liveMol: m,
-                  liveWeek: inputWeek,
-                  liveDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                }));
-                setShowPriceModal(false);
-                Alert.alert(t('price_posted_title', 'Price Posted ✓'), `${inputCircular || 'SRA Circular'} benchmark updated to ₱${b.toLocaleString()}/Lkg.`);
+
+                try {
+                  await publishSraPrice({
+                    price: b,
+                    molasses: m,
+                    week: inputWeek || 'Current Week',
+                    circular: inputCircular || 'SRA Circular #105',
+                    source: inputCircular ? `${inputCircular} (HPCo Silay Millsite)` : 'HPCo Silay Millsite'
+                  });
+
+                  setPriceData({
+                    livePrice: b,
+                    liveMol: m,
+                    liveWeek: inputWeek || 'Current Week',
+                    liveDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    liveChange: b - (MOCK_PRICE.value || b)
+                  });
+
+                  setShowPriceModal(false);
+                  Alert.alert(
+                    t('price_posted_title', 'Price Posted ✓'),
+                    `${inputCircular || 'SRA Circular'} benchmark updated to ₱${b.toLocaleString()}/Lkg and broadcasted to all cooperative portals & mobile apps.`
+                  );
+                } catch (err) {
+                  console.warn('[HomeScreen] Error posting price:', err);
+                  Alert.alert('Broadcast Error', 'Could not broadcast price update.');
+                }
               }}
             >
               <Text style={s.saveModalBtnText}>{t('sra_btn_broadcast', 'Broadcast Benchmark Price')}</Text>
@@ -413,25 +592,44 @@ export default function HomeScreen({ navigation }) {
           ) : (
             <ScrollView contentContainerStyle={{ padding: SPACING.md, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
               {notifs.map(n => (
-                <View key={n.id} style={s.notifItem}>
-                  <View style={[s.notifIconBox, { backgroundColor: n.color + '15' }]}>
-                    <Ionicons name={n.icon} size={18} color={n.color} />
+                <TouchableOpacity
+                  key={n.id}
+                  style={[s.notifItem, { backgroundColor: n.unread ? '#FAFAF9' : '#fff', padding: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: n.unread ? n.color + '40' : COLORS.border, marginBottom: 8 }]}
+                  onPress={() => handleNotifPress(n)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[s.notifIconBox, { backgroundColor: n.color + '18' }]}>
+                    <Ionicons name={n.icon} size={20} color={n.color} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Text style={s.notifTitle}>{n.title}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                        <Text style={s.notifTitle}>{n.title}</Text>
+                        {n.unread && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: n.color }} />}
+                      </View>
                       <TouchableOpacity
-                        onPress={() => handleDismissNotif(n.id)}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleDismissNotif(n.id);
+                        }}
                         style={{ padding: 4, marginRight: -4, marginTop: -4 }}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
                         <Ionicons name="close" size={16} color={COLORS.textMuted} />
                       </TouchableOpacity>
                     </View>
-                    <Text style={s.notifMsg}>{n.msg}</Text>
-                    <Text style={s.notifTime}>{n.time}</Text>
+                    <Text style={[s.notifMsg, { marginTop: 4, lineHeight: 17 }]}>{n.msg}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                      <Text style={s.notifTime}>{n.time}</Text>
+                      {n.badgeText && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: n.color + '15', paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.sm }}>
+                          <Text style={{ fontSize: 11, fontWeight: '800', color: n.color }}>{n.badgeText}</Text>
+                          <Ionicons name="chevron-forward" size={12} color={n.color} />
+                        </View>
+                      )}
+                    </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </ScrollView>
           )}
@@ -530,5 +728,90 @@ const s = StyleSheet.create({
   notifIconBox: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   notifTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text },
   notifMsg: { fontSize: 11, color: COLORS.textSecondary, marginTop: 2 },
-  notifTime: { fontSize: 10, color: COLORS.textMuted, marginTop: 2 }
+  notifTime: { fontSize: 10, color: COLORS.textMuted, marginTop: 2 },
+
+  // Compact Sync Dashboard
+  syncCard: {
+    backgroundColor: '#fff',
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOW.xs
+  },
+  syncHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10
+  },
+  syncTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.text
+  },
+  syncBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: RADIUS.full
+  },
+  syncDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3
+  },
+  syncBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800'
+  },
+  syncMetricsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAF5',
+    borderRadius: RADIUS.md,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border + '60'
+  },
+  syncMetricCol: {
+    flex: 1,
+    alignItems: 'center'
+  },
+  syncMetricDivider: {
+    width: 1,
+    height: 22,
+    backgroundColor: COLORS.border
+  },
+  syncMetricLabel: {
+    fontSize: 9.5,
+    color: COLORS.textMuted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 2
+  },
+  syncMetricVal: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: COLORS.text
+  },
+  syncBtnCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 9,
+    borderRadius: RADIUS.md,
+    minHeight: 38
+  },
+  syncBtnTextCompact: {
+    color: '#fff',
+    fontSize: 12.5,
+    fontWeight: '800'
+  }
 });

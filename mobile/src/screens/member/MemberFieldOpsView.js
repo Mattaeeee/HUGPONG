@@ -15,6 +15,7 @@ function MemberFieldOpsView({
   selectedField = {},
   onSelectField,
   fieldLogs = [],
+  draftLogsCount = 0,
   onOpenAddLog,
   onOpenLedger,
   onOpenPlanner
@@ -73,7 +74,7 @@ function MemberFieldOpsView({
         <View style={s.historyHeader}>
           <View>
             <Text style={s.historyTitle}>{t('ops_title', 'Field Activity & Ledger')}</Text>
-            <Text style={s.historySub}>{fieldLogs.length} {t('logged_records_lbl', 'logged records')}</Text>
+            <Text style={s.historySub}>{fieldLogs.length} submitted{draftLogsCount > 0 ? ` · ${draftLogsCount} draft${draftLogsCount !== 1 ? 's' : ''}` : ''}</Text>
           </View>
           <TouchableOpacity onPress={onOpenLedger}>
             <Text style={s.seeAllText}>{t('view_all_link', 'View All →')}</Text>

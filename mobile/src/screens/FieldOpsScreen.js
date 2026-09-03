@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
-import { subscribe, getCurrentSession, setSynced, setSession, updateSessionFieldId, getIsSynced, MOCK_ASSIGNMENT_REQUESTS, resolveAssignmentRequest, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS, notifyDataUpdate, SRA_PRICE_HISTORY, addSRAPrice, MOCK_MANAGERS, updateFieldCustomStages, getMemberSyncHealth, performMobileSync, SRA_OPERATIONS_CATALOGUE, getFieldCustomOperations, saveFieldCustomOperations, MOCK_AUDIT_HISTORY, blockFarms, users, resolveFieldBlockFarm, resolveFieldMember } from '../data/dataStore';
+import { subscribe, getCurrentSession, setSynced, setSession, updateSessionFieldId, updateFieldStageAndCycle, getIsSynced, MOCK_ASSIGNMENT_REQUESTS, resolveAssignmentRequest, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS, notifyDataUpdate, SRA_PRICE_HISTORY, addSRAPrice, MOCK_MANAGERS, updateFieldCustomStages, getMemberSyncHealth, performMobileSync, SRA_OPERATIONS_CATALOGUE, getFieldCustomOperations, saveFieldCustomOperations, MOCK_AUDIT_HISTORY, blockFarms, users, resolveFieldBlockFarm, resolveFieldMember } from '../data/dataStore';
 import { enqueueOutboxItem, generateLogId, generateDraftId, generateSubItemId, generateCustomOpId } from '../services/syncEngine';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
@@ -329,10 +329,22 @@ const getFieldStages = (fieldId) => {
   const stages = CROP_CYCLE_STAGES_BY_TYPE[cycleType] || CROP_CYCLE_STAGES_BY_TYPE['Plant Cane (New Plant)'];
   
   const fieldStageName = (field?.stage || '').toLowerCase();
-  let targetStageNum = 1;
+  let targetStageNum = field?.stageNumber || 1;
   const stageMatch = fieldStageName.match(/stage\s*(\d+)/i);
   if (stageMatch) {
     targetStageNum = parseInt(stageMatch[1], 10);
+  } else if (fieldStageName.includes('prep') || fieldStageName.includes('tillage') || fieldStageName.includes('plow')) {
+    targetStageNum = 1;
+  } else if (fieldStageName.includes('plant') || fieldStageName.includes('establishment') || fieldStageName.includes('patdan')) {
+    targetStageNum = 2;
+  } else if (fieldStageName.includes('basal') || fieldStageName.includes('nutrition') || fieldStageName.includes('early care')) {
+    targetStageNum = 3;
+  } else if (fieldStageName.includes('cultivation') || fieldStageName.includes('weed') || fieldStageName.includes('off-barring')) {
+    targetStageNum = 4;
+  } else if (fieldStageName.includes('maintenance') || fieldStageName.includes('top-dress') || fieldStageName.includes('hilling')) {
+    targetStageNum = 5;
+  } else if (fieldStageName.includes('harvest') || fieldStageName.includes('cutting') || fieldStageName.includes('hauling') || fieldStageName.includes('milling')) {
+    targetStageNum = 6;
   }
 
   return stages.map(s => {
@@ -580,7 +592,7 @@ export default function FieldOpsScreen({ navigation, route }) {
   });
   const [draftLogs, setDraftLogs] = useState(DRAFT_LOGS);
   const [logTab, setLogTab] = useState('submitted');
-  const [managerFieldFilter, setManagerFieldFilter] = useState('my');
+  const [managerFieldFilter, setManagerFieldFilter] = useState('all');
   const [logSearch, setLogSearch] = useState('');
   const [logCategoryFilter, setLogCategoryFilter] = useState('all');
   const [expandedLogId, setExpandedLogId] = useState(null);
@@ -774,7 +786,24 @@ export default function FieldOpsScreen({ navigation, route }) {
     const targetTask = fieldTasks[taskIndex];
     if (!targetTask) return;
 
+    const targetStageNum = targetTask.stageNumber || taskIndex + 1;
+    const stageDrafts = draftLogs.filter(d =>
+      d.fieldId === selectedField.id &&
+      (d.stageNumber === targetStageNum || d.taskId === targetTask.id)
+    );
+
     const applyToggle = () => {
+      // Discard unsubmitted drafts belonging to this completed stage
+      if ((forceComplete || targetTask.active) && stageDrafts.length > 0) {
+        const remainingDrafts = draftLogs.filter(d =>
+          !(d.fieldId === selectedField.id && (d.stageNumber === targetStageNum || d.taskId === targetTask.id))
+        );
+        DRAFT_LOGS.length = 0;
+        DRAFT_LOGS.push(...remainingDrafts);
+        setDraftLogs([...remainingDrafts]);
+        notifyDataUpdate();
+      }
+
       const currentTasks = cycleTasksByField[selectedField.id] || getFieldStages(selectedField.id);
       const updated = currentTasks.map(t => {
         if (t.id === taskId) {
@@ -801,19 +830,29 @@ export default function FieldOpsScreen({ navigation, route }) {
       }
 
       const activeTask = updated.find(t => t.active);
+      const stageNum = activeTask ? (activeTask.stageNumber || 1) : (isFullyCompleted ? 6 : 1);
       const newStageLabel = activeTask ? (activeTask.name || activeTask.label) : (isFullyCompleted ? 'Harvesting & Milling (Completed)' : 'Waiting for Next Stage');
       
-      setSelectedField(prevF => ({ ...prevF, stage: newStageLabel }));
+      setSelectedField(prevF => ({ ...prevF, stage: newStageLabel, stageNumber: stageNum }));
       const mf = MOCK_FIELDS.find(f => f.id === selectedField.id);
-      if (mf) mf.stage = newStageLabel;
+      if (mf) {
+        mf.stage = newStageLabel;
+        mf.stageNumber = stageNum;
+      }
 
       setCycleTasksByField(prev => ({ ...prev, [selectedField.id]: updated }));
+      updateFieldStageAndCycle(selectedField.id, {
+        stage: newStageLabel,
+        stageNumber: stageNum,
+        cycleType: mf?.cycleType || 'Plant Cane (New Plant)',
+        lastUpdated: new Date().toISOString()
+      });
 
       if (isFullyCompleted) {
         setTimeout(() => {
           Alert.alert(
             'Crop Cycle Completed!',
-            'All 5 stages for this field cycle are complete. Would you like to start a new crop cycle?',
+            'All 6 stages for this field cycle are complete. Would you like to start a new crop cycle?',
             [
               { text: 'Not Now', style: 'cancel' },
               { text: 'Start New Cycle', style: 'default', onPress: () => {
@@ -823,9 +862,18 @@ export default function FieldOpsScreen({ navigation, route }) {
                    ...p,
                    [selectedField.id]: resetStages
                  }));
-                 setSelectedField(prevF => ({ ...prevF, stage: resetStages[0].name }));
+                 setSelectedField(prevF => ({ ...prevF, stage: resetStages[0].name, stageNumber: 1 }));
                  const resetMf = MOCK_FIELDS.find(f => f.id === selectedField.id);
-                 if (resetMf) resetMf.stage = resetStages[0].name;
+                 if (resetMf) {
+                   resetMf.stage = resetStages[0].name;
+                   resetMf.stageNumber = 1;
+                 }
+                 updateFieldStageAndCycle(selectedField.id, {
+                   stage: resetStages[0].name,
+                   stageNumber: 1,
+                   cycleType: resetMf?.cycleType || 'Plant Cane (New Plant)',
+                   lastUpdated: new Date().toISOString()
+                 });
                  
                  // Mark logs as past cycle instead of deleting
                  MOCK_LOGS.forEach(l => {
@@ -1191,29 +1239,38 @@ export default function FieldOpsScreen({ navigation, route }) {
     const parentStageName = logForm.stageName || matchedOp.stageName || 'Stage 1: Pre-Planting & Land Preparation';
 
     const logIdToUse = logForm.id || (asSubmit ? generateLogId(submittedFieldId) : generateDraftId(submittedFieldId));
+    const finalActivityName = (logForm.operationName || logForm.activity || matchedOp.name || logForm.subItems?.[0]?.description || 'Custom Operation').trim();
+
     const newLog = {
       id: logIdToUse,
       fieldId: submittedFieldId,
       stageNumber: parentStageNum,
       stageName: parentStageName,
-      sraOperationId: logForm.sraOperationId || matchedOp.id || 'SRA-02',
-      operationName: logForm.operationName || matchedOp.name || logForm.activity,
-      activity: logForm.activity,
+      sraOperationId: logForm.sraOperationId || matchedOp.id || 'CUSTOM',
+      operationName: finalActivityName,
+      activity: finalActivityName,
       category: logForm.category || matchedOp.category || 'prep',
       cost: costValue,
       totalCost: costValue,
       costPerHa: costPerHaVal,
-      hectares: logForm.hectares,
-      people: logForm.people,
-      subItems: logForm.subItems || [],
+      hectares: parseFloat(logForm.hectares) || 1.5,
+      people: String(logForm.people || '2'),
+      subItems: (logForm.subItems || []).map(si => ({
+        id: si.id || `SI-${Date.now()}`,
+        description: si.description || finalActivityName,
+        qty: parseFloat(si.qty) || 1,
+        unit: si.unit || 'ha',
+        unitCost: parseFloat(si.unitCost) || 0,
+        subTotal: parseFloat(si.subTotal) || 0,
+      })),
       inputQty: logForm.inputQty || '',
-      inputUnit: logForm.inputUnit || '',
+      inputUnit: logForm.inputUnit || 'ha',
       inputName: logForm.inputName || '',
       date: logForm.period || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       approved: false,
       status: 'Recorded',
       loggedBy: loggedByStr,
-      taskId: logForm.taskId,
+      taskId: logForm.taskId || `S${parentStageNum}`,
       isOffline: !synced,
       editHistory: [],
     };
@@ -2045,14 +2102,31 @@ export default function FieldOpsScreen({ navigation, route }) {
                             marginTop: 6
                           }}
                           onPress={() => {
-                            Alert.alert(
-                              'Complete Stage',
-                              `Are you finished with all operations in Stage ${task.stageNumber || i + 1}?`,
-                              [
-                                { text: 'Keep Active', style: 'cancel' },
-                                { text: 'Yes, Complete Stage', onPress: () => toggleTaskStatus(task.id, true) }
-                              ]
-                            );
+                            const stageNum = task.stageNumber || i + 1;
+                            const stageDrafts = draftLogs.filter(d => d.fieldId === selectedField.id && (d.stageNumber === stageNum || d.taskId === task.id));
+                            if (stageDrafts.length > 0) {
+                              Alert.alert(
+                                'Unsubmitted Drafts Detected',
+                                `You have ${stageDrafts.length} unsubmitted draft(s) for Stage ${stageNum}: "${task.name || task.label}".\n\nMarking this stage as finished will discard these drafts. Would you like to mark this stage as finish?`,
+                                [
+                                  { text: 'Keep Drafts & Review', style: 'cancel' },
+                                  {
+                                    text: 'Yes, Discard Drafts & Complete',
+                                    style: 'destructive',
+                                    onPress: () => toggleTaskStatus(task.id, true)
+                                  }
+                                ]
+                              );
+                            } else {
+                              Alert.alert(
+                                'Complete Stage',
+                                `Are you finished with all operations in Stage ${stageNum}: "${task.name || task.label}"?`,
+                                [
+                                  { text: 'Keep Active', style: 'cancel' },
+                                  { text: 'Yes, Complete Stage', onPress: () => toggleTaskStatus(task.id, true) }
+                                ]
+                              );
+                            }
                           }}
                         >
                           <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
@@ -2108,7 +2182,7 @@ export default function FieldOpsScreen({ navigation, route }) {
   };
 
   const scopedDrafts = activeRole === 'Member' ? draftLogs.filter(d => d.fieldId === selectedField.id) : [];
-  const totalLedgerCount = fieldLogs.length;
+  const totalLedgerCount = fieldLogs.length + (activeRole === 'Member' ? scopedDrafts.length : 0);
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -2248,9 +2322,16 @@ export default function FieldOpsScreen({ navigation, route }) {
             {/* Field Scope Filter Switcher */}
             {/* Field Selector & Segmented Scope Switcher */}
             {(() => {
-              const myFieldList = MOCK_FIELDS.filter(f => f.member === getCurrentSession().name || f.id === getCurrentSession().fieldId);
+              const sess = getCurrentSession();
+              const myFieldList = MOCK_FIELDS.filter(f => 
+                f.member === sess.name || 
+                f.memberName === sess.name || 
+                f.memberId === sess.employeeId || 
+                f.memberId === sess.contact || 
+                (sess.fieldId && f.id === sess.fieldId)
+              );
               const displayedFields = managerFieldFilter === 'my'
-                ? (myFieldList.length > 0 ? myFieldList : MOCK_FIELDS)
+                ? myFieldList
                 : MOCK_FIELDS;
 
               return (
@@ -2268,7 +2349,6 @@ export default function FieldOpsScreen({ navigation, route }) {
                           setManagerFieldFilter('my');
                           if (myFieldList.length > 0) {
                             setSelectedField(myFieldList[0]);
-                            updateSessionFieldId(myFieldList[0].id);
                           }
                         }}
                       >
@@ -2278,7 +2358,12 @@ export default function FieldOpsScreen({ navigation, route }) {
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.xs }, managerFieldFilter === 'all' && { backgroundColor: '#fff', ...SHADOW.card }]}
-                        onPress={() => setManagerFieldFilter('all')}
+                        onPress={() => {
+                          setManagerFieldFilter('all');
+                          if (MOCK_FIELDS.length > 0 && !MOCK_FIELDS.some(f => f.id === selectedField.id)) {
+                            setSelectedField(MOCK_FIELDS[0]);
+                          }
+                        }}
                       >
                         <Text style={{ fontSize: 11, fontWeight: managerFieldFilter === 'all' ? '800' : '600', color: managerFieldFilter === 'all' ? COLORS.primary : COLORS.textMuted }}>
                           All Plots ({MOCK_FIELDS.length})
@@ -2287,26 +2372,32 @@ export default function FieldOpsScreen({ navigation, route }) {
                     </View>
                   </View>
 
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: SPACING.md }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8, paddingBottom: 4 }}>
-                    {displayedFields.slice(0, 3).map(field => (
-                      <TouchableOpacity
-                        key={field.id}
-                        style={[s.fieldChip, selectedField.id === field.id && s.fieldChipActive]}
-                        onPress={() => {
-                          setSelectedField(field);
-                          updateSessionFieldId(field.id);
-                        }}
-                      >
-                        <View style={[s.syncDot, { backgroundColor: field.synced ? COLORS.success : '#C97A00' }]} />
-                        <Text style={[s.fieldChipText, selectedField.id === field.id && s.fieldChipTextActive]}>{field.id} ({field.ha} Ha)</Text>
-                      </TouchableOpacity>
-                    ))}
-                    {displayedFields.length > 3 && (
-                      <TouchableOpacity style={[s.fieldChip, { backgroundColor: COLORS.primaryBg, borderColor: COLORS.primary }]} onPress={() => setShowFieldsModal(true)}>
-                        <Text style={[s.fieldChipText, { color: COLORS.primary, fontWeight: '800' }]}>+ {displayedFields.length - 3} More</Text>
-                      </TouchableOpacity>
-                    )}
-                  </ScrollView>
+                  {displayedFields.length === 0 ? (
+                    <View style={{ padding: 12, backgroundColor: '#F8FAF5', borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.md }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.text }}>No Personal Plots Assigned</Text>
+                      <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>You do not have a personal plot allocated. Switch to "All Plots" to oversee member plots.</Text>
+                    </View>
+                  ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -SPACING.lg, marginBottom: SPACING.md }} contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 8, paddingBottom: 4 }}>
+                      {displayedFields.slice(0, 3).map(field => (
+                        <TouchableOpacity
+                          key={field.id}
+                          style={[s.fieldChip, selectedField.id === field.id && s.fieldChipActive]}
+                          onPress={() => {
+                            setSelectedField(field);
+                          }}
+                        >
+                          <View style={[s.syncDot, { backgroundColor: field.synced ? COLORS.success : '#C97A00' }]} />
+                          <Text style={[s.fieldChipText, selectedField.id === field.id && s.fieldChipTextActive]}>{field.id} ({field.ha} Ha)</Text>
+                        </TouchableOpacity>
+                      ))}
+                      {displayedFields.length > 3 && (
+                        <TouchableOpacity style={[s.fieldChip, { backgroundColor: COLORS.primaryBg, borderColor: COLORS.primary }]} onPress={() => setShowFieldsModal(true)}>
+                          <Text style={[s.fieldChipText, { color: COLORS.primary, fontWeight: '800' }]}>+ {displayedFields.length - 3} More</Text>
+                        </TouchableOpacity>
+                      )}
+                    </ScrollView>
+                  )}
                 </View>
               );
             })()}
@@ -2567,8 +2658,8 @@ export default function FieldOpsScreen({ navigation, route }) {
 
             {/* Target Operation & Connected Stage Banner */}
             <View style={{ backgroundColor: '#F0F8EC', borderRadius: RADIUS.md, padding: 14, borderWidth: 1.5, borderColor: COLORS.primary, marginBottom: SPACING.md }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
                   <Ionicons name="construct" size={22} color="#fff" />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -2576,23 +2667,42 @@ export default function FieldOpsScreen({ navigation, route }) {
                     <View style={{ backgroundColor: COLORS.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: RADIUS.xs }}>
                       <Text style={{ fontSize: 11, fontWeight: '900', color: '#fff' }}>{logForm.sraOperationId || 'SRA'}</Text>
                     </View>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.primary, textTransform: 'uppercase' }}>{t('log_target_op', 'Target Operation')}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: COLORS.primary, textTransform: 'uppercase' }}>
+                      {logForm.sraOperationId === 'CUSTOM' ? 'Custom Operation' : t('log_target_op', 'Target Operation')}
+                    </Text>
                   </View>
-                  <Text style={{ fontSize: 16, fontWeight: '900', color: COLORS.text, marginTop: 3 }}>
-                    {formatOperationName ? formatOperationName(logForm.operationName || logForm.activity) : (logForm.operationName || logForm.activity || 'Field Operation')}
-                  </Text>
+
+                  {logForm.sraOperationId === 'CUSTOM' ? (
+                    <View style={{ marginTop: 6, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 11.5, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 4 }}>Operation / Activity Title *</Text>
+                      <TextInput
+                        style={{ backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: RADIUS.sm, paddingHorizontal: 12, paddingVertical: 8, fontSize: 15, fontWeight: '800', color: COLORS.text }}
+                        value={logForm.operationName || logForm.activity}
+                        onChangeText={v => setLogForm(p => ({ ...p, operationName: v, activity: v }))}
+                        placeholder="e.g. Canal Maintenance, Foliar Spray"
+                        placeholderTextColor={COLORS.textMuted}
+                      />
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: 16, fontWeight: '900', color: COLORS.text, marginTop: 3 }}>
+                      {formatOperationName ? formatOperationName(logForm.operationName || logForm.activity) : (logForm.operationName || logForm.activity || 'Field Operation')}
+                    </Text>
+                  )}
+
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
                     <Ionicons name="git-branch-outline" size={12} color={COLORS.primary} />
                     <Text style={{ fontSize: 12, fontWeight: '800', color: COLORS.primary }}>
                       {t('log_connected_to', 'Connected to:')} {formatStageName ? formatStageName(logForm.stageName || (logForm.stageNumber ? `Stage ${logForm.stageNumber}` : 'Stage 1: Pre-Planting & Land Preparation')) : (logForm.stageName || 'Stage 1')}
                     </Text>
                   </View>
-                  <Text style={{ fontSize: 11.5, color: COLORS.textSecondary, marginTop: 3 }}>
-                    {t('log_std_cost', 'Standard Cost')}: ₱ {Number(SRA_OPERATIONS_CATALOGUE.find(o => o.id === logForm.sraOperationId)?.costPerHa || 0).toLocaleString()} / hectare
-                  </Text>
+                  {logForm.sraOperationId !== 'CUSTOM' && (
+                    <Text style={{ fontSize: 11.5, color: COLORS.textSecondary, marginTop: 3 }}>
+                      {t('log_std_cost', 'Standard Cost')}: ₱ {Number(SRA_OPERATIONS_CATALOGUE.find(o => o.id === logForm.sraOperationId)?.costPerHa || 0).toLocaleString()} / hectare
+                    </Text>
+                  )}
                 </View>
                 <View style={{ padding: 6, backgroundColor: '#E2EED9', borderRadius: RADIUS.xs }}>
-                  <Ionicons name="lock-closed" size={16} color={COLORS.primary} />
+                  <Ionicons name={logForm.sraOperationId === 'CUSTOM' ? "create-outline" : "lock-closed"} size={16} color={COLORS.primary} />
                 </View>
               </View>
             </View>
@@ -3364,7 +3474,8 @@ export default function FieldOpsScreen({ navigation, route }) {
                     ...selectedField,
                     cycleType: cycleTypeForm.cycleType,
                     cropYear: cycleTypeForm.cropYear,
-                    stage: activeStg.name
+                    stage: activeStg.name,
+                    stageNumber: activeStg.stageNumber || 1
                   };
                   setSelectedField(updatedField);
                   setCycleTasksByField(p => ({
@@ -3377,10 +3488,17 @@ export default function FieldOpsScreen({ navigation, route }) {
                     mf.cycleType = cycleTypeForm.cycleType;
                     mf.cropYear = cycleTypeForm.cropYear;
                     mf.stage = activeStg.name;
+                    mf.stageNumber = activeStg.stageNumber || 1;
                   }
-                  notifyDataUpdate();
+                  updateFieldStageAndCycle(selectedField.id, {
+                    cycleType: cycleTypeForm.cycleType,
+                    cropYear: cycleTypeForm.cropYear,
+                    stage: activeStg.name,
+                    stageNumber: activeStg.stageNumber || 1,
+                    lastUpdated: new Date().toISOString()
+                  });
                   setShowCycleModal(false);
-                  Alert.alert('Crop Cycle Updated', `${selectedField.id} is now set to ${cycleTypeForm.cycleType} (${cycleTypeForm.cropYear}) with its 5 growth stages.`);
+                  Alert.alert('Crop Cycle Updated', `${selectedField.id} is now set to ${cycleTypeForm.cycleType} (${cycleTypeForm.cropYear}) with its 6 growth stages.`);
                 }}
               >
                 <Text style={s.submitBtnText}>Save Cycle</Text>
@@ -3667,11 +3785,11 @@ export default function FieldOpsScreen({ navigation, route }) {
               </TouchableOpacity>
               <TouchableOpacity style={[s.logTabBtn, logTab === 'drafts' && s.logTabBtnActive]} onPress={() => setLogTab('drafts')}>
                 <Text style={[s.logTabText, logTab === 'drafts' && s.logTabTextActive]}>
-                  {t('tab_drafts', 'Drafts')} {draftLogs.filter(l => l.fieldId === selectedField.id).length > 0 && `(${draftLogs.filter(l => l.fieldId === selectedField.id).length})`}
+                  {t('tab_drafts', 'Drafts')} ({scopedDrafts.length})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.logTabBtn, logTab === 'past' && s.logTabBtnActive]} onPress={() => setLogTab('past')}>
-                <Text style={[s.logTabText, logTab === 'past' && s.logTabTextActive]}>{t('tab_past', 'Past Cycles')}</Text>
+                <Text style={[s.logTabText, logTab === 'past' && s.logTabTextActive]}>{t('tab_past', 'Past Cycles')} ({pastLogs.length})</Text>
               </TouchableOpacity>
             </View>
           ) : activeRole === 'SRA (Admin)' ? (

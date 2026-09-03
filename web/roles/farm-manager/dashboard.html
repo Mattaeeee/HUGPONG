@@ -727,12 +727,14 @@
 
           <!-- Crop Stage Distribution Card for Manager -->
           <div class="bg-white rounded-2xl p-6 border border-border shadow-xs">
-            <div class="flex items-center justify-between mb-4 border-b border-border pb-3">
+            <div class="flex items-center justify-between mb-4 border-b border-border pb-3 flex-wrap gap-3">
               <div>
                 <h3 class="text-sm font-bold text-hug-text flex items-center gap-2">
                   <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   Nacayao Block Farm Crop Stage Distribution
                 </h3>
+                <p class="text-xs text-hug-muted" id="mgr-crop-stage-subtitle">Active growth stages across assigned member plots</p>
+              </div>
               <div class="flex items-center gap-3">
                 <select id="mgr-crop-stage-member-filter" onchange="renderCropStageDistribution()" class="border border-border rounded-xl px-3 py-1.5 text-xs font-bold bg-bg focus:outline-none focus:border-primary shadow-xs text-primary cursor-pointer">
                   <option value="all">All Nacayao Plots</option>

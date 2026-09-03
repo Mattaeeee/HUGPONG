@@ -133,6 +133,47 @@ export const currentMarketObservation = {
   }
 };
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+export const extractPriceMonth = (p) => {
+  if (!p) return 'May';
+  if (p.month && typeof p.month === 'string' && p.month !== 'Invalid Date') return p.month;
+
+  // 1. Check week string (e.g., "Week 1 Sep", "Week 4 May", "Week 4 Apr")
+  if (p.week && typeof p.week === 'string') {
+    for (const m of MONTH_NAMES) {
+      if (p.week.toLowerCase().includes(m.toLowerCase())) return m;
+    }
+  }
+
+  // 2. Check date or isoDate string (e.g. "2026-09-03", "Sep 03, 2026")
+  const rawDate = p.isoDate || p.date;
+  if (rawDate && typeof rawDate === 'string') {
+    for (const m of MONTH_NAMES) {
+      if (rawDate.toLowerCase().includes(m.toLowerCase())) return m;
+    }
+    const parts = rawDate.split('-');
+    if (parts.length >= 2) {
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      if (monthIdx >= 0 && monthIdx < 12) return MONTH_NAMES[monthIdx];
+    }
+    const parsed = new Date(rawDate);
+    if (!isNaN(parsed.getTime())) {
+      return MONTH_NAMES[parsed.getMonth()];
+    }
+  }
+
+  // 3. Check timestamp
+  if (p.timestamp) {
+    const parsed = new Date(Number(p.timestamp));
+    if (!isNaN(parsed.getTime())) {
+      return MONTH_NAMES[parsed.getMonth()];
+    }
+  }
+
+  return 'May';
+};
+
 export const priceAnalytics = {
   get hasData() {
     return priceHistory.length > 0;
@@ -140,7 +181,7 @@ export const priceAnalytics = {
   get months() {
     const sorted = getSortedPrices();
     if (sorted.length === 0) return ['No Data'];
-    const uniqueMonths = Array.from(new Set(sorted.map(p => p.month || (p.date ? new Date(p.date).toLocaleString('default', { month: 'short' }) : 'May'))));
+    const uniqueMonths = Array.from(new Set(sorted.map(p => extractPriceMonth(p))));
     return uniqueMonths.slice(0, 6).reverse();
   },
   get weeks() {
@@ -151,7 +192,7 @@ export const priceAnalytics = {
     const months = this.months;
     return [0, 1, 2, 3].map(wIndex => {
       return months.map(m => {
-        const matching = sorted.filter(p => (p.month === m || (p.date && new Date(p.date).toLocaleString('default', { month: 'short' }) === m)));
+        const matching = sorted.filter(p => extractPriceMonth(p) === m);
         if (matching.length > wIndex) return Number(matching[wIndex].price) || 0;
         if (matching.length > 0) return Number(matching[0].price) || 0;
         return Number(sorted[0].price) || 0;
@@ -311,8 +352,73 @@ export const setSession = (role) => {
 };
 
 export const updateSessionFieldId = (fieldId) => {
-  CURRENT_SESSION.fieldId = fieldId;
+  if (CURRENT_SESSION && CURRENT_SESSION.role === 'Member') {
+    CURRENT_SESSION.fieldId = fieldId;
+    notify();
+  }
+};
+
+export const updateFieldStageAndCycle = async (fieldId, updates) => {
+  if (!fieldId) return;
+  const targetField = fields.find(f => f.id === fieldId);
+  if (targetField) {
+    Object.assign(targetField, updates);
+  }
+  saveItem(STORAGE_KEYS.FIELDS, fields);
   notify();
+
+  if (db && fieldId) {
+    try {
+      await setDoc(doc(db, 'fields', fieldId), updates, { merge: true });
+    } catch (e) {
+      console.warn('[dataStore] Failed to sync field stage/cycle to Firestore:', e);
+    }
+  }
+};
+
+export const publishSraPrice = async ({ price, molasses, week, circular, source }) => {
+  const sorted = getSortedPrices();
+  const prevPrice = sorted[0]?.price || price;
+  const prevMol = sorted[0]?.molasses || molasses;
+  const change = price - prevPrice;
+  const molChange = molasses - prevMol;
+
+  const now = new Date();
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const formattedDate = `${months[now.getMonth()]} ${String(now.getDate()).padStart(2, '0')}, ${now.getFullYear()}`;
+  const isoDate = now.toISOString().split('T')[0];
+
+  const pId = `PRC-${Date.now()}`;
+  const newPost = {
+    id: pId,
+    week: week || 'Current Week',
+    price: Number(price),
+    molasses: Number(molasses),
+    date: formattedDate,
+    isoDate: isoDate,
+    timestamp: Date.now(),
+    change,
+    molassesChange: molChange,
+    source: source || circular || 'SRA Official Circular (HPCo Silay Millsite)',
+    circular: circular || 'SRA Circular',
+    createdAt: now.toISOString()
+  };
+
+  priceHistory.unshift(newPost);
+  await saveItem(STORAGE_KEYS.PRICES, priceHistory);
+  notify();
+
+  // Push directly to Firestore 'sra_prices'
+  if (db) {
+    try {
+      await setDoc(doc(db, 'sra_prices', pId), newPost, { merge: true });
+      console.log('[Mobile] Published price broadcasted to Firestore:', pId);
+    } catch (err) {
+      console.warn('[Mobile] Error broadcasting price to Firestore:', err);
+    }
+  }
+
+  return newPost;
 };
 
 let MEMBER_SYNC_LAG_DAYS = 0;
