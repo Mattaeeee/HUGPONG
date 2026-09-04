@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, TextInput,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
-import { subscribe, getCurrentSession, MOCK_FIELDS, getMemberSyncHealth, performMobileSync, updateSessionFieldId } from '../data/dataStore';
+import { subscribe, getCurrentSession, fields, getMemberSyncHealth, performMobileSync, updateSessionFieldId } from '../data/dataStore';
 import { useTranslation } from '../services/i18n';
 
 export default function SyncMonitorScreen({ navigation }) {
@@ -25,7 +25,7 @@ export default function SyncMonitorScreen({ navigation }) {
   const isFarmManager = session.role === 'Farm Manager';
   const isSRA = session.role === 'SRA (Admin)';
 
-  // Member terminal telemetry dynamically derived from MOCK_FIELDS
+  // Member terminal telemetry dynamically derived from fields
   const memberTelemetry = React.useMemo(() => {
     const devices = [
       'Samsung Galaxy A14 (Android 13)',
@@ -41,7 +41,7 @@ export default function SyncMonitorScreen({ navigation }) {
       '0917-555-1234',
       '0918-666-7890'
     ];
-    return MOCK_FIELDS.map((f, idx) => {
+    return fields.map((f, idx) => {
       const isLagging = f.lastSync?.includes('days') || !f.synced;
       const isCritical = f.lastSync?.includes('4 days') || f.lastSync?.includes('8 days');
       const lagDays = isCritical ? 4 : (isLagging ? 2 : 0);

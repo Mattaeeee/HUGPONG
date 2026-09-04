@@ -1,18 +1,41 @@
 import { STORAGE_KEYS, saveItem, getItem, clearHugpongStorage, hydrateAllStorage, multiSave } from '../services/storageService';
 import { initSyncEngine, enqueueOutboxItem, processOutbox, getOutboxCount, clearOutbox, flushOutboxToFirestore, generateUserNumericId, generateTicketId } from '../services/syncEngine';
+import { hashPassword, verifyPassword, DEFAULT_SEED_PASSWORD_HASH, DEFAULT_MASTER_PASSWORD_HASH } from '../services/cryptoService';
+import { publishTerminalTelemetry } from '../services/telemetryService';
 import { db } from '../firebase/config';
-import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+
+export { hashPassword, verifyPassword, DEFAULT_SEED_PASSWORD_HASH, DEFAULT_MASTER_PASSWORD_HASH, publishTerminalTelemetry };
 
 // ══════════════════════════════════════════════════════════════
 // HUGPONG — Canonical Database Entities & Offline Working Store
 // Single Canonical Source of Truth: Cloud Firestore / Server DB
 // ══════════════════════════════════════════════════════════════
 
-export const priceHistory = [];
+export const priceHistory = [
+  { id: 'PRC-2026-W04-MAY', week: 'Week 4 May', month: 'May', price: 2950, molasses: 4400, date: 'May 21, 2026', isoDate: '2026-05-21', change: 70, molassesChange: 100, source: 'SRA Official Circular #105 (HPCo Silay Millsite)', circular: 'SRA Circular #105', timestamp: 1779344400000, createdAt: '2026-05-21T09:00:00Z' },
+  { id: 'PRC-2026-W03-MAY', week: 'Week 3 May', month: 'May', price: 2880, molasses: 4300, date: 'May 14, 2026', isoDate: '2026-05-14', change: 80, molassesChange: 50, source: 'SRA Official Circular #104 (HPCo Silay Millsite)', circular: 'SRA Circular #104', timestamp: 1778739600000, createdAt: '2026-05-14T09:00:00Z' },
+  { id: 'PRC-2026-W02-MAY', week: 'Week 2 May', month: 'May', price: 2800, molasses: 4250, date: 'May 07, 2026', isoDate: '2026-05-07', change: 50, molassesChange: 50, source: 'SRA Official Circular #103 (HPCo Silay Millsite)', circular: 'SRA Circular #103', timestamp: 1778134800000, createdAt: '2026-05-07T09:00:00Z' },
+  { id: 'PRC-2026-W01-MAY', week: 'Week 1 May', month: 'May', price: 2750, molasses: 4200, date: 'Apr 30, 2026', isoDate: '2026-04-30', change: 50, molassesChange: 0, source: 'SRA Official Circular #102 (HPCo Silay Millsite)', circular: 'SRA Circular #102', timestamp: 1777530000000, createdAt: '2026-04-30T09:00:00Z' },
+  { id: 'PRC-2026-W04-APR', week: 'Week 4 Apr', month: 'Apr', price: 2700, molasses: 4200, date: 'Apr 23, 2026', isoDate: '2026-04-23', change: 50, molassesChange: 0, source: 'SRA Official Circular #99 (HPCo Silay Millsite)', circular: 'SRA Circular #99', timestamp: 1776925200000, createdAt: '2026-04-23T09:00:00Z' }
+];
+
 export const blockFarms = [
   { id: 'BLK-NCY-01', code: 'BLK-NCY', name: 'Nacayao Block Farm', location: 'Silay City, Negros Occidental', farmManagerId: '03000001', farmManagerName: 'Jose Reyes', declaredHa: 15.25, activePlots: 5 }
 ];
-export const users = [];
+
+export const users = [
+  { employeeId: '01000001', contact: '09187654321', mobile: '0918 765 4321', name: 'Capstone Group (Admin)', role: 'Super Admin', blockFarmId: '', fieldId: '', logsHandled: 256, regDate: '2026-01-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '01000002', contact: '09451774699', mobile: '0945 177 4699', name: 'Project Lead', role: 'Super Admin', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 120, regDate: '2026-01-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '02000001', contact: '09194448888', mobile: '0919 444 8888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 84, regDate: '2026-01-15', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '03000001', contact: '09189876543', mobile: '0918 987 6543', name: 'Jose Reyes', role: 'Farm Manager', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 168, regDate: '2026-02-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '04000001', contact: '09171234567', mobile: '0917 123 4567', name: 'Juan dela Cruz', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', logsHandled: 24, regDate: '2026-02-10', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '04000002', contact: '09179876543', mobile: '0917 987 6543', name: 'Pedro Reyes', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-002', logsHandled: 18, regDate: '2026-02-12', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '04000003', contact: '09194448889', mobile: '0919 444 8889', name: 'Corazon Santos', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-003', logsHandled: 22, regDate: '2026-02-14', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '04000004', contact: '09987654321', mobile: '0998 765 4321', name: 'Roberto Tan', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-004', logsHandled: 15, regDate: '2026-02-20', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '04000005', contact: '09555444333', mobile: '0955 544 4333', name: 'Ana Gomez', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-005', logsHandled: 9, regDate: '2026-03-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH }
+];
+
 export const fields = [
   { id: 'FLD-NCY-001', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000001', member: 'Juan dela Cruz', ha: 1.5, stage: 'Pre-Planting & Land Preparation', stageNumber: 1, month: 0.5, batchMonth: 1, synced: true, lastSync: '10 mins ago', variety: 'VMC 84-524', soilType: 'Clay Loam' },
   { id: 'FLD-NCY-002', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000002', member: 'Pedro Reyes', ha: 2.5, stage: 'Planting & Crop Establishment', stageNumber: 2, month: 1.0, batchMonth: 1, synced: true, lastSync: '15 mins ago', variety: 'Phil 99-1793', soilType: 'Sandy Loam' },
@@ -20,11 +43,454 @@ export const fields = [
   { id: 'FLD-NCY-004', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000004', member: 'Roberto Tan', ha: 3.5, stage: 'Cultivation & Weed Management', stageNumber: 4, month: 2.5, batchMonth: 2, synced: true, lastSync: '2 hrs ago', variety: 'VMC 84-524', soilType: 'Loam' },
   { id: 'FLD-NCY-005', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000005', member: 'Ana Gomez', ha: 3.25, stage: 'Crop Maintenance & Final Hilling-Up', stageNumber: 5, month: 3.5, batchMonth: 2, synced: true, lastSync: '3 hrs ago', variety: 'Phil 99-1793', soilType: 'Clay Loam' },
 ];
-export const operationLogs = [];
+
+export const operationLogs = [
+  // ── Active Cycle Logs (CY 2025–2026) ──
+  {
+    id: 'LOG-2026-NCY-001-001',
+    fieldId: 'FLD-NCY-001',
+    blockFarm: 'Nacayao Block Farm',
+    stageNumber: 1,
+    stageName: 'Stage 1: Pre-Planting & Land Preparation',
+    operationName: 'Land Preparation',
+    activity: 'Land Preparation (Disc Plowing & Furrowing)',
+    category: 'prep',
+    cost: 18000,
+    totalCost: 18000,
+    costPerHa: 12000,
+    hectares: 1.5,
+    people: '2',
+    date: 'May 02, 2026',
+    period: 'May 02, 2026',
+    status: 'Recorded',
+    loggedBy: 'Juan dela Cruz (Member)',
+    subItems: [
+      { id: 'SI-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
+      { id: 'SI-001-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
+      { id: 'SI-001-3', description: 'Furrowing / Tudling', qty: 1.5, unit: 'ha', unitCost: 3000, subTotal: 4500 }
+    ],
+    editHistory: []
+  },
+  {
+    id: 'LOG-2026-NCY-002-001',
+    fieldId: 'FLD-NCY-002',
+    blockFarm: 'Nacayao Block Farm',
+    stageNumber: 2,
+    stageName: 'Stage 2: Planting & Crop Establishment',
+    operationName: 'Cost of Planting Material (Seedcane acquisition)',
+    activity: 'Cost of Planting Material (Patdan)',
+    category: 'plant',
+    cost: 37500,
+    totalCost: 37500,
+    costPerHa: 15000,
+    hectares: 2.5,
+    people: '4',
+    date: 'May 08, 2026',
+    period: 'May 08, 2026',
+    status: 'Recorded',
+    loggedBy: 'Pedro Reyes (Member)',
+    subItems: [
+      { id: 'SI-002-1', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
+    ],
+    editHistory: []
+  },
+  {
+    id: 'LOG-2026-NCY-003-001',
+    fieldId: 'FLD-NCY-003',
+    blockFarm: 'Nacayao Block Farm',
+    stageNumber: 3,
+    stageName: 'Stage 3: Basal Nutrition & Early Care',
+    operationName: 'Basal Fertilizer Application',
+    activity: 'Basal Fertilizer (Urea + Complete + Potash)',
+    category: 'fert',
+    cost: 71100,
+    totalCost: 71100,
+    costPerHa: 15800,
+    hectares: 4.5,
+    people: '6',
+    date: 'May 12, 2026',
+    period: 'May 12, 2026',
+    status: 'Recorded',
+    loggedBy: 'Corazon Santos (Member)',
+    subItems: [
+      { id: 'SI-003-1', description: '46-00-00 Urea Application', qty: 9, unit: 'bag', unitCost: 1600, subTotal: 14400 },
+      { id: 'SI-003-2', description: '18-46-00 DAP / Complete', qty: 13.5, unit: 'bag', unitCost: 2500, subTotal: 33750 },
+      { id: 'SI-003-3', description: '00-00-60 Potash (MOP)', qty: 9, unit: 'bag', unitCost: 2200, subTotal: 19800 },
+      { id: 'SI-003-4', description: 'Fertilizer Application Labor', qty: 31.5, unit: 'bag', unitCost: 100, subTotal: 3150 }
+    ],
+    editHistory: []
+  },
+  {
+    id: 'LOG-2026-NCY-004-001',
+    fieldId: 'FLD-NCY-004',
+    blockFarm: 'Nacayao Block Farm',
+    stageNumber: 4,
+    stageName: 'Stage 4: Cultivation & Weed Management',
+    operationName: 'Cultivation (Off-barring & On-barring)',
+    activity: 'Pahubas & Off-barring Pass',
+    category: 'weed',
+    cost: 10500,
+    totalCost: 10500,
+    costPerHa: 3000,
+    hectares: 3.5,
+    people: '3',
+    date: 'May 18, 2026',
+    period: 'May 18, 2026',
+    status: 'Recorded',
+    loggedBy: 'Roberto Tan (Member)',
+    subItems: [
+      { id: 'SI-004-1', description: '1st Off-barring (Pahubas)', qty: 7, unit: 'pass', unitCost: 750, subTotal: 5250 },
+      { id: 'SI-004-2', description: '2nd Off-barring (Pahubas)', qty: 7, unit: 'pass', unitCost: 750, subTotal: 5250 }
+    ],
+    editHistory: []
+  },
+  {
+    id: 'LOG-2026-NCY-005-001',
+    fieldId: 'FLD-NCY-005',
+    blockFarm: 'Nacayao Block Farm',
+    stageNumber: 5,
+    stageName: 'Stage 5: Crop Maintenance & Final Hilling-Up',
+    operationName: 'Final Hilling-up (Pasungkal)',
+    activity: 'Pasungkal Tractor Pass',
+    category: 'maint',
+    cost: 8125,
+    totalCost: 8125,
+    costPerHa: 2500,
+    hectares: 3.25,
+    people: '2',
+    date: 'May 22, 2026',
+    period: 'May 22, 2026',
+    status: 'Recorded',
+    loggedBy: 'Ana Gomez (Member)',
+    subItems: [
+      { id: 'SI-005-1', description: 'Final Hilling-Up / Pasungkal Pass', qty: 3.25, unit: 'ha', unitCost: 2500, subTotal: 8125 }
+    ],
+    editHistory: []
+  },
+
+  // ── Past Cycle Archived Logs (CY 2024–2025 Certified History) ──
+  {
+    id: 'PAST-2025-NCY-001-HARV',
+    fieldId: 'FLD-NCY-001',
+    blockFarm: 'Nacayao Block Farm',
+    stageNumber: 6,
+    stageName: 'Stage 6: Harvesting & Transport',
+    operationName: 'Cutting and Loading',
+    activity: 'Cane Cutting & Mill Trucking (Haw-Phil)',
+    category: 'harvest',
+    cost: 48000,
+    totalCost: 48000,
+    hectares: 1.5,
+    people: '8',
+    date: 'Jan 15, 2025',
+    period: 'Jan 15, 2025',
+    status: 'Certified',
+    isPastCycle: true,
+    certified: true,
+    archivedAt: '2025-01-20T10:00:00Z',
+    loggedBy: 'Juan dela Cruz (Member)',
+    subItems: [
+      { id: 'PAST-SI-01', description: 'Cutting & Loading 90 Tons', qty: 90, unit: 'ton', unitCost: 450, subTotal: 40500 },
+      { id: 'PAST-SI-02', description: 'Terminal Mill Flatbed Freight', qty: 1, unit: 'trip', unitCost: 7500, subTotal: 7500 }
+    ],
+    editHistory: []
+  },
+  {
+    id: 'PAST-2025-NCY-002-HARV',
+    fieldId: 'FLD-NCY-002',
+    blockFarm: 'Nacayao Block Farm',
+    stageNumber: 6,
+    stageName: 'Stage 6: Harvesting & Transport',
+    operationName: 'Cutting and Loading',
+    activity: 'Cane Cutting & Loading (150 Tons)',
+    category: 'harvest',
+    cost: 75000,
+    totalCost: 75000,
+    hectares: 2.5,
+    people: '12',
+    date: 'Jan 22, 2025',
+    period: 'Jan 22, 2025',
+    status: 'Certified',
+    isPastCycle: true,
+    certified: true,
+    archivedAt: '2025-01-25T10:00:00Z',
+    loggedBy: 'Pedro Reyes (Member)',
+    subItems: [
+      { id: 'PAST-SI-03', description: 'Cutting & Loading 150 Tons', qty: 150, unit: 'ton', unitCost: 450, subTotal: 67500 },
+      { id: 'PAST-SI-04', description: 'In-field Carabao Hauling Assist', qty: 1, unit: 'lot', unitCost: 7500, subTotal: 7500 }
+    ],
+    editHistory: []
+  },
+  {
+    id: 'PAST-2025-NCY-003-HARV',
+    fieldId: 'FLD-NCY-003',
+    blockFarm: 'Nacayao Block Farm',
+    stageNumber: 6,
+    stageName: 'Stage 6: Harvesting & Transport',
+    operationName: 'Cutting and Loading',
+    activity: 'Cane Cutting & Mill Delivery (270 Tons)',
+    category: 'harvest',
+    cost: 135000,
+    totalCost: 135000,
+    hectares: 4.5,
+    people: '18',
+    date: 'Feb 05, 2025',
+    period: 'Feb 05, 2025',
+    status: 'Certified',
+    isPastCycle: true,
+    certified: true,
+    archivedAt: '2025-02-10T10:00:00Z',
+    loggedBy: 'Corazon Santos (Member)',
+    subItems: [
+      { id: 'PAST-SI-05', description: 'Cutting & Loading 270 Tons', qty: 270, unit: 'ton', unitCost: 450, subTotal: 121500 },
+      { id: 'PAST-SI-06', description: 'Mill Hauling & Scale Fee', qty: 1, unit: 'lot', unitCost: 13500, subTotal: 13500 }
+    ],
+    editHistory: []
+  }
+];
+
 export const draftLogs = [];
-export const supportTickets = [];
-export const auditLogs = [];
+
+export const supportTickets = [
+  {
+    id: 'TCK-2026-001',
+    subject: 'Fertilizer Voucher Claim Status',
+    memberName: 'Juan dela Cruz',
+    memberId: '04000001',
+    contact: '09171234567',
+    fieldId: 'FLD-NCY-001',
+    blockFarm: 'Nacayao Block Farm',
+    category: 'Fertilizer Support',
+    priority: 'Normal',
+    status: 'Open',
+    createdAt: '2026-05-20T10:00:00Z',
+    messages: [
+      { sender: 'Juan dela Cruz', text: 'Hi Manager Jose, when can we claim the SRA Urea subsidised bags at the Silay warehouse for FLD-NCY-001?', timestamp: '2026-05-20T10:00:00Z' },
+      { sender: 'Jose Reyes (Manager)', text: 'Warehouse release is scheduled for Thursday morning. Please bring your SRA ID card.', timestamp: '2026-05-20T11:30:00Z' }
+    ]
+  },
+  {
+    id: 'TCK-2026-002',
+    subject: 'Tractor Schedule for 2nd Off-barring',
+    memberName: 'Pedro Reyes',
+    memberId: '04000002',
+    contact: '09179876543',
+    fieldId: 'FLD-NCY-002',
+    blockFarm: 'Nacayao Block Farm',
+    category: 'Machinery Scheduling',
+    priority: 'High',
+    status: 'In Progress',
+    createdAt: '2026-05-21T08:30:00Z',
+    messages: [
+      { sender: 'Pedro Reyes', text: 'Requesting tractor assistance for FLD-NCY-002 this Friday.', timestamp: '2026-05-21T08:30:00Z' },
+      { sender: 'Jose Reyes (Manager)', text: 'Noted Pedro. Scheduled Tractor #2 for Friday 7:00 AM.', timestamp: '2026-05-21T09:15:00Z' }
+    ]
+  }
+];
+
+export const auditLogs = [
+  // ── Monthly Certified Audit Packages ──
+  {
+    id: 'AUD-2026-05',
+    reportId: 'RPT-2026-05-NCY01',
+    month: 'May 2026',
+    blockFarm: 'Nacayao Block Farm',
+    blockFarmId: 'BLK-NCY-01',
+    totalCost: 145225,
+    fieldsReported: 5,
+    logsCount: 5,
+    status: 'Certified',
+    dateGenerated: 'May 30, 2026 02:30 PM',
+    qrSignature: 'HUG-202605-A3F9',
+    verifiedBy: 'Engr. Maria Santos (SRA Officer)',
+    notes: 'Fully audited against SRA S1-S14 Sugar Agronomic Benchmark standards.',
+    stageBreakdown: [
+      { stage: 'Stage 1: Pre-Planting & Land Preparation', cost: 18000, pct: '12%', fields: 'FLD-NCY-001 (Juan dela Cruz - 1.5 Ha)' },
+      { stage: 'Stage 2: Planting & Crop Establishment', cost: 37500, pct: '26%', fields: 'FLD-NCY-002 (Pedro Reyes - 2.5 Ha)' },
+      { stage: 'Stage 3: Basal Nutrition & Early Care', cost: 71100, pct: '49%', fields: 'FLD-NCY-003 (Corazon Santos - 4.5 Ha)' },
+      { stage: 'Stage 4: Cultivation & Weed Management', cost: 10500, pct: '7%', fields: 'FLD-NCY-004 (Roberto Tan - 3.5 Ha)' },
+      { stage: 'Stage 5: Crop Maintenance & Final Hilling-Up', cost: 8125, pct: '6%', fields: 'FLD-NCY-005 (Ana Gomez - 3.25 Ha)' }
+    ]
+  },
+  {
+    id: 'AUD-2026-04',
+    reportId: 'RPT-2026-04-NCY01',
+    month: 'April 2026',
+    blockFarm: 'Nacayao Block Farm',
+    blockFarmId: 'BLK-NCY-01',
+    totalCost: 128400,
+    fieldsReported: 5,
+    logsCount: 6,
+    status: 'Certified',
+    dateGenerated: 'Apr 30, 2026 04:15 PM',
+    qrSignature: 'HUG-202604-B8E2',
+    verifiedBy: 'Engr. Maria Santos (SRA Officer)',
+    notes: 'Pre-planting soil tests & furrowing passes certified for Silay district plots.',
+    stageBreakdown: [
+      { stage: 'Stage 1: Pre-Planting & Land Preparation', cost: 68400, pct: '53%', fields: 'FLD-NCY-001, FLD-NCY-002, FLD-NCY-003' },
+      { stage: 'Stage 2: Planting Material Acquisition', cost: 60000, pct: '47%', fields: 'FLD-NCY-004, FLD-NCY-005' }
+    ]
+  },
+  {
+    id: 'AUD-2026-03',
+    reportId: 'RPT-2026-03-NCY01',
+    month: 'March 2026',
+    blockFarm: 'Nacayao Block Farm',
+    blockFarmId: 'BLK-NCY-01',
+    totalCost: 94500,
+    fieldsReported: 5,
+    logsCount: 5,
+    status: 'Certified',
+    dateGenerated: 'Mar 31, 2026 03:00 PM',
+    qrSignature: 'HUG-202603-C1D4',
+    verifiedBy: 'Engr. Maria Santos (SRA Officer)',
+    notes: 'Trash blanketing and stubble shaving audit completed.',
+    stageBreakdown: [
+      { stage: 'Stage 1: Field Clearing & Stubble Shaving', cost: 94500, pct: '100%', fields: 'All 5 Plots (15.25 Ha)' }
+    ]
+  },
+
+  // ── Area & Plot Level System Audit Events ──
+  {
+    id: 'AUD-2026-0001',
+    category: 'audit',
+    action: 'Report Certification',
+    eventType: 'Report Certification',
+    actorId: '02000001',
+    actorName: 'Engr. Maria Santos',
+    actorRole: 'SRA (Admin)',
+    entityType: 'Audit Report',
+    entityId: 'RPT-2026-05-NCY01',
+    blockFarmId: 'BLK-NCY-01',
+    blockFarm: 'Nacayao Block Farm',
+    details: 'Certified May 2026 Block Farm Monthly Agronomic Report with QR Hash HUG-202605-A3F9 for 5 plots (15.25 Ha).',
+    timestamp: 'May 30, 2026, 02:30 PM',
+    isoDate: '2026-05-30T14:30:00Z',
+    status: 'Certified'
+  },
+  {
+    id: 'AUD-2026-0002',
+    category: 'plot',
+    action: 'Field Stage Advance',
+    eventType: 'Field Stage Advance',
+    actorId: '03000001',
+    actorName: 'Jose Reyes',
+    actorRole: 'Farm Manager',
+    entityType: 'Field Plot',
+    entityId: 'FLD-NCY-002',
+    blockFarmId: 'BLK-NCY-01',
+    blockFarm: 'Nacayao Block Farm',
+    fieldId: 'FLD-NCY-002',
+    details: 'Advanced FLD-NCY-002 (Pedro Reyes, 2.5 Ha) to Stage 2: Planting & Crop Establishment.',
+    timestamp: 'May 08, 2026, 11:00 AM',
+    isoDate: '2026-05-08T11:00:00Z',
+    status: 'Recorded'
+  },
+  {
+    id: 'AUD-2026-0003',
+    category: 'sra',
+    action: 'Price Circular Published',
+    eventType: 'Price Circular Published',
+    actorId: '01000001',
+    actorName: 'Capstone Group',
+    actorRole: 'Super Admin',
+    entityType: 'SRA Price',
+    entityId: 'PRC-2026-W04-MAY',
+    blockFarmId: 'BLK-NCY-01',
+    blockFarm: 'Nacayao Block Farm',
+    details: 'Broadcasted SRA Circular #105 (₱2,950/Lkg Sugar, ₱4,400/MT Molasses) for Silay Mill District.',
+    timestamp: 'May 21, 2026, 09:00 AM',
+    isoDate: '2026-05-21T09:00:00Z',
+    status: 'Recorded'
+  },
+  {
+    id: 'AUD-2026-0004',
+    category: 'plot',
+    action: 'Plot Allocation & Member Assignment',
+    eventType: 'Plot Allocation',
+    actorId: '03000001',
+    actorName: 'Jose Reyes',
+    actorRole: 'Farm Manager',
+    entityType: 'Field Plot',
+    entityId: 'FLD-NCY-001',
+    blockFarmId: 'BLK-NCY-01',
+    blockFarm: 'Nacayao Block Farm',
+    fieldId: 'FLD-NCY-001',
+    details: 'Enrolled & Assigned plot FLD-NCY-001 (1.5 Ha, Clay Loam) to member farmer Juan dela Cruz.',
+    timestamp: 'Feb 10, 2026, 08:30 AM',
+    isoDate: '2026-02-10T08:30:00Z',
+    status: 'Recorded'
+  },
+  {
+    id: 'AUD-2026-0005',
+    category: 'plot',
+    action: 'Input Disbursement Verification',
+    eventType: 'Input Disbursement',
+    actorId: '03000001',
+    actorName: 'Jose Reyes',
+    actorRole: 'Farm Manager',
+    entityType: 'Field Plot',
+    entityId: 'FLD-NCY-003',
+    blockFarmId: 'BLK-NCY-01',
+    blockFarm: 'Nacayao Block Farm',
+    fieldId: 'FLD-NCY-003',
+    details: 'Verified basal fertilizer delivery (Urea, DAP, MOP) for FLD-NCY-003 (Corazon Santos, 4.5 Ha).',
+    timestamp: 'May 12, 2026, 03:15 PM',
+    isoDate: '2026-05-12T15:15:00Z',
+    status: 'Recorded'
+  }
+];
+
 export const assignmentRequests = [];
+
+export const requestFieldAssignment = (fieldId, memberName, ha, memberId = null) => {
+  const curSession = getCurrentSession();
+  const newReq = {
+    id: 'REQ-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+    fieldId: String(fieldId || '').trim().toUpperCase(),
+    member: memberName || curSession.name || 'Member',
+    memberId: memberId || curSession.employeeId || curSession.id || '',
+    ha: String(ha || '1.0'),
+    status: 'Pending',
+    timestamp: new Date().toISOString(),
+    date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  };
+  assignmentRequests.unshift(newReq);
+  notifyDataUpdate();
+  return newReq;
+};
+
+export const resolveAssignmentRequest = (requestId, approved = true) => {
+  const req = assignmentRequests.find(r => r.id === requestId);
+  if (req) {
+    req.status = approved ? 'Approved' : 'Rejected';
+    if (approved) {
+      const f = fields.find(item => item.id === req.fieldId);
+      if (f) {
+        f.member = req.member;
+        f.memberName = req.member;
+        f.owner = req.member;
+        if (req.memberId) f.memberId = req.memberId;
+        if (req.ha) f.ha = parseFloat(req.ha);
+      } else {
+        fields.push({
+          id: req.fieldId,
+          name: `Field ${req.fieldId}`,
+          ha: parseFloat(req.ha) || 1.0,
+          cropCycle: 'CY 2026-2027',
+          stage: 'Pre-Planting',
+          member: req.member,
+          memberName: req.member,
+          owner: req.member,
+          memberId: req.memberId || '',
+          targetTons: (parseFloat(req.ha) || 1.0) * 65
+        });
+      }
+    }
+    notifyDataUpdate();
+  }
+  return req;
+};
 
 // Backward-compatible architectural aliases
 export const MOCK_BLOCK_FARMS = blockFarms;
@@ -44,12 +510,46 @@ export {
 };
 
 // ── Relational Derivation Resolvers ──────────────────────────
+export const findUserByIdOrContact = (inputStr) => {
+  if (!inputStr) return null;
+  const raw = String(inputStr).trim();
+  const clean = raw.replace(/\D/g, '');
+
+  return users.find(u => {
+    const uEmp = String(u.employeeId || '').trim();
+    const uEmpClean = uEmp.replace(/\D/g, '');
+    const uContact = String(u.contact || '').replace(/\D/g, '');
+    const uMobile = String(u.mobile || '').replace(/\D/g, '');
+    const uId = String(u.id || '').trim();
+    const uName = String(u.name || '').trim().toLowerCase();
+
+    if (uEmp && (uEmp === raw || (clean && uEmpClean === clean))) return true;
+    if (clean && uContact && uContact === clean) return true;
+    if (clean && uMobile && uMobile === clean) return true;
+    if (clean.length >= 7) {
+      if (uContact.length >= 7 && (uContact.endsWith(clean) || clean.endsWith(uContact))) return true;
+      if (uMobile.length >= 7 && (uMobile.endsWith(clean) || clean.endsWith(uMobile))) return true;
+    }
+    if (uId && (uId === raw || (clean && uId.replace(/\D/g, '') === clean))) return true;
+    if (uName && uName === raw.toLowerCase()) return true;
+    return false;
+  }) || null;
+};
+
+export const isValidUserIdentifier = (inputStr) => {
+  if (!inputStr) return false;
+  const raw = String(inputStr).trim();
+  const clean = raw.replace(/\D/g, '');
+  if (findUserByIdOrContact(inputStr)) return true;
+  if (/^0[1-4]\d{6}$/.test(raw) || /^0[1-4]\d{6}$/.test(clean)) return true;
+  if (/^09\d{9}$/.test(clean) || (clean.startsWith('639') && clean.length === 12)) return true;
+  return clean.length >= 7;
+};
+
 export const resolveFieldMember = (field) => {
   if (!field) return 'Unassigned';
-  if (field.member && typeof field.member === 'string' && field.member.length > 0) return field.member;
-  const u = users.find(user => 
-    user.employeeId === field.memberId || user.contact === field.memberId || user.mobile?.replace(/\D/g, '') === field.memberId
-  );
+  if (field.member && typeof field.member === 'string' && field.member.length > 0 && !field.member.startsWith('09') && !field.member.startsWith('04')) return field.member;
+  const u = findUserByIdOrContact(field.memberId || field.userId || field.memberContact || field.member);
   return u ? u.name : (field.member || 'Member Farmer');
 };
 
@@ -62,8 +562,10 @@ export const resolveFieldBlockFarm = (field) => {
 
 export const resolveBlockFarmManager = (blockFarm) => {
   if (!blockFarm) return 'Assigned Farm Manager';
+  const u = findUserByIdOrContact(blockFarm.farmManagerId || blockFarm.managerContact || blockFarm.farmManagerName);
+  if (u) return u.name;
   const mgr = users.find(u => 
-    u.employeeId === blockFarm.farmManagerId || (u.role === 'Farm Manager' && u.blockFarmId === blockFarm.id)
+    u.employeeId === blockFarm.farmManagerId || (u.role === 'Farm Manager' && (u.blockFarmId === blockFarm.id || u.blockFarm === blockFarm.name))
   );
   return mgr ? mgr.name : 'Jose Reyes';
 };
@@ -218,28 +720,40 @@ export const MOCK_MOL = currentMarketObservation;
 export const MOCK_WEEKLY_CHART = priceAnalytics;
 
 // ── User Directory & Authentication ──────────────────────────
-export const authenticateUser = (contact, password) => {
-  const cleaned = (contact || '').replace(/\D/g, '');
+export const authenticateUser = (contactOrId, password) => {
+  const raw = String(contactOrId || '').trim();
+  const cleaned = raw.replace(/\D/g, '');
+
   let user = users.find(u => {
     const uContact = (u.contact || u.mobile || '').replace(/\D/g, '');
-    const uEmp = (u.employeeId || '').trim();
-    return uContact === cleaned || uEmp === cleaned;
+    const uEmp = String(u.employeeId || '').trim();
+    const uEmpClean = uEmp.replace(/\D/g, '');
+    const uId = String(u.id || '').trim();
+    if (uEmp && (uEmp === raw || (cleaned && uEmpClean === cleaned))) return true;
+    if (cleaned && uContact && uContact === cleaned) return true;
+    if (uId && (uId === raw || (cleaned && uId.replace(/\D/g, '') === cleaned))) return true;
+    return false;
   });
 
   if (!user) {
     const canonical = [
-      { employeeId: '04000001', contact: '09171234567', mobile: '09171234567', name: 'Juan dela Cruz', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', password: 'password123' },
-      { employeeId: '03000001', contact: '09189876543', mobile: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: '', password: 'password123' },
-      { employeeId: '02000001', contact: '09194448888', mobile: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'District 3 · Silay', fieldId: '', password: 'password123' },
-      { employeeId: '01000001', contact: '09187654321', mobile: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'District 3 · Silay', fieldId: '', password: 'password123' },
+      { employeeId: '04000001', contact: '09171234567', mobile: '09171234567', name: 'Juan dela Cruz', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '03000001', contact: '09189876543', mobile: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '02000001', contact: '09194448888', mobile: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'District 3 · Silay', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '01000001', contact: '09187654321', mobile: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'District 3 · Silay', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
     ];
-    user = canonical.find(u => u.contact.replace(/\D/g, '') === cleaned || u.employeeId === cleaned);
+    user = canonical.find(u => 
+      u.contact.replace(/\D/g, '') === cleaned || 
+      u.employeeId === raw || 
+      (cleaned && u.employeeId.replace(/\D/g, '') === cleaned)
+    );
   }
 
   if (!user) {
-    return { success: false, error: 'Account not found in cooperative registry. Please register or contact your administrator.' };
+    return { success: false, error: 'Account not found. Please check your User ID (e.g. 04000001) or registered mobile number.' };
   }
-  if (user.password && user.password !== password && password !== 'password123' && password !== 'hugpong2026') {
+  const storedHash = user.passwordHash || user.password;
+  if (!verifyPassword(password, storedHash)) {
     return { success: false, error: 'Incorrect password. Please try again.' };
   }
   CURRENT_SESSION = { ...user };
@@ -247,9 +761,171 @@ export const authenticateUser = (contact, password) => {
   return { success: true, user: CURRENT_SESSION };
 };
 
+export const updateUserMobileNumber = async (newMobile, passwordVerification) => {
+  if (!CURRENT_SESSION) {
+    return { success: false, error: 'No active user session found.' };
+  }
+  const cleanNew = String(newMobile || '').replace(/\D/g, '');
+  if (!cleanNew.startsWith('09') || cleanNew.length !== 11) {
+    if (!(cleanNew.startsWith('639') && cleanNew.length === 12)) {
+      return { success: false, error: 'Please enter a valid 11-digit Philippine mobile number (09XXXXXXXXX).' };
+    }
+  }
+
+  const currentContactClean = String(CURRENT_SESSION.contact || CURRENT_SESSION.mobile || '').replace(/\D/g, '');
+  if (cleanNew === currentContactClean) {
+    return { success: false, error: 'New mobile number cannot be the same as your current registered number.' };
+  }
+
+  const currentPassHash = CURRENT_SESSION.passwordHash || CURRENT_SESSION.password;
+  if (!verifyPassword(passwordVerification, currentPassHash)) {
+    return { success: false, error: 'Incorrect password verification. Please enter your account password to authorize changing your contact number.' };
+  }
+
+  const formatted = cleanNew.startsWith('639') ? '0' + cleanNew.slice(2) : cleanNew;
+  const displayFormatted = formatted.length === 11 ? `${formatted.slice(0, 4)} ${formatted.slice(4, 7)} ${formatted.slice(7)}` : formatted;
+
+  CURRENT_SESSION.mobile = displayFormatted;
+  CURRENT_SESSION.contact = formatted;
+
+  const uEmp = String(CURRENT_SESSION.employeeId || '').trim();
+  const existingInArray = users.find(u => 
+    (u.employeeId && u.employeeId === uEmp) || 
+    (u.contact && u.contact.replace(/\D/g, '') === currentContactClean)
+  );
+
+  if (existingInArray) {
+    existingInArray.mobile = displayFormatted;
+    existingInArray.contact = formatted;
+    existingInArray.updatedAt = new Date().toISOString();
+  } else {
+    users.push({ ...CURRENT_SESSION });
+  }
+
+  if (db) {
+    try {
+      await setDoc(doc(db, 'users', formatted), { ...CURRENT_SESSION, contact: formatted, mobile: displayFormatted }, { merge: true });
+    } catch (e) {
+      console.warn('[dataStore] Firestore mobile update notice:', e);
+    }
+  }
+
+  notify();
+  return { success: true, message: 'Your registered mobile number has been updated successfully.' };
+};
+
+export const updateUserPassword = async (currentPassword, newPassword) => {
+  if (!CURRENT_SESSION) {
+    return { success: false, error: 'No active user session found.' };
+  }
+  const currentPassHash = CURRENT_SESSION.passwordHash || CURRENT_SESSION.password;
+  if (!verifyPassword(currentPassword, currentPassHash)) {
+    return { success: false, error: 'Incorrect current password. Please try again.' };
+  }
+  if (!newPassword || newPassword.length < 8) {
+    return { success: false, error: 'New password must be at least 8 characters long.' };
+  }
+
+  const newPassHash = hashPassword(newPassword);
+  CURRENT_SESSION.passwordHash = newPassHash;
+  delete CURRENT_SESSION.password;
+
+  const uEmp = String(CURRENT_SESSION.employeeId || '').trim();
+  const existingInArray = users.find(u => u.employeeId && u.employeeId === uEmp);
+  if (existingInArray) {
+    existingInArray.passwordHash = newPassHash;
+    delete existingInArray.password;
+    existingInArray.updatedAt = new Date().toISOString();
+  }
+
+  SECURITY_PREFERENCES.lastPasswordChange = new Date().toISOString().split('T')[0];
+
+  if (db) {
+    try {
+      const cleanContact = String(CURRENT_SESSION.contact || CURRENT_SESSION.mobile || '').replace(/\D/g, '');
+      if (cleanContact) {
+        await setDoc(doc(db, 'users', cleanContact), { passwordHash: newPassHash, updatedAt: new Date().toISOString() }, { merge: true });
+      }
+    } catch (e) {
+      console.warn('[dataStore] Firestore password update notice:', e);
+    }
+  }
+
+  notify();
+  return { success: true, message: 'Your password has been changed successfully.' };
+};
+
+export const resetUserPasswordByIdentifier = async (identifier, newPassword) => {
+  if (!identifier) return { success: false, error: 'User ID or Mobile Number required.' };
+  if (!newPassword || newPassword.length < 8) {
+    return { success: false, error: 'New password must be at least 8 characters long.' };
+  }
+
+  const raw = String(identifier).trim();
+  const clean = raw.replace(/\D/g, '');
+  let user = findUserByIdOrContact(identifier);
+
+  if (!user) {
+    user = users.find(u => {
+      const uContact = String(u.contact || u.mobile || '').replace(/\D/g, '');
+      const uEmp = String(u.employeeId || '').trim();
+      return uContact === clean || uEmp === raw || (clean && uEmp.replace(/\D/g, '') === clean);
+    });
+  }
+
+  if (!user) {
+    // Check canonical fallback accounts
+    const canonical = [
+      { employeeId: '04000001', contact: '09171234567', mobile: '09171234567', name: 'Juan dela Cruz', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '03000001', contact: '09189876543', mobile: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '02000001', contact: '09194448888', mobile: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'District 3 · Silay', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '01000001', contact: '09187654321', mobile: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'District 3 · Silay', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    ];
+    user = canonical.find(u => 
+      u.contact.replace(/\D/g, '') === clean || 
+      u.employeeId === raw || 
+      (clean && u.employeeId.replace(/\D/g, '') === clean)
+    );
+    if (user) {
+      const cloned = { ...user };
+      users.push(cloned);
+      user = cloned;
+    }
+  }
+
+  if (!user) {
+    return { success: false, error: 'No registered account found matching this User ID or Mobile Number.' };
+  }
+
+  const newPassHash = hashPassword(newPassword);
+  user.passwordHash = newPassHash;
+  delete user.password;
+  user.updatedAt = new Date().toISOString();
+
+  if (CURRENT_SESSION && (CURRENT_SESSION.employeeId === user.employeeId || CURRENT_SESSION.contact === user.contact)) {
+    CURRENT_SESSION.passwordHash = newPassHash;
+    delete CURRENT_SESSION.password;
+  }
+
+  if (db) {
+    try {
+      const cleanContact = String(user.contact || user.mobile || '').replace(/\D/g, '');
+      if (cleanContact) {
+        await setDoc(doc(db, 'users', cleanContact), { passwordHash: newPassHash, updatedAt: new Date().toISOString() }, { merge: true });
+      }
+    } catch (e) {
+      console.warn('[dataStore] Firestore reset password notice:', e);
+    }
+  }
+
+  notify();
+  return { success: true, message: 'Password has been reset successfully.', user };
+};
+
 export const registerUser = async (userData) => {
   const cleaned = (userData.contactNumber || '').replace(/\D/g, '');
   const numericId = generateUserNumericId('Member');
+  const passHash = hashPassword(userData.password || 'password123');
   const newAccount = {
     employeeId: numericId,
     name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'New Farmer Member',
@@ -262,7 +938,7 @@ export const registerUser = async (userData) => {
     blockFarmScope: userData.blockFarm || 'Nacayao Block Farm',
     blockFarm: userData.blockFarm || 'Nacayao Block Farm',
     farm: userData.blockFarm || 'Nacayao Block Farm',
-    password: userData.password || 'password123',
+    passwordHash: passHash,
     pendingLogs: 0,
     syncedLogs: 0,
     logsHandled: 0,
@@ -376,10 +1052,168 @@ export const updateFieldStageAndCycle = async (fieldId, updates) => {
   }
 };
 
+export const archiveFieldCropCycle = async (fieldId) => {
+  if (!fieldId) return;
+  const targetLogs = operationLogs.filter(l => l.fieldId === fieldId);
+  const nowIso = new Date().toISOString();
+  targetLogs.forEach(l => {
+    l.isPastCycle = true;
+    l.archivedAt = l.archivedAt || nowIso;
+  });
+  
+  // Remove drafts belonging to the archived cycle
+  const remainingDrafts = draftLogs.filter(d => d.fieldId !== fieldId);
+  draftLogs.length = 0;
+  remainingDrafts.forEach(d => draftLogs.push(d));
+
+  await saveItem(STORAGE_KEYS.LOGS, operationLogs);
+  await saveItem(STORAGE_KEYS.DRAFTS, draftLogs);
+  notify();
+
+  if (db) {
+    try {
+      const updatePromises = targetLogs.map(l => 
+        setDoc(doc(db, 'operation_logs', l.id), { isPastCycle: true, archivedAt: l.archivedAt }, { merge: true })
+      );
+      await Promise.all(updatePromises);
+    } catch (err) {
+      console.warn('[dataStore] Error archiving logs in Firestore:', err);
+    }
+  }
+};
+
+export const isLogLocked = (log) => {
+  if (!log) return false;
+  return Boolean(
+    log.isPastCycle || 
+    log.certified || 
+    log.status === 'Certified' || 
+    log.status === 'Audited' || 
+    log.auditStatus === 'Certified'
+  );
+};
+
+export const getLogAuditTrail = (logId) => {
+  const target = operationLogs.find(l => l.id === logId);
+  return target && Array.isArray(target.editHistory) ? target.editHistory : [];
+};
+
+export const updateOperationLogWithSecurity = async (logId, updates, editReason, passwordVerification) => {
+  if (!CURRENT_SESSION) {
+    return { success: false, error: 'No active session. Please log in.' };
+  }
+
+  const targetLog = operationLogs.find(l => l.id === logId);
+  if (!targetLog) {
+    return { success: false, error: 'Operation log not found in local or cloud records.' };
+  }
+
+  if (isLogLocked(targetLog)) {
+    return { 
+      success: false, 
+      error: 'Security Lockout: This operation log is part of an official certified SRA audit or archived crop cycle and cannot be modified.' 
+    };
+  }
+
+  const reasonTrimmed = String(editReason || '').trim();
+  if (!reasonTrimmed || reasonTrimmed.length < 3) {
+    return { success: false, error: 'A valid reason for amendment or correction is required for the official audit trail.' };
+  }
+
+  // Password verification
+  const currentPassHash = CURRENT_SESSION.passwordHash || CURRENT_SESSION.password;
+  if (!verifyPassword(passwordVerification, currentPassHash)) {
+    return { success: false, error: 'Incorrect password. Please enter your account password to authorize modifying this log.' };
+  }
+
+  // Record audit history snapshot
+  const previousValues = {
+    activity: targetLog.activity || targetLog.task || targetLog.operationName || '',
+    cost: targetLog.totalCost != null ? targetLog.totalCost : (targetLog.cost != null ? targetLog.cost : 0),
+    hectares: targetLog.hectares || '0.0',
+    people: targetLog.people || '0',
+    inputQty: targetLog.inputQty || '',
+    inputUnit: targetLog.inputUnit || '',
+    inputName: targetLog.inputName || '',
+    date: targetLog.date || targetLog.period || '',
+    subItems: Array.isArray(targetLog.subItems) ? JSON.parse(JSON.stringify(targetLog.subItems)) : [],
+  };
+
+  const newValues = {
+    activity: updates.activity || updates.operationName || previousValues.activity,
+    cost: updates.totalCost != null ? updates.totalCost : (updates.cost != null ? updates.cost : previousValues.cost),
+    hectares: updates.hectares != null ? updates.hectares : previousValues.hectares,
+    people: updates.people != null ? updates.people : previousValues.people,
+    inputQty: updates.inputQty != null ? updates.inputQty : previousValues.inputQty,
+    inputUnit: updates.inputUnit != null ? updates.inputUnit : previousValues.inputUnit,
+    inputName: updates.inputName != null ? updates.inputName : previousValues.inputName,
+    date: updates.date || updates.period || previousValues.date,
+    subItems: Array.isArray(updates.subItems) ? JSON.parse(JSON.stringify(updates.subItems)) : previousValues.subItems,
+  };
+
+  const editRecord = {
+    id: `EDT-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+    editedBy: `${CURRENT_SESSION.name || 'User'} (${CURRENT_SESSION.employeeId || CURRENT_SESSION.role || 'Member'})`,
+    editedRole: CURRENT_SESSION.role || 'Member',
+    editedAt: new Date().toLocaleString('en-PH'),
+    isoDate: new Date().toISOString(),
+    reason: reasonTrimmed,
+    previousValues,
+    newValues,
+  };
+
+  const existingHistory = Array.isArray(targetLog.editHistory) ? targetLog.editHistory : [];
+  
+  // Apply updates to target log
+  Object.assign(targetLog, updates, {
+    isAmended: true,
+    editHistory: [...existingHistory, editRecord],
+    lastModifiedAt: new Date().toISOString(),
+    lastModifiedBy: CURRENT_SESSION.name,
+  });
+
+  await saveItem(STORAGE_KEYS.LOGS, operationLogs);
+
+  if (db && IS_SYNCED) {
+    try {
+      await setDoc(doc(db, 'operation_logs', logId), targetLog, { merge: true });
+    } catch (e) {
+      console.warn('[dataStore] Direct Firestore log update failed, queuing outbox:', e);
+      await enqueueOutboxItem('operation_log', targetLog);
+    }
+  } else {
+    await enqueueOutboxItem('operation_log', targetLog);
+  }
+
+  notify();
+  return { success: true, log: targetLog, editRecord };
+};
+
+export const deletePastLogsForField = async (fieldId) => {
+  if (!fieldId) return;
+  const toDelete = operationLogs.filter(l => l.fieldId === fieldId && l.isPastCycle);
+  const remaining = operationLogs.filter(l => !(l.fieldId === fieldId && l.isPastCycle));
+  
+  operationLogs.length = 0;
+  remaining.forEach(l => operationLogs.push(l));
+
+  await saveItem(STORAGE_KEYS.LOGS, operationLogs);
+  notify();
+
+  if (db) {
+    try {
+      const delPromises = toDelete.map(l => deleteDoc(doc(db, 'operation_logs', l.id)));
+      await Promise.all(delPromises);
+    } catch (err) {
+      console.warn('[dataStore] Error deleting past logs from Firestore:', err);
+    }
+  }
+};
+
 export const publishSraPrice = async ({ price, molasses, week, circular, source }) => {
   const sorted = getSortedPrices();
-  const prevPrice = sorted[0]?.price || price;
-  const prevMol = sorted[0]?.molasses || molasses;
+  const prevPrice = (sorted.length > 0 && sorted[0].price !== undefined) ? sorted[0].price : price;
+  const prevMol = (sorted.length > 0 && sorted[0].molasses !== undefined) ? sorted[0].molasses : molasses;
   const change = price - prevPrice;
   const molChange = molasses - prevMol;
 
@@ -457,7 +1291,7 @@ export const setSynced = (synced) => {
   notify();
 };
 
-export const MOCK_PROFILE = {
+export const currentProfile = {
   get name() { return CURRENT_SESSION.name; },
   get role() { return CURRENT_SESSION.role; },
   get employeeId() { return CURRENT_SESSION.employeeId; },
@@ -467,6 +1301,9 @@ export const MOCK_PROFILE = {
   get pendingLogs() { return CURRENT_SESSION.pendingLogs; },
   get syncedLogs() { return CURRENT_SESSION.syncedLogs; },
 };
+
+export const profile = currentProfile;
+export const MOCK_PROFILE = currentProfile;
 
 
 export const SRA_OPERATIONS_CATALOGUE = [
@@ -700,9 +1537,9 @@ export const getDefaultStageOperations = (stageNumber) => {
       stageNumber: op.stageNumber,
       stageName: op.stageName,
       inputType: op.inputType || (op.isGroup ? 'group' : 'direct'),
-      isGroup: op.isGroup ?? false,
-      perHa: op.perHa ?? (op.subItems && op.subItems[0] ? op.subItems[0].qty : 1),
-      rate: op.rate ?? (op.subItems && op.subItems[0] ? op.subItems[0].unitCost : op.costPerHa || 0),
+      isGroup: op.isGroup !== undefined ? op.isGroup : false,
+      perHa: op.perHa !== undefined ? op.perHa : (op.subItems && op.subItems[0] ? op.subItems[0].qty : 1),
+      rate: op.rate !== undefined ? op.rate : (op.subItems && op.subItems[0] ? op.subItems[0].unitCost : op.costPerHa || 0),
       category: op.category || 'prep',
       unit: op.unit || 'ha',
       costPerHa: op.costPerHa || 0,
@@ -715,7 +1552,7 @@ export const getFieldCustomOperations = (fieldId, stageNumber) => {
   if (field && field.customOperations && field.customOperations[stageNumber] && field.customOperations[stageNumber].length > 0) {
     return field.customOperations[stageNumber].map(op => ({
       ...op,
-      isGroup: op.isGroup ?? (op.inputType === 'group' || (op.subItems && op.subItems.length > 0)),
+      isGroup: op.isGroup !== undefined ? op.isGroup : (op.inputType === 'group' || (op.subItems && op.subItems.length > 0)),
       inputType: op.inputType || (op.isGroup ? 'group' : 'direct'),
       subItems: (op.subItems || []).map(si => ({ ...si }))
     }));
@@ -729,7 +1566,7 @@ export const saveFieldCustomOperations = (fieldId, stageNumber, operations) => {
     if (!field.customOperations) field.customOperations = {};
     field.customOperations[stageNumber] = operations.map(op => ({
       ...op,
-      isGroup: op.isGroup ?? (op.inputType === 'group'),
+      isGroup: op.isGroup !== undefined ? op.isGroup : (op.inputType === 'group'),
       inputType: op.inputType || (op.isGroup ? 'group' : 'direct'),
       subItems: (op.subItems || []).map(si => ({ ...si }))
     }));
@@ -745,9 +1582,10 @@ export const saveFieldFullPlan = (fieldId, fullPlanByStage) => {
   }
 };
 
-export const MOCK_MANAGERS = [
+export const managers = [
   { id: '03000001', name: 'Jose Reyes', blockFarm: 'Nacayao Block Farm' }
 ];
+export const MOCK_MANAGERS = managers;
 
 export const addSRAPrice = async (price) => {
   const sorted = getSortedPrices();
@@ -837,6 +1675,9 @@ export const resetLocalCache = async () => {
   IS_SYNCED = true;
   await clearOutbox();
   await clearHugpongStorage();
+  if (CURRENT_SESSION) {
+    await saveItem(STORAGE_KEYS.SESSION, CURRENT_SESSION);
+  }
   notify();
   return true;
 };
@@ -923,6 +1764,27 @@ export const listenToCloudSync = () => {
       notify();
     }, (err) => console.warn('[Mobile] Users listener notice:', err));
 
+    // 6. Live Audit Reports & History Listener (Authoritative Cloud Sync)
+    const unsubAuditReports = onSnapshot(collection(db, 'audit_reports'), (snapshot) => {
+      if (snapshot.empty) return;
+      const remoteAudits = [];
+      snapshot.forEach(docSnap => remoteAudits.push({ id: docSnap.id, ...docSnap.data() }));
+
+      if (remoteAudits.length > 0) {
+        // Merge or update audit logs
+        remoteAudits.forEach(ra => {
+          const existingIdx = auditLogs.findIndex(a => a.id === ra.id || a.reportId === ra.id);
+          if (existingIdx >= 0) {
+            auditLogs[existingIdx] = { ...auditLogs[existingIdx], ...ra };
+          } else {
+            auditLogs.unshift(ra);
+          }
+        });
+        saveItem('@hugpong_audit_logs', auditLogs);
+        notify();
+      }
+    }, (err) => console.warn('[Mobile] Audit reports listener notice:', err));
+
     return () => {
       unsubBlockFarms();
       unsubPrices();
@@ -930,6 +1792,7 @@ export const listenToCloudSync = () => {
       unsubLogs();
       unsubTickets();
       unsubUsers();
+      unsubAuditReports();
     };
   } catch (err) {
     console.warn('[Mobile] Error setting up Cloud listeners:', err);
@@ -955,6 +1818,11 @@ export const performMobileSync = async () => {
     f.synced = true;
     f.lastSync = 'Just now';
   });
+
+  // Broadcast device health telemetry
+  try {
+    await publishTerminalTelemetry(CURRENT_SESSION, 0);
+  } catch (e) {}
   
   notify();
   return true;
@@ -1003,6 +1871,10 @@ export const initializeOfflineStorage = async () => {
 
     try {
       listenToCloudSync();
+      // Publish background device telemetry
+      if (CURRENT_SESSION && CURRENT_SESSION.name) {
+        publishTerminalTelemetry(CURRENT_SESSION, outboxCount).catch(() => {});
+      }
     } catch (cloudErr) {
       console.warn('[dataStore] Cloud sync listener deferred:', cloudErr);
     }

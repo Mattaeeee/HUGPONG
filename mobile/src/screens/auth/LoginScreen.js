@@ -3,7 +3,7 @@ import { View, Text, Image, StyleSheet, TextInput, TouchableOpacity, KeyboardAvo
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../../theme';
-import { authenticateUser } from '../../data/dataStore';
+import { authenticateUser, isValidUserIdentifier } from '../../data/dataStore';
 import { useTranslation } from '../../services/i18n';
 
 const LOGO = require('../../../assets/HUGPONG LOGO.png');
@@ -36,12 +36,16 @@ export default function LoginScreen({ navigation }) {
 
   const validate = () => {
     const e = {};
-    const cleaned = contactNumber.replace(/\D/g, '');
-    if (!cleaned.startsWith('09') || cleaned.length !== 11) {
-      e.contactNumber = t('auth_enter_valid_phone', 'Enter a valid 11-digit PH mobile number (09XXXXXXXXX)');
+    const raw = String(contactNumber || '').trim();
+    const cleaned = raw.replace(/\D/g, '');
+    const isId = /^0[1-4]\d{6}$/.test(raw) || /^0[1-4]\d{6}$/.test(cleaned);
+    const isPhone = (cleaned.startsWith('09') && cleaned.length === 11) || (cleaned.startsWith('639') && cleaned.length === 12);
+
+    if (!isId && !isPhone && !isValidUserIdentifier(raw)) {
+      e.contactNumber = t('auth_enter_valid_id_or_phone', 'Enter your 8-digit User ID (e.g. 04000001) or 11-digit mobile number (09XXXXXXXXX)');
     }
-    if (password.length < 6) {
-      e.password = t('auth_pw_min_length', 'Password must be at least 6 characters');
+    if (password.length < 8) {
+      e.password = t('auth_pw_min_length', 'Password must be at least 8 characters');
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -61,8 +65,7 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
 
     setTimeout(() => {
-      const cleaned = contactNumber.replace(/\D/g, '');
-      const res = authenticateUser(cleaned, password);
+      const res = authenticateUser(contactNumber, password);
       setLoading(false);
 
       if (!res.success) {
@@ -73,7 +76,7 @@ export default function LoginScreen({ navigation }) {
           setLockoutSeconds(60);
           setAuthError('Too many failed attempts. Login locked for 60 seconds to protect your account.');
         } else {
-          setAuthError(res.error || t('auth_invalid_credentials', 'Invalid mobile number or password.'));
+          setAuthError(res.error || t('auth_invalid_credentials', 'Invalid User ID, mobile number, or password.'));
         }
         return;
       }
@@ -114,11 +117,14 @@ export default function LoginScreen({ navigation }) {
               </View>
             ) : null}
 
-            {/* Contact Number */}
+            {/* Contact Number / User ID */}
             <View style={s.fieldGroup}>
-              <Text style={s.label}>{t('auth_contact_number', 'Contact Number')}</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <Text style={s.label}>{t('auth_identifier_label', 'User ID or Mobile Number')}</Text>
+                <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>Lost SIM? Use User ID</Text>
+              </View>
               <View style={[s.inputWrap, errors.contactNumber && s.inputError]}>
-                <Ionicons name="call-outline" size={18} color={COLORS.textMuted} style={s.inputIcon} />
+                <Ionicons name="person-circle-outline" size={18} color={COLORS.textMuted} style={s.inputIcon} />
                 <TextInput
                   style={s.input}
                   value={contactNumber}
@@ -127,12 +133,13 @@ export default function LoginScreen({ navigation }) {
                     setErrors(p => ({ ...p, contactNumber: null })); 
                     setAuthError('');
                   }}
-                  placeholder="0919 444 8888"
+                  placeholder="04000001 or 0919 444 8888"
                   placeholderTextColor={COLORS.textMuted}
-                  keyboardType="phone-pad"
-                  maxLength={13}
+                  keyboardType="default"
+                  maxLength={20}
                   editable={lockoutSeconds === 0}
-                  autoComplete="tel"
+                  autoComplete="username"
+                  autoCapitalize="none"
                 />
               </View>
               {errors.contactNumber && <Text style={s.errorText}>{errors.contactNumber}</Text>}

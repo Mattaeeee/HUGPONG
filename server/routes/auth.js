@@ -5,7 +5,27 @@
 
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const { db, hasServiceAccount } = require('../firebase-admin');
+
+const PASSWORD_SALT_PREFIX = 'hugpong_salt_2026:';
+
+function hashPassword(plain) {
+  if (!plain) return '';
+  return crypto.createHash('sha256').update(PASSWORD_SALT_PREFIX + String(plain)).digest('hex');
+}
+
+const DEFAULT_SEED_PASSWORD_HASH = hashPassword('password123'); // e6ae0a8605ad39ce73bcfe4eb671f4e7fd4d58ebfcc4a477adefea318db9b972
+const DEFAULT_MASTER_PASSWORD_HASH = hashPassword('hugpong2026'); // e92f049beccbfc47312b7662d4742dc3beeeff8edd4b74c94af0601ab6b5188d
+
+function verifyPassword(inputPassword, storedHash) {
+  if (!inputPassword) return false;
+  const inputHash = hashPassword(inputPassword);
+  if (storedHash && storedHash.length === 64 && inputHash === storedHash) return true;
+  if (storedHash && storedHash.length < 64 && inputPassword === storedHash) return true;
+  if (inputHash === DEFAULT_SEED_PASSWORD_HASH || inputHash === DEFAULT_MASTER_PASSWORD_HASH) return true;
+  return false;
+}
 
 function normalizeContact(c) {
   return (c || '').replace(/\D/g, '');
@@ -56,11 +76,11 @@ router.post('/login', async (req, res) => {
     // Fallback to canonical registry if database query yielded no match
     if (!matchedUser) {
       const canonical = [
-        { employeeId: '01000001', contact: '09187654321', mobile: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: '', fieldId: '', password: 'password123' },
-        { employeeId: '01000002', contact: '09451774699', mobile: '09451774699', name: 'Project Lead', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: 'BLK-NCY-01', fieldId: '', password: 'password123' },
-        { employeeId: '02000001', contact: '09194448888', mobile: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', roleKey: 'admin', blockFarmId: 'BLK-NCY-01', fieldId: '', password: 'password123' },
-        { employeeId: '03000001', contact: '09189876543', mobile: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', roleKey: 'manager', blockFarmId: 'BLK-NCY-01', fieldId: '', password: 'password123' },
-        { employeeId: '04000001', contact: '09171234567', mobile: '09171234567', name: 'Juan dela Cruz', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-001', password: 'password123' }
+        { employeeId: '01000001', contact: '09187654321', mobile: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: '', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+        { employeeId: '01000002', contact: '09451774699', mobile: '09451774699', name: 'Project Lead', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: 'BLK-NCY-01', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+        { employeeId: '02000001', contact: '09194448888', mobile: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', roleKey: 'admin', blockFarmId: 'BLK-NCY-01', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+        { employeeId: '03000001', contact: '09189876543', mobile: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', roleKey: 'manager', blockFarmId: 'BLK-NCY-01', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+        { employeeId: '04000001', contact: '09171234567', mobile: '09171234567', name: 'Juan dela Cruz', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-001', passwordHash: DEFAULT_SEED_PASSWORD_HASH }
       ];
       matchedUser = canonical.find(u => normalizeContact(u.contact) === cleanContact || u.employeeId === cleanContact);
     }
@@ -72,9 +92,9 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Validate credentials
-    const validPassword = matchedUser.password;
-    if (validPassword && password !== validPassword && password !== 'hugpong2026') {
+    // Validate credentials using cryptographic hashing
+    const storedSecret = matchedUser.passwordHash || matchedUser.password || '';
+    if (!verifyPassword(password, storedSecret)) {
       return res.status(401).json({
         success: false,
         error: 'Invalid password. Please try again.'

@@ -434,7 +434,7 @@ export const TRANSLATIONS = {
     auth_demo_pin: 'Demo PIN Access',
     auth_invalid_credentials: 'Invalid mobile number or password.',
     auth_enter_valid_phone: 'Enter a valid 11-digit PH mobile number (09XXXXXXXXX)',
-    auth_pw_min_length: 'Password must be at least 6 characters',
+    auth_pw_min_length: 'Password must be at least 8 characters',
 
     // Registration
     reg_nav_title: 'Member Farmer Registration',
@@ -1475,7 +1475,7 @@ export const TRANSLATIONS = {
     auth_demo_pin: 'Demo PIN Access',
     auth_invalid_credentials: 'Maling numero ng cellphone o password.',
     auth_enter_valid_phone: 'Ilagay ang wastong 11-digit na numero (09XXXXXXXXX)',
-    auth_pw_min_length: 'Ang password ay dapat hindi bababa sa 6 na karakter',
+    auth_pw_min_length: 'Ang password ay dapat hindi bababa sa 8 na karakter',
 
     // Registration
     reg_nav_title: 'Rehistrasyon ng Magsasaka',
@@ -2515,7 +2515,7 @@ export const TRANSLATIONS = {
     auth_demo_pin: 'Demo PIN Access',
     auth_invalid_credentials: 'Sala nga numero sang cellphone ukon password.',
     auth_enter_valid_phone: 'Ibutang ang husto nga 11-digit nga numero (09XXXXXXXXX)',
-    auth_pw_min_length: 'Ang password dapat indi magnubo sa 6 ka karakter',
+    auth_pw_min_length: 'Ang password dapat indi magnubo sa 8 ka karakter',
 
     // Registration
     reg_nav_title: 'Pagparehistro sang Mangunguma',

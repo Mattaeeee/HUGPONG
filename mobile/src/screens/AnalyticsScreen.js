@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions, Modal
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
-import { SRA_PRICE_HISTORY, MOCK_PRICE, MOCK_MOL, getMemberSyncHealth, subscribe, getCurrentSession, MOCK_FIELDS, MOCK_LOGS, blockFarms, resolveFieldBlockFarm, resolveFieldMember } from '../data/dataStore';
+import { SRA_PRICE_HISTORY, currentPrice, currentMarketObservation, getMemberSyncHealth, subscribe, getCurrentSession, fields, operationLogs, blockFarms, resolveFieldBlockFarm, resolveFieldMember } from '../data/dataStore';
 import { useTranslation } from '../services/i18n';
 
 // ── 6 SRA Growth Stages Definition ─────────────────────────────
@@ -49,17 +49,17 @@ export default function AnalyticsScreen({ navigation, route }) {
   // 1. Scoped Fields by Role
   const scopedFields = React.useMemo(() => {
     if (isMember) {
-      const myFields = MOCK_FIELDS.filter(f => f.member === session.name || f.memberId === session.employeeId);
-      return myFields.length > 0 ? myFields : MOCK_FIELDS.slice(0, 1);
+      const myFields = fields.filter(f => f.member === session.name || f.memberId === session.employeeId);
+      return myFields.length > 0 ? myFields : fields.slice(0, 1);
     }
     if (isSRA) {
-      if (selectedBlockFarm === 'All') return MOCK_FIELDS;
-      return MOCK_FIELDS.filter(f => resolveFieldBlockFarm(f) === selectedBlockFarm || f.blockFarmId === selectedBlockFarm);
+      if (selectedBlockFarm === 'All') return fields;
+      return fields.filter(f => resolveFieldBlockFarm(f) === selectedBlockFarm || f.blockFarmId === selectedBlockFarm);
     }
     // Farm Manager: scoped to assigned farm
     const mgrFarm = session.blockFarm || session.blockFarmScope || session.farm || 'Nacayao Block Farm';
-    const mgrFields = MOCK_FIELDS.filter(f => resolveFieldBlockFarm(f) === mgrFarm || f.blockFarmId === session.blockFarmId);
-    return mgrFields.length > 0 ? mgrFields : MOCK_FIELDS;
+    const mgrFields = fields.filter(f => resolveFieldBlockFarm(f) === mgrFarm || f.blockFarmId === session.blockFarmId);
+    return mgrFields.length > 0 ? mgrFields : fields;
   }, [isMember, isSRA, selectedBlockFarm, session.name, session.farm, session.employeeId, session.blockFarmId]);
 
   // Block farms list for SRA filter (from canonical block_farms collection)
@@ -69,7 +69,7 @@ export default function AnalyticsScreen({ navigation, route }) {
       : [{ id: 'BLK-NCY-01', code: 'BLK-NCY', name: 'Nacayao Block Farm', declaredHa: 15.25 }];
 
     return canonical.map(bf => {
-      const bfFields = MOCK_FIELDS.filter(f => f.blockFarmId === bf.id || f.blockFarm === bf.name || f.blockFarmId === bf.code);
+      const bfFields = fields.filter(f => f.blockFarmId === bf.id || f.blockFarm === bf.name || f.blockFarmId === bf.code);
       const totalHa = bfFields.reduce((s, f) => s + (Number(f.ha || f.area) || 0), 0) || Number(bf.declaredHa) || 15.25;
       return {
         id: bf.id,
@@ -78,7 +78,7 @@ export default function AnalyticsScreen({ navigation, route }) {
         totalHa
       };
     });
-  }, [blockFarms, MOCK_FIELDS]);
+  }, [blockFarms, fields]);
 
   // Active fields for current calculation
   const activeFields = React.useMemo(() => {
@@ -116,7 +116,7 @@ export default function AnalyticsScreen({ navigation, route }) {
     const activeFieldIds = activeFields.map(f => f.id);
     
     // Filter only active cycle submitted logs (matching the active ledger)
-    const activeLogs = MOCK_LOGS.filter(l => {
+    const activeLogs = operationLogs.filter(l => {
       if (!activeFieldIds.includes(l.fieldId)) return false;
       if (l.isPastCycle) return false;
       if (l.isDraft) return false;
@@ -242,7 +242,7 @@ export default function AnalyticsScreen({ navigation, route }) {
   const memberLogs = React.useMemo(() => {
     if (!isMember) return [];
     const myFieldIds = scopedFields.map(f => f.id);
-    return MOCK_LOGS.filter(l => myFieldIds.includes(l.fieldId));
+    return operationLogs.filter(l => myFieldIds.includes(l.fieldId));
   }, [isMember, scopedFields]);
 
   return (

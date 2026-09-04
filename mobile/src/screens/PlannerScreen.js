@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
-import { getCurrentSession, fields, fields as fieldsStore, fields as MOCK_FIELDS, DRAFT_LOGS, notifyDataUpdate, subscribe, SRA_OPERATIONS_CATALOGUE, getFieldCustomOperations, saveFieldFullPlan, getDefaultStageOperations } from '../data/dataStore';
+import { getCurrentSession, fields, fieldsStore, draftLogs, DRAFT_LOGS, notifyDataUpdate, subscribe, SRA_OPERATIONS_CATALOGUE, getFieldCustomOperations, saveFieldFullPlan, getDefaultStageOperations } from '../data/dataStore';
 import { generateDraftId, generateSubItemId, generateCustomOpId } from '../services/syncEngine';
 import { db } from '../firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
@@ -211,8 +211,8 @@ export default function PlannerScreen({ navigation }) {
       const cur = getCurrentSession();
       setSession({ ...cur });
       if (cur.role === 'Member') {
-        const memberFields = MOCK_FIELDS.filter(f => f.member === cur.name || f.owner === cur.name);
-        const defaultField = memberFields.length > 0 ? memberFields[0] : MOCK_FIELDS[0];
+        const memberFields = fields.filter(f => f.member === cur.name || f.owner === cur.name);
+        const defaultField = memberFields.length > 0 ? memberFields[0] : fields[0];
         setSelectedField(defaultField);
         setLandArea(defaultField?.ha ? String(defaultField.ha) : '1.50');
       }
@@ -524,11 +524,14 @@ export default function PlannerScreen({ navigation }) {
     notifyDataUpdate();
 
     Alert.alert(
-      'Operation Sent to Field Ops',
-      `"${op.name}" (₱ ${fmt(draftLog.cost)}) created as a Draft Log in Field Operations for ${draftLog.fieldId}.`,
+      'Operation Saved to Drafts',
+      `"${op.name}" (₱ ${fmt(draftLog.cost)}) created as a Draft Log for ${draftLog.fieldId}.`,
       [
         { text: 'Keep Planning', style: 'cancel' },
-        { text: 'Go to Field Ops', onPress: () => navigation && navigation.navigate('Field Ops') }
+        { 
+          text: 'Go to Drafts', 
+          onPress: () => navigation && navigation.navigate('Field Ops', { screen: 'SchedMain', params: { openDrafts: true, initialTab: 'drafts' } }) 
+        }
       ]
     );
   };
@@ -582,7 +585,7 @@ export default function PlannerScreen({ navigation }) {
     return draftLog;
   };
 
-  // Send entire stage plan to Field Ops
+  // Send entire stage plan to Drafts
   const sendStagePlanToFieldOps = () => {
     if (area <= 0 || currentOperations.length === 0) {
       Alert.alert('Required', 'Please ensure land area and at least one operation are configured.');
@@ -595,11 +598,14 @@ export default function PlannerScreen({ navigation }) {
     notifyDataUpdate();
 
     Alert.alert(
-      'Stage Plan Sent!',
+      'Stage Plan Saved to Drafts!',
       `All ${currentOperations.length} operations for Stage ${currentStage.stageNum} transferred as Draft Logs to Field Operations.`,
       [
         { text: 'Keep Planning', style: 'cancel' },
-        { text: 'Go to Field Ops', onPress: () => navigation && navigation.navigate('Field Ops') }
+        { 
+          text: 'Go to Drafts', 
+          onPress: () => navigation && navigation.navigate('Field Ops', { screen: 'SchedMain', params: { openDrafts: true, initialTab: 'drafts' } }) 
+        }
       ]
     );
   };
@@ -632,7 +638,7 @@ export default function PlannerScreen({ navigation }) {
                       style={[{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.xs }, fieldScope === 'my' && { backgroundColor: '#fff', ...SHADOW.card }]}
                       onPress={() => {
                         setFieldScope('my');
-                        const myF = MOCK_FIELDS.find(f => f.memberId === session.employeeId || f.member === session.name || f.memberName === session.name || (session.fieldId && f.id === session.fieldId));
+                        const myF = fields.find(f => f.memberId === session.employeeId || f.member === session.name || f.memberName === session.name || (session.fieldId && f.id === session.fieldId));
                         setSelectedField(myF || null);
                       }}
                     >
@@ -944,7 +950,7 @@ export default function PlannerScreen({ navigation }) {
                           activeOpacity={0.8}
                         >
                           <Ionicons name="paper-plane-outline" size={13} color="#fff" />
-                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }} numberOfLines={1} adjustsFontSizeToFit>{t('send_to_ops_btn', 'Send to Ops')}</Text>
+                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }} numberOfLines={1} adjustsFontSizeToFit>{t('send_to_drafts_btn', 'Save to Drafts')}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -1124,7 +1130,7 @@ export default function PlannerScreen({ navigation }) {
             <View style={{ gap: 10 }}>
               <TouchableOpacity style={s.sendDraftBtn} onPress={sendStagePlanToFieldOps} activeOpacity={0.85}>
                 <Ionicons name="paper-plane" size={18} color="#fff" />
-                <Text style={s.sendDraftBtnText} numberOfLines={1} adjustsFontSizeToFit>{t('send_all_ops_btn', 'SEND ALL STAGE OPERATIONS TO FIELD OPS')}</Text>
+                <Text style={s.sendDraftBtnText} numberOfLines={1} adjustsFontSizeToFit>{t('send_all_ops_btn', 'TRANSFER ALL STAGE OPERATIONS TO DRAFTS')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1421,7 +1427,7 @@ export default function PlannerScreen({ navigation }) {
 
             {/* Paginated Field List */}
             {(() => {
-              const filteredFields = MOCK_FIELDS.filter(f => {
+              const filteredFields = fields.filter(f => {
                 if (!fieldSearchQuery.trim()) return true;
                 const q = fieldSearchQuery.toLowerCase();
                 return (

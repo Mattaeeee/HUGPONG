@@ -1,48 +1,127 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, Switch,
+  TextInput, Alert, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
-import { getSecurityPreferences, updateSecurityPreferences, subscribe } from '../data/dataStore';
+import { 
+  getCurrentSession, 
+  updateUserMobileNumber, 
+  updateUserPassword, 
+  subscribe 
+} from '../data/dataStore';
 import { useTranslation } from '../services/i18n';
 
 export default function SecurityScreen({ navigation }) {
   const { t } = useTranslation();
+  const [session, setSession] = useState(getCurrentSession());
+
+  // Change Password State
   const [showChangePw, setShowChangePw] = useState(false);
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [loadingPw, setLoadingPw] = useState(false);
 
-  const [prefs, setPrefs] = useState(getSecurityPreferences());
+  // Change Mobile Number State
+  const [showChangePhone, setShowChangePhone] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [phoneVerifyPw, setPhoneVerifyPw] = useState('');
+  const [showPhoneVerifyPw, setShowPhoneVerifyPw] = useState(false);
+  const [loadingPhone, setLoadingPhone] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const unsubscribe = subscribe(() => {
-      setPrefs(getSecurityPreferences());
+      setSession(getCurrentSession());
     });
     return unsubscribe;
   }, []);
 
-  const handleToggle = (key, val) => {
-    updateSecurityPreferences({ [key]: val });
+  const handlePasswordSubmit = async () => {
+    if (!currentPw) {
+      Alert.alert(t('error_title', 'Required'), 'Please enter your current password.');
+      return;
+    }
+    if (newPw.length < 8) {
+      Alert.alert(t('error_title', 'Too Short'), 'New password must be at least 8 characters long.');
+      return;
+    }
+    if (newPw !== confirmPw) {
+      Alert.alert(t('error_title', 'Mismatch'), 'New password and confirmation do not match.');
+      return;
+    }
+
+    setLoadingPw(true);
+    const res = await updateUserPassword(currentPw, newPw);
+    setLoadingPw(false);
+
+    if (!res.success) {
+      Alert.alert('Update Failed', res.error || 'Could not update password.');
+      return;
+    }
+
+    Alert.alert(
+      'Password Updated',
+      'Your account password has been changed successfully.',
+      [{ text: 'OK', onPress: () => {
+        setShowChangePw(false);
+        setCurrentPw('');
+        setNewPw('');
+        setConfirmPw('');
+      }}]
+    );
   };
 
-  const submitPasswordChange = () => {
-    if (!currentPw) { Alert.alert(t('error_title', 'Required'), t('sec_err_curr_pw', 'Enter your current password')); return; }
-    if (newPw.length < 8) { Alert.alert(t('error_title', 'Too Short'), t('sec_err_short', 'New password must be at least 8 characters')); return; }
-    if (newPw !== confirmPw) { Alert.alert(t('error_title', 'Mismatch'), t('sec_err_mismatch', 'New passwords do not match')); return; }
-    updateSecurityPreferences({ lastPasswordChange: new Date().toISOString().split('T')[0] });
-    Alert.alert(t('sec_pw_changed', 'Password Changed'), t('sec_pw_changed_msg', 'Your password has been updated successfully.'), [
-      { text: 'OK', onPress: () => { setShowChangePw(false); setCurrentPw(''); setNewPw(''); setConfirmPw(''); } }
-    ]);
+  const handlePhoneSubmit = async () => {
+    const clean = newPhone.replace(/\D/g, '');
+    if (!clean.startsWith('09') || clean.length !== 11) {
+      if (!(clean.startsWith('639') && clean.length === 12)) {
+        Alert.alert(
+          'Invalid Mobile Number',
+          'Please enter a valid 11-digit Philippine mobile number starting with 09 (e.g. 09171234567).'
+        );
+        return;
+      }
+    }
+
+    if (!phoneVerifyPw) {
+      Alert.alert(
+        'Password Required',
+        'Please enter your account password to authorize changing your registered mobile number.'
+      );
+      return;
+    }
+
+    setLoadingPhone(true);
+    const res = await updateUserMobileNumber(newPhone, phoneVerifyPw);
+    setLoadingPhone(false);
+
+    if (!res.success) {
+      Alert.alert('Update Failed', res.error || 'Could not update mobile number.');
+      return;
+    }
+
+    Alert.alert(
+      'Mobile Number Updated',
+      'Your registered mobile number has been updated successfully. You can use your new number or your User ID to log in.',
+      [{ text: 'OK', onPress: () => {
+        setShowChangePhone(false);
+        setNewPhone('');
+        setPhoneVerifyPw('');
+      }}]
+    );
   };
+
+  const userEmployeeId = session?.employeeId || session?.userId || '04000001';
+  const userMobile = session?.mobile || session?.contact || '0917 123 4567';
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
+      {/* Top App Bar */}
       <View style={s.header}>
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={20} color={COLORS.text} />
@@ -53,56 +132,174 @@ export default function SecurityScreen({ navigation }) {
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-        {/* Data Protection Notice */}
-        <View style={s.warningCard}>
-          <Ionicons name="shield" size={22} color={COLORS.primary} />
-          <View style={s.warningBody}>
-            <Text style={s.warningTitle}>{t('sec_data_protect_title', 'Data Protection')}</Text>
-            <Text style={s.warningText}>{t('sec_data_protect_text', 'Your account data is encrypted. Never share your password with anyone, including HUGPONG staff.')}</Text>
+        {/* Account Identity Card */}
+        <View style={s.accountCard}>
+          <View style={s.accountHeader}>
+            <View style={s.avatarWrap}>
+              <Ionicons name="shield-checkmark" size={22} color={COLORS.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.userName}>{session?.name || 'HUGPONG User'}</Text>
+              <Text style={s.userRole}>{session?.role || 'Member'} · {session?.farm || 'Nacayao Block Farm'}</Text>
+            </View>
+          </View>
+
+          <View style={s.idRowContainer}>
+            <View style={s.idBox}>
+              <Text style={s.idLabel}>Official User ID</Text>
+              <Text style={s.idValue}>{userEmployeeId}</Text>
+              <Text style={s.idSubtext}>Permanent / Login ID</Text>
+            </View>
+            <View style={s.idBox}>
+              <Text style={s.idLabel}>Registered Mobile</Text>
+              <Text style={s.idValue}>{userMobile}</Text>
+              <Text style={s.idSubtext}>SMS Code &amp; Direct Calls</Text>
+            </View>
+          </View>
+
+          <View style={s.lostSimNote}>
+            <Ionicons name="information-circle" size={16} color={COLORS.primary} />
+            <Text style={s.lostSimText}>
+              Lost your SIM or phone? Your <Text style={{ fontWeight: '700' }}>8-digit User ID ({userEmployeeId})</Text> never changes and will always work to log in to your account.
+            </Text>
           </View>
         </View>
 
-        {/* Change Password */}
+        {/* Change Registered Mobile Number Card */}
         <View style={s.card}>
-          <TouchableOpacity style={s.sectionRow} onPress={() => setShowChangePw(e => !e)}>
+          <TouchableOpacity 
+            style={s.sectionRow} 
+            onPress={() => setShowChangePhone(prev => !prev)}
+            activeOpacity={0.7}
+          >
+            <View style={[s.secIcon, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="call" size={17} color={COLORS.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.sectionLabel}>Change Registered Mobile Number</Text>
+              <Text style={s.sectionSub}>Update your contact number for SMS verification &amp; direct calls</Text>
+            </View>
+            <Ionicons name={showChangePhone ? 'chevron-up' : 'chevron-down'} size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
+
+          {showChangePhone && (
+            <View style={s.formWrap}>
+              <Text style={s.formDesc}>
+                Enter your new 11-digit mobile number and verify your account password to authorize the change.
+              </Text>
+
+              <View style={s.fieldGroup}>
+                <Text style={s.fieldLabel}>New Mobile Number <Text style={s.req}>*</Text></Text>
+                <View style={s.inputWrap}>
+                  <Ionicons name="phone-portrait-outline" size={17} color={COLORS.textMuted} />
+                  <TextInput
+                    style={s.textInput}
+                    value={newPhone}
+                    onChangeText={setNewPhone}
+                    placeholder="e.g. 0918 987 6543"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="phone-pad"
+                    maxLength={13}
+                  />
+                </View>
+              </View>
+
+              <View style={s.fieldGroup}>
+                <Text style={s.fieldLabel}>Confirm Current Password <Text style={s.req}>*</Text></Text>
+                <View style={s.inputWrap}>
+                  <Ionicons name="lock-closed-outline" size={17} color={COLORS.textMuted} />
+                  <TextInput
+                    style={[s.textInput, { flex: 1 }]}
+                    value={phoneVerifyPw}
+                    onChangeText={setPhoneVerifyPw}
+                    secureTextEntry={!showPhoneVerifyPw}
+                    placeholder="Enter password to authorize"
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+                  <TouchableOpacity onPress={() => setShowPhoneVerifyPw(p => !p)} style={{ padding: 4 }}>
+                    <Ionicons name={showPhoneVerifyPw ? 'eye-off-outline' : 'eye-outline'} size={17} color={COLORS.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                style={[s.submitBtn, loadingPhone && s.btnDisabled]} 
+                onPress={handlePhoneSubmit}
+                disabled={loadingPhone}
+                activeOpacity={0.8}
+              >
+                {loadingPhone ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={s.submitBtnText}>Update Registered Number</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {/* Change Password Card */}
+        <View style={s.card}>
+          <TouchableOpacity 
+            style={s.sectionRow} 
+            onPress={() => setShowChangePw(prev => !prev)}
+            activeOpacity={0.7}
+          >
             <View style={[s.secIcon, { backgroundColor: COLORS.primaryBg }]}>
               <Ionicons name="lock-closed" size={17} color={COLORS.primary} />
             </View>
-            <Text style={s.sectionLabel}>{t('sec_change_pw', 'Change Password')}</Text>
-            <Ionicons name={showChangePw ? 'chevron-up' : 'chevron-down'} size={16} color={COLORS.textMuted} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.sectionLabel}>{t('sec_change_pw', 'Change Password')}</Text>
+              <Text style={s.sectionSub}>Update your account security credentials</Text>
+            </View>
+            <Ionicons name={showChangePw ? 'chevron-up' : 'chevron-down'} size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
 
           {showChangePw && (
-            <View style={s.pwForm}>
-              {[
-                { label: t('sec_curr_pw', 'Current Password'), val: currentPw, set: setCurrentPw, show: showCurrent, toggle: () => setShowCurrent(p => !p) },
-                { label: t('sec_new_pw', 'New Password'), val: newPw, set: setNewPw, show: showNew, toggle: () => setShowNew(p => !p) },
-                { label: t('sec_confirm_pw', 'Confirm New Password'), val: confirmPw, set: setConfirmPw, show: showNew, toggle: () => setShowNew(p => !p) },
-              ].map(f => (
-                <View key={f.label} style={s.pwField}>
-                  <Text style={s.pwLabel}>{f.label}</Text>
-                  <View style={s.pwInput}>
-                    <TextInput
-                      style={s.pwTextInput}
-                      value={f.val}
-                      onChangeText={f.set}
-                      secureTextEntry={!f.show}
-                      placeholder="••••••••"
-                      placeholderTextColor={COLORS.textMuted}
-                    />
-                    <TouchableOpacity onPress={f.toggle}>
-                      <Ionicons name={f.show ? 'eye-off-outline' : 'eye-outline'} size={17} color={COLORS.textMuted} />
-                    </TouchableOpacity>
-                  </View>
+            <View style={s.formWrap}>
+              <View style={s.fieldGroup}>
+                <Text style={s.fieldLabel}>{t('sec_curr_pw', 'Current Password')} <Text style={s.req}>*</Text></Text>
+                <View style={s.inputWrap}>
+                  <Ionicons name="key-outline" size={17} color={COLORS.textMuted} />
+                  <TextInput
+                    style={[s.textInput, { flex: 1 }]}
+                    value={currentPw}
+                    onChangeText={setCurrentPw}
+                    secureTextEntry={!showCurrentPw}
+                    placeholder="••••••••"
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+                  <TouchableOpacity onPress={() => setShowCurrentPw(p => !p)} style={{ padding: 4 }}>
+                    <Ionicons name={showCurrentPw ? 'eye-off-outline' : 'eye-outline'} size={17} color={COLORS.textMuted} />
+                  </TouchableOpacity>
                 </View>
-              ))}
+              </View>
+
+              <View style={s.fieldGroup}>
+                <Text style={s.fieldLabel}>{t('sec_new_pw', 'New Password')} <Text style={s.req}>*</Text></Text>
+                <View style={s.inputWrap}>
+                  <Ionicons name="lock-closed-outline" size={17} color={COLORS.textMuted} />
+                  <TextInput
+                    style={[s.textInput, { flex: 1 }]}
+                    value={newPw}
+                    onChangeText={setNewPw}
+                    secureTextEntry={!showNewPw}
+                    placeholder="••••••••"
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+                  <TouchableOpacity onPress={() => setShowNewPw(p => !p)} style={{ padding: 4 }}>
+                    <Ionicons name={showNewPw ? 'eye-off-outline' : 'eye-outline'} size={17} color={COLORS.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               {newPw.length > 0 && (
                 <View style={s.pwStrength}>
                   {[
-                    { key: '8+ chars', label: t('sec_strength_8chars', '8+ chars') },
-                    { key: 'Uppercase', label: t('sec_strength_uppercase', 'Uppercase') },
-                    { key: 'Number', label: t('sec_strength_number', 'Number') },
-                    { key: 'Symbol', label: t('sec_strength_symbol', 'Symbol') }
+                    { key: '8+ chars', label: '8+ chars' },
+                    { key: 'Uppercase', label: 'Uppercase' },
+                    { key: 'Number', label: 'Number' },
+                    { key: 'Symbol', label: 'Symbol' }
                   ].map(check => {
                     const passed =
                       check.key === '8+ chars' ? newPw.length >= 8 :
@@ -118,62 +315,47 @@ export default function SecurityScreen({ navigation }) {
                   })}
                 </View>
               )}
-              <TouchableOpacity style={s.saveBtn} onPress={submitPasswordChange}>
-                <Text style={s.saveBtnText}>{t('sec_update_pw', 'Update Password')}</Text>
+
+              <View style={s.fieldGroup}>
+                <Text style={s.fieldLabel}>{t('sec_confirm_pw', 'Confirm New Password')} <Text style={s.req}>*</Text></Text>
+                <View style={s.inputWrap}>
+                  <Ionicons name="checkmark-done-outline" size={17} color={COLORS.textMuted} />
+                  <TextInput
+                    style={[s.textInput, { flex: 1 }]}
+                    value={confirmPw}
+                    onChangeText={setConfirmPw}
+                    secureTextEntry={!showNewPw}
+                    placeholder="••••••••"
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                style={[s.submitBtn, loadingPw && s.btnDisabled]} 
+                onPress={handlePasswordSubmit}
+                disabled={loadingPw}
+                activeOpacity={0.8}
+              >
+                {loadingPw ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={s.submitBtnText}>{t('sec_update_pw', 'Update Password')}</Text>
+                )}
               </TouchableOpacity>
             </View>
           )}
         </View>
 
-        {/* Security Toggles */}
+        {/* Session Security */}
         <View style={s.card}>
-          <Text style={s.cardTitle}>{t('sec_auth_title', 'Authentication')}</Text>
-          {[
-            { icon: 'finger-print', label: t('sec_bio_login', 'Biometric Login'), sub: t('sec_bio_login_sub', 'Use fingerprint or face ID'), color: '#4A7C2F', key: 'biometrics', val: prefs.biometrics },
-            { icon: 'keypad', label: t('sec_pin_lock', 'PIN Lock'), sub: t('sec_pin_lock_sub', 'Require PIN on app open'), color: COLORS.blue, key: 'pinEnabled', val: prefs.pinEnabled },
-            { icon: 'phone-portrait', label: t('sec_2fa', 'Two-Factor Auth'), sub: t('sec_2fa_sub', 'Send OTP to your mobile'), color: COLORS.accent, key: 'twoFactor', val: prefs.twoFactor },
-          ].map(item => (
-            <View key={item.key} style={s.toggleRow}>
-              <View style={[s.secIcon, { backgroundColor: item.color + '18' }]}>
-                <Ionicons name={item.icon} size={17} color={item.color} />
-              </View>
-              <View style={s.toggleBody}>
-                <Text style={s.toggleLabel}>{item.label}</Text>
-                <Text style={s.toggleSub}>{item.sub}</Text>
-              </View>
-              <Switch
-                value={item.val}
-                onValueChange={(v) => handleToggle(item.key, v)}
-                trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
-                thumbColor={item.val ? COLORS.primary : '#f4f3f4'}
-              />
-            </View>
-          ))}
-        </View>
-
-        {/* Alerts & Sessions */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>{t('sec_session_title', 'Session & Alerts')}</Text>
-          <View style={s.toggleRow}>
-            <View style={[s.secIcon, { backgroundColor: COLORS.successLight }]}>
-              <Ionicons name="notifications" size={17} color={COLORS.success} />
-            </View>
-            <View style={s.toggleBody}>
-              <Text style={s.toggleLabel}>{t('sec_login_alerts', 'Login Alerts')}</Text>
-              <Text style={s.toggleSub}>{t('sec_login_alerts_sub', 'Notify when a new session starts')}</Text>
-            </View>
-            <Switch
-              value={prefs.sessionAlert}
-              onValueChange={(v) => handleToggle('sessionAlert', v)}
-              trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
-              thumbColor={prefs.sessionAlert ? COLORS.primary : '#f4f3f4'}
-            />
-          </View>
+          <Text style={s.cardTitle}>Session Security</Text>
           <TouchableOpacity 
             style={s.dangerRow} 
+            activeOpacity={0.7}
             onPress={() => Alert.alert(
               t('sec_signout_all_title', 'Sign Out All Devices'), 
-              t('sec_signout_all_msg', 'This will end all active sessions on all devices and require re-authentication.'), 
+              t('sec_signout_all_msg', 'This will end all active sessions and require re-authentication with your User ID or mobile number.'), 
               [
                 { text: t('btn_cancel', 'Cancel'), style: 'cancel' }, 
                 { 
@@ -187,9 +369,9 @@ export default function SecurityScreen({ navigation }) {
             <View style={[s.secIcon, { backgroundColor: '#FFF0F0' }]}>
               <Ionicons name="log-out" size={17} color="#D9534F" />
             </View>
-            <View style={s.toggleBody}>
-              <Text style={[s.toggleLabel, { color: '#D9534F' }]}>{t('sec_signout_all', 'Sign Out All Devices')}</Text>
-              <Text style={s.toggleSub}>{t('sec_signout_all_sub', 'Revoke all active sessions')}</Text>
+            <View style={s.dangerBody}>
+              <Text style={s.dangerTitle}>{t('sec_signout_all', 'Sign Out All Devices')}</Text>
+              <Text style={s.dangerSub}>Revoke active mobile session &amp; return to sign in</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
           </TouchableOpacity>
@@ -207,28 +389,47 @@ const s = StyleSheet.create({
   backBtn: { padding: 8 },
   headerTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text },
   scroll: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 40 },
-  warningCard: { flexDirection: 'row', gap: SPACING.md, backgroundColor: COLORS.primaryBg, borderRadius: RADIUS.lg, padding: SPACING.lg, borderWidth: 1, borderColor: COLORS.border, alignItems: 'flex-start' },
-  warningBody: { flex: 1, gap: 4 },
-  warningTitle: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
-  warningText: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 18 },
+  
+  accountCard: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.lg, borderWidth: 1, borderColor: COLORS.border, gap: SPACING.md, ...SHADOW.card },
+  accountHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatarWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: COLORS.primaryBg, justifyContent: 'center', alignItems: 'center' },
+  userName: { fontSize: 15, fontWeight: '700', color: COLORS.text },
+  userRole: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
+  
+  idRowContainer: { flexDirection: 'row', gap: 10 },
+  idBox: { flex: 1, backgroundColor: COLORS.background, borderRadius: RADIUS.md, padding: 12, borderWidth: 1, borderColor: COLORS.border },
+  idLabel: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  idValue: { fontSize: 14, fontWeight: '800', color: COLORS.primary, marginTop: 3 },
+  idSubtext: { fontSize: 10, color: COLORS.textSecondary, marginTop: 2 },
+
+  lostSimNote: { flexDirection: 'row', gap: 8, backgroundColor: COLORS.primaryBg, borderRadius: RADIUS.md, padding: 10, alignItems: 'flex-start' },
+  lostSimText: { flex: 1, fontSize: 11, color: COLORS.textSecondary, lineHeight: 16 },
+
   card: { backgroundColor: '#fff', borderRadius: RADIUS.lg, padding: SPACING.lg, ...SHADOW.card },
-  cardTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginBottom: SPACING.md },
+  cardTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginBottom: SPACING.sm },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
-  secIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  sectionLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.text },
-  pwForm: { marginTop: SPACING.md, gap: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border },
-  pwField: { gap: 6 },
-  pwLabel: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
-  pwInput: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.background, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 12, paddingVertical: 11 },
-  pwTextInput: { flex: 1, fontSize: 15, color: COLORS.text },
+  secIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  sectionLabel: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  sectionSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
+  
+  formWrap: { marginTop: SPACING.md, gap: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border },
+  formDesc: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 17 },
+  fieldGroup: { gap: 6 },
+  fieldLabel: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary },
+  req: { color: COLORS.danger },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.background, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 12, paddingVertical: 10 },
+  textInput: { flex: 1, fontSize: 14, color: COLORS.text },
+  
   pwStrength: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   strengthItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   strengthText: { fontSize: 11 },
-  saveBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 13, alignItems: 'center' },
-  saveBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingVertical: 11, borderTopWidth: 1, borderTopColor: COLORS.border },
-  toggleBody: { flex: 1, gap: 2 },
-  toggleLabel: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  toggleSub: { fontSize: 11, color: COLORS.textMuted },
-  dangerRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingVertical: 11, borderTopWidth: 1, borderTopColor: COLORS.border },
+  
+  submitBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 12, alignItems: 'center', marginTop: 4 },
+  submitBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  btnDisabled: { opacity: 0.6 },
+
+  dangerRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingVertical: 8 },
+  dangerBody: { flex: 1, gap: 2 },
+  dangerTitle: { fontSize: 14, fontWeight: '700', color: '#D9534F' },
+  dangerSub: { fontSize: 11, color: COLORS.textMuted },
 });

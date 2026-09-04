@@ -1,0 +1,14 @@
+{
+  "name": "hugpong-root",
+  "version": "1.0.0",
+  "description": "HUGPONG Farm Management System",
+  "scripts": {
+    "start": "node server/server.js",
+    "server": "node server/server.js",
+    "web": "node server/server.js",
+    "mobile": "cd mobile && npm start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

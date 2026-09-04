@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
-import { MOCK_PRICE, MOCK_MOL, MOCK_WEEKLY_CHART, subscribe, getIsSynced, getCurrentSession, MOCK_FIELDS, performMobileSync, getSortedPrices, operationLogs, DRAFT_LOGS, publishSraPrice } from '../data/dataStore';
+import { currentPrice, currentMarketObservation, priceAnalytics, subscribe, getIsSynced, getCurrentSession, fields, performMobileSync, getSortedPrices, operationLogs, draftLogs, publishSraPrice } from '../data/dataStore';
 import { getOutboxCount } from '../services/syncEngine';
 import { useTranslation } from '../services/i18n';
 import AppHeader from '../components/AppHeader';
@@ -21,18 +21,18 @@ const BAR_COLORS = ['#B8D4A0', '#8FBF6A', '#6BA045', '#4A7C2F', '#2D5016'];
 const MAX_PRICE = 3000;
 const MIN_PRICE = 1000;
 
-const generateDynamicNotifications = (session, customDrafts, customLogs) => {
+const generateDynamicNotifications = (session, customDrafts, customLogs, readIds = new Set(), dismissedIds = new Set()) => {
   const notifs = [];
   const outboxCount = getOutboxCount();
   const sortedPrices = getSortedPrices();
   const allLogs = customLogs || operationLogs || [];
-  const allDrafts = customDrafts || DRAFT_LOGS || [];
+  const allDrafts = customDrafts || draftLogs || [];
 
   const userRole = session?.role || 'Member';
   const managerBlockFarm = (session?.blockFarmScope || session?.blockFarm || 'Nacayao Block Farm').toLowerCase();
   
   // Resolve fields belonging to this manager's block farm
-  const managerFieldIds = MOCK_FIELDS.filter(f => {
+  const managerFieldIds = fields.filter(f => {
     const fFarm = (f.blockFarm || f.blockFarmScope || 'Nacayao Block Farm').toLowerCase();
     return fFarm.includes(managerBlockFarm) || managerBlockFarm.includes(fFarm);
   }).map(f => f.id);
@@ -47,7 +47,7 @@ const generateDynamicNotifications = (session, customDrafts, customLogs) => {
   }
 
   const offlineLogsCount = scopedLogs.filter(l => l.isOffline || l.synced === false).length + (userRole !== 'SRA (Admin)' ? outboxCount : 0);
-  if (offlineLogsCount > 0) {
+  if (offlineLogsCount > 0 && !dismissedIds.has('notif-offline-sync')) {
     notifs.push({
       id: 'notif-offline-sync',
       type: 'sync',
@@ -57,7 +57,7 @@ const generateDynamicNotifications = (session, customDrafts, customLogs) => {
       msg: `${offlineLogsCount} field operation log(s) for your block farm are stored locally on your device. Connect to internet and tap to synchronize to Cloud Firestore.`,
       time: 'Ready to sync',
       badgeText: 'Tap to Sync',
-      unread: true,
+      unread: !readIds.has('notif-offline-sync'),
       actionType: 'sync'
     });
   }
@@ -68,17 +68,20 @@ const generateDynamicNotifications = (session, customDrafts, customLogs) => {
     const prev = sortedPrices[1];
     const diff = prev ? (Number(latest.price) - Number(prev.price)) : 0;
     const diffStr = diff !== 0 ? ` (${diff > 0 ? '+' : ''}₱${diff.toLocaleString()} vs previous)` : '';
+    const priceNotifId = `notif-price-${latest.id || latest.date || 'latest'}`;
 
-    notifs.push({
-      id: `notif-price-${latest.id || latest.date || 'latest'}`,
-      type: 'price',
-      icon: 'trending-up',
-      color: '#267326',
-      title: 'New SRA Price Circular Broadcast',
-      msg: `HPCo Silay benchmark: Raw Sugar is ₱${Number(latest.price || 2950).toLocaleString()}/Lkg${diffStr}, Molasses at ₱${Number(latest.molasses || 4400).toLocaleString()}/MT (${latest.week || 'Current Circular'}).`,
-      time: latest.date || 'Live Circular',
-      unread: false,
-    });
+    if (!dismissedIds.has(priceNotifId)) {
+      notifs.push({
+        id: priceNotifId,
+        type: 'price',
+        icon: 'trending-up',
+        color: '#267326',
+        title: 'New SRA Price Circular Broadcast',
+        msg: `HPCo Silay benchmark: Raw Sugar is ₱${Number(latest.price || 2950).toLocaleString()}/Lkg${diffStr}, Molasses at ₱${Number(latest.molasses || 4400).toLocaleString()}/MT (${latest.week || 'Current Circular'}).`,
+        time: latest.date || 'Live Circular',
+        unread: !readIds.has(priceNotifId),
+      });
+    }
   }
 
   // 3. Unsubmitted Drafts Alert (Only for Member and their Block Farm Manager)
@@ -87,7 +90,7 @@ const generateDynamicNotifications = (session, customDrafts, customLogs) => {
       ? allDrafts.filter(d => (session?.fieldId && d.fieldId === session.fieldId) || d.authorName === session?.name)
       : allDrafts.filter(d => managerFieldIds.includes(d.fieldId) || d.authorName === session?.name);
 
-    if (scopedDrafts.length > 0) {
+    if (scopedDrafts.length > 0 && !dismissedIds.has('notif-unsubmitted-drafts')) {
       notifs.push({
         id: 'notif-unsubmitted-drafts',
         type: 'draft',
@@ -97,7 +100,7 @@ const generateDynamicNotifications = (session, customDrafts, customLogs) => {
         msg: `You have ${scopedDrafts.length} unsubmitted draft log(s) for ${userRole === 'Member' ? (session?.fieldId || 'your plot') : (session?.blockFarmScope || 'Nacayao Block Farm')}. Tap to review, edit, and record operations.`,
         time: `${scopedDrafts.length} draft${scopedDrafts.length !== 1 ? 's' : ''}`,
         badgeText: 'Review Drafts',
-        unread: true,
+        unread: !readIds.has('notif-unsubmitted-drafts'),
         actionType: 'drafts'
       });
     }
@@ -112,16 +115,18 @@ export default function HomeScreen({ navigation }) {
   const [showNotifs, setShowNotifs] = useState(false);
   const [session, setSessionState] = useState(getCurrentSession());
   const [synced, setSyncedState] = useState(getIsSynced());
-  const [fields, setFields] = useState([...MOCK_FIELDS]);
-  const [notifs, setNotifs] = useState(generateDynamicNotifications(getCurrentSession(), DRAFT_LOGS, operationLogs));
+  const [fieldsState, setFieldsState] = useState([...fields]);
+  const [readNotifIds, setReadNotifIds] = useState(new Set());
+  const [dismissedNotifIds, setDismissedNotifIds] = useState(new Set());
+  const [notifs, setNotifs] = useState(() => generateDynamicNotifications(getCurrentSession(), draftLogs, operationLogs));
   
   // Consolidated Dynamic SRA Price State
   const [priceData, setPriceData] = useState({
-    livePrice: MOCK_PRICE.value,
-    liveMol: MOCK_MOL.value,
-    liveDate: MOCK_PRICE.lastUpdated || 'No records',
-    liveChange: MOCK_PRICE.change || 0,
-    liveWeek: MOCK_PRICE.week || 'No circular',
+    livePrice: currentPrice.value,
+    liveMol: currentMarketObservation.value,
+    liveDate: currentPrice.lastUpdated || 'No records',
+    liveChange: currentPrice.change || 0,
+    liveWeek: currentPrice.week || 'No circular',
   });
   const { livePrice, liveMol, liveDate, liveChange, liveWeek } = priceData;
 
@@ -137,27 +142,28 @@ export default function HomeScreen({ navigation }) {
     return operationLogs.filter(l => l.isOffline || l.synced === false).length + getOutboxCount();
   }, [operationLogs, synced]);
 
-  const unreadCount = React.useMemo(() => notifs.filter(n => n.unread).length, [notifs]);
+  const unreadCount = React.useMemo(() => notifs.filter(n => n.unread && !readNotifIds.has(n.id)).length, [notifs, readNotifIds]);
 
   React.useEffect(() => {
     const unsubscribe = subscribe(() => {
       const sess = getCurrentSession();
       setSyncedState(getIsSynced());
       setSessionState(sess);
-      setFields(MOCK_FIELDS);
-      setNotifs(generateDynamicNotifications(sess, DRAFT_LOGS, operationLogs));
+      setFieldsState(fields);
+      setNotifs(generateDynamicNotifications(sess, draftLogs, operationLogs, readNotifIds, dismissedNotifIds));
       setPriceData({
-        livePrice: MOCK_PRICE.value,
-        liveMol: MOCK_MOL.value,
-        liveDate: MOCK_PRICE.lastUpdated || 'No records',
-        liveChange: MOCK_PRICE.change || 0,
-        liveWeek: MOCK_PRICE.week || 'No circular',
+        livePrice: currentPrice.value,
+        liveMol: currentMarketObservation.value,
+        liveDate: currentPrice.lastUpdated || 'No records',
+        liveChange: currentPrice.change || 0,
+        liveWeek: currentPrice.week || 'No circular',
       });
     });
     return unsubscribe;
-  }, []);
+  }, [readNotifIds, dismissedNotifIds]);
 
   const handleDismissNotif = React.useCallback((id) => {
+    setDismissedNotifIds(prev => new Set([...prev, id]));
     setNotifs(prev => prev.filter(n => n.id !== id));
   }, []);
 
@@ -168,9 +174,22 @@ export default function HomeScreen({ navigation }) {
       'Are you sure you want to dismiss all notifications?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear All', style: 'destructive', onPress: () => setNotifs([]) }
+        { 
+          text: 'Clear All', 
+          style: 'destructive', 
+          onPress: () => {
+            setDismissedNotifIds(prev => new Set([...prev, ...notifs.map(n => n.id)]));
+            setNotifs([]);
+          } 
+        }
       ]
     );
+  };
+
+  const handleMarkAllRead = () => {
+    const allIds = notifs.map(n => n.id);
+    setReadNotifIds(prev => new Set([...prev, ...allIds]));
+    setNotifs(prev => prev.map(n => ({ ...n, unread: false })));
   };
 
   const openNotifs = () => setShowNotifs(true);
@@ -178,10 +197,14 @@ export default function HomeScreen({ navigation }) {
 
   const handleNotifPress = (notif) => {
     setShowNotifs(false);
+    // Mark this notification as read so the badge count clears immediately
+    setReadNotifIds(prev => new Set([...prev, notif.id]));
+    setNotifs(prev => prev.map(n => n.id === notif.id ? { ...n, unread: false } : n));
+
     if (notif.actionType === 'sync') {
       handleHomeSync();
     } else if (notif.actionType === 'drafts') {
-      navigation.navigate('FieldOps', { openLedger: true, tab: 'drafts' });
+      navigation.navigate('Field Ops', { screen: 'SchedMain', params: { openDrafts: true, tab: 'drafts', initialTab: 'drafts', returnTo: 'Home' } });
     } else if (notif.actionType === 'price') {
       navigation.navigate('Analytics');
     }
@@ -266,7 +289,7 @@ export default function HomeScreen({ navigation }) {
               </Text>
               <View style={s.priceChangeRow}>
                 <Ionicons name="caret-up" size={11} color={COLORS.success} />
-                <Text style={s.priceChangeTxt}>+{Number(MOCK_MOL.change || 100).toFixed(2)}</Text>
+                <Text style={s.priceChangeTxt}>+{Number(currentMarketObservation.change || 100).toFixed(2)}</Text>
               </View>
               <Text style={s.pricePairUnit}>{t('unit_per_mt', 'per MT')}</Text>
             </View>
@@ -301,8 +324,8 @@ export default function HomeScreen({ navigation }) {
           {/* Bar Chart with Dynamic Headroom Scaling & Overflow Protection */}
           {(() => {
             const allVals = [];
-            if (Array.isArray(MOCK_WEEKLY_CHART.weeks)) {
-              MOCK_WEEKLY_CHART.weeks.forEach(wk => {
+            if (Array.isArray(priceAnalytics.weeks)) {
+              priceAnalytics.weeks.forEach(wk => {
                 if (Array.isArray(wk)) {
                   wk.forEach(v => {
                     const num = Number(v);
@@ -333,10 +356,10 @@ export default function HomeScreen({ navigation }) {
                 </View>
                 <View style={[s.chartPlotArea, { overflow: 'hidden' }]}>
                   <View style={[s.chartBarsRow, { overflow: 'hidden' }]}>
-                    {MOCK_WEEKLY_CHART.months.map((month, mi) => (
+                    {priceAnalytics.months.map((month, mi) => (
                       <View key={mi} style={[s.barGroup, { overflow: 'hidden', height: 110, justifyContent: 'flex-end' }]}>
                         {chartMode === 'weekly' ? (
-                          MOCK_WEEKLY_CHART.weeks.map((wk, wi) => {
+                          priceAnalytics.weeks.map((wk, wi) => {
                             const val = Number(wk[mi]) || 0;
                             const rawH = ((val - dynamicMin) / priceRange) * 105;
                             const h = Math.min(105, Math.max(6, Math.round(rawH)));
@@ -344,7 +367,7 @@ export default function HomeScreen({ navigation }) {
                           })
                         ) : (
                           (() => {
-                            const avg = MOCK_WEEKLY_CHART.weeks.reduce((sum, wk) => sum + (Number(wk[mi]) || 0), 0) / (MOCK_WEEKLY_CHART.weeks.length || 1);
+                            const avg = priceAnalytics.weeks.reduce((sum, wk) => sum + (Number(wk[mi]) || 0), 0) / (priceAnalytics.weeks.length || 1);
                             const rawH = ((avg - dynamicMin) / priceRange) * 105;
                             const h = Math.min(105, Math.max(6, Math.round(rawH)));
                             return <View style={[s.bar, { width: 14, height: h, backgroundColor: COLORS.primary }]} />;
@@ -354,7 +377,7 @@ export default function HomeScreen({ navigation }) {
                     ))}
                   </View>
                   <View style={s.chartXAxisRow}>
-                    {MOCK_WEEKLY_CHART.months.map((month, mi) => (
+                    {priceAnalytics.months.map((month, mi) => (
                       <View key={mi} style={s.chartXAxisCol}>
                         <Text style={s.xLabel}>{month}</Text>
                       </View>
@@ -388,12 +411,12 @@ export default function HomeScreen({ navigation }) {
           <View style={s.statsRow}>
             <View style={s.statBox}>
               <Text style={s.statLabel}>{t('stat_monthly_avg', 'Monthly Avg')}</Text>
-              <Text style={s.statValue}>₱{Number(MOCK_WEEKLY_CHART.monthlyAvg || 2845).toLocaleString()}</Text>
+              <Text style={s.statValue}>₱{Number(priceAnalytics.monthlyAvg || 2845).toLocaleString()}</Text>
             </View>
             <View style={s.statDivider} />
             <View style={s.statBox}>
               <Text style={s.statLabel}>{t('stat_crop_year_peak', 'Crop Year Peak')}</Text>
-              <Text style={s.statValue}>₱{Number(MOCK_WEEKLY_CHART.cropYearPeak || 2950).toLocaleString()}</Text>
+              <Text style={s.statValue}>₱{Number(priceAnalytics.cropYearPeak || 2950).toLocaleString()}</Text>
             </View>
             <View style={s.statDivider} />
             <View style={s.statBox}>
@@ -535,7 +558,7 @@ export default function HomeScreen({ navigation }) {
                     liveMol: m,
                     liveWeek: inputWeek || 'Current Week',
                     liveDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                    liveChange: b - (MOCK_PRICE.value || b)
+                    liveChange: b - (currentPrice.value || b)
                   });
 
                   setShowPriceModal(false);
@@ -563,14 +586,23 @@ export default function HomeScreen({ navigation }) {
               <Text style={{ fontSize: 18, fontWeight: '800', color: COLORS.text }}>{t('notif_title', 'System Notifications')}</Text>
               <Text style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>{t('notif_sub', 'District 3 & Sugar Central Updates')}</Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {unreadCount > 0 && (
+                <TouchableOpacity
+                  onPress={handleMarkAllRead}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: '#E0F2FE', borderRadius: RADIUS.sm }}
+                >
+                  <Ionicons name="checkmark-done" size={14} color="#0284C7" />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#0284C7' }}>{t('btn_mark_read', 'Read All')}</Text>
+                </TouchableOpacity>
+              )}
               {notifs.length > 0 && (
                 <TouchableOpacity
                   onPress={handleClearAllNotifs}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: '#FEE2E2', borderRadius: RADIUS.sm }}
                 >
                   <Ionicons name="trash-outline" size={14} color={COLORS.danger} />
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.danger }}>{t('btn_clear_all', 'Clear All')}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.danger }}>{t('btn_clear_all', 'Clear')}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity onPress={closeNotifs} style={{ padding: 4 }}>

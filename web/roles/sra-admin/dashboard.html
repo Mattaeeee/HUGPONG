@@ -326,19 +326,45 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         Maintenance &amp; Security
       </button>
+
+      <!-- Settings Sidebar Tab (Positioned on top of user profile) -->
+      <div class="pt-2 border-t border-border/60 mt-auto flex flex-col gap-0.5">
+        <button class="nav-item flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm text-hug-text2 hover:bg-bg hover:text-primary transition-all text-left cursor-pointer" data-page="settings" id="nav-settings" onclick="navigate('settings')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Settings &amp; Security
+        </button>
+      </div>
     </nav>
     <div class="p-3 border-t border-border bg-white relative">
       <!-- User Profile Popover Menu -->
-      <div id="user-profile-popover" class="hidden absolute bottom-full left-3 right-3 mb-2 bg-white rounded-2xl border border-border shadow-2xl p-2 flex flex-col gap-1 z-50">
-        <div class="px-3 py-2 border-b border-border/60 mb-1">
-          <p class="text-xs font-bold text-hug-text" id="popover-user-name">Maria Santos</p>
-          <p class="text-[10px] text-hug-muted" id="popover-user-role">Silay Sugar Regulatory Administration</p>
+      <div id="user-profile-popover" class="hidden absolute bottom-full left-3 right-3 mb-2 bg-white rounded-2xl border border-border shadow-2xl p-2.5 flex flex-col gap-1.5 z-50">
+        <div class="px-2.5 py-2 border-b border-border/60 mb-0.5">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+            <p class="text-xs font-bold text-hug-text" id="popover-user-name">Maria Santos</p>
+          </div>
+          <p class="text-[10px] text-hug-muted font-medium" id="popover-user-role">Silay Sugar Regulatory Administration</p>
         </div>
-        <button onclick="navigate('settings'); closeUserMenu();" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-hug-text2 hover:bg-bg hover:text-primary transition-all cursor-pointer text-left">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          Settings &amp; Security
+        
+        <button onclick="navigate('settings'); closeUserMenu();" class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-hug-text2 hover:bg-bg hover:text-primary transition-all cursor-pointer text-left">
+          <span class="flex items-center gap-2">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Settings Console
+          </span>
+          <span class="text-[10px] text-hug-muted">Preferences</span>
         </button>
-        <button onclick="handleLogout()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-danger hover:bg-danger-bg transition-all cursor-pointer text-left">
+
+        <button onclick="toggleDarkMode(!document.documentElement.classList.contains('dark'))" class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-hug-text2 hover:bg-bg hover:text-primary transition-all cursor-pointer text-left">
+          <span class="flex items-center gap-2">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            Dark Mode Theme
+          </span>
+          <span class="text-[10px] font-bold text-primary" id="popover-theme-toggle-status">Switch</span>
+        </button>
+
+        <div class="h-px bg-border/60 my-0.5"></div>
+
+        <button onclick="handleLogout()" class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-danger hover:bg-danger-bg transition-all cursor-pointer text-left">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           Sign Out
         </button>
@@ -1829,8 +1855,12 @@
                   </div>
                   <label for="active-crop-year" class="sr-only">Active crop year</label>
                   <select id="active-crop-year" aria-label="Active crop year" title="Active crop year" class="border border-border rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-primary font-bold text-primary">
-                    <option>CY 2025-2026</option>
+                    <option>CY 2024-2025</option>
+                    <option selected>CY 2025-2026</option>
                     <option>CY 2026-2027</option>
+                    <option>CY 2027-2028</option>
+                    <option>CY 2028-2029</option>
+                    <option>CY 2029-2030</option>
                   </select>
                 </div>
                 
@@ -1870,7 +1900,7 @@
                 <svg width="14" height="14" fill="none" stroke="#F5A623" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 <p class="text-[10px] text-[#F5A623] font-medium leading-relaxed">Detected <strong class="font-bold">428 logs</strong> and <strong class="font-bold">14 field registries</strong> from Crop Year 2024-2025 ready for archiving.</p>
               </div>
-              <button onclick="toast('Archiving CY 2024-2025 data to cold storage...')" class="w-full bg-bg border border-border text-hug-text font-bold text-xs py-2.5 rounded-lg hover:border-primary hover:text-primary transition-all flex justify-center items-center gap-2 cursor-pointer mt-1">
+              <button onclick="archiveHistoricalLogs()" class="w-full bg-bg border border-border text-hug-text font-bold text-xs py-2.5 rounded-lg hover:border-primary hover:text-primary transition-all flex justify-center items-center gap-2 cursor-pointer mt-1">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
                 Archive CY 2024-2025 Data
               </button>
@@ -1908,21 +1938,17 @@
         <!-- Page Top Controls & Tab Switcher -->
         <div class="bg-white rounded-2xl p-4 border border-border shadow-xs flex flex-wrap items-center justify-between gap-3">
           <div class="flex items-center gap-2 overflow-x-auto" id="settings-page-tabs">
-            <button class="settings-tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-primary text-white transition-all cursor-pointer flex items-center gap-2 shadow-xs" data-tab="appearance" onclick="switchSettingsTab('appearance')">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              Appearance &amp; Display
-            </button>
-            <button class="settings-tab-btn px-4 py-2 rounded-xl text-xs font-bold text-hug-muted hover:text-hug-text hover:bg-bg transition-all cursor-pointer flex items-center gap-2" data-tab="security" onclick="switchSettingsTab('security')">
+            <button class="settings-tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-primary text-white transition-all cursor-pointer flex items-center gap-2 shadow-xs" data-tab="security" onclick="switchSettingsTab('security')">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               Password &amp; Security
             </button>
-            <button class="settings-tab-btn px-4 py-2 rounded-xl text-xs font-bold text-hug-muted hover:text-hug-text hover:bg-bg transition-all cursor-pointer flex items-center gap-2" data-tab="alerts" onclick="switchSettingsTab('alerts')">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              Alerts &amp; Preferences
+            <button class="settings-tab-btn px-4 py-2 rounded-xl text-xs font-bold text-hug-muted hover:text-hug-text hover:bg-bg transition-all cursor-pointer flex items-center gap-2" data-tab="appearance" onclick="switchSettingsTab('appearance')">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              Appearance &amp; Dark Mode
             </button>
             <button class="settings-tab-btn px-4 py-2 rounded-xl text-xs font-bold text-hug-muted hover:text-hug-text hover:bg-bg transition-all cursor-pointer flex items-center gap-2" data-tab="session" onclick="switchSettingsTab('session')">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              Session &amp; Diagnostics
+              Session &amp; Storage Cache
             </button>
           </div>
 
@@ -1932,8 +1958,98 @@
           </div>
         </div>
 
-        <!-- TAB 1: APPEARANCE & DISPLAY -->
-        <div id="settings-tab-appearance" class="settings-tab-content grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <!-- TAB 1: PASSWORD & SECURITY -->
+        <div id="settings-tab-security" class="settings-tab-content grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <!-- Left Column: Advisory & Password Form -->
+          <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-border shadow-xs flex flex-col gap-4">
+            <div class="flex items-center justify-between border-b border-border pb-3">
+              <div>
+                <h3 class="text-sm font-bold text-hug-text flex items-center gap-2">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Update Account Password
+                </h3>
+                <p class="text-xs text-hug-muted">Manage your encrypted credentials and console access</p>
+              </div>
+            </div>
+
+            <!-- Temporary Password Advisory Banner -->
+            <div id="temp-pwd-warning" class="p-4 bg-warning-bg rounded-xl border border-warning/30 flex items-start gap-3">
+              <svg width="18" height="18" fill="none" stroke="#F5A623" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0 mt-0.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <div>
+                <h5 class="text-xs font-bold text-[#F5A623]">Default Temporary Password Active</h5>
+                <p class="text-xs text-hug-text2 mt-0.5 leading-relaxed">Your account was initialized with a default seed password. We recommend setting a secure personal password.</p>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-3.5 pt-1">
+              <div>
+                <label for="settings-curr-pwd" class="block text-xs font-semibold text-hug-text2 mb-1">Current / Temporary Password <span class="text-danger">*</span></label>
+                <div class="relative">
+                  <input type="password" id="settings-curr-pwd" placeholder="Enter current password" class="w-full text-xs font-mono px-3.5 py-2.5 border border-border rounded-xl bg-white focus:border-primary outline-none pr-10" />
+                  <button type="button" onclick="togglePwdVisibility('settings-curr-pwd')" class="absolute right-3 top-1/2 -translate-y-1/2 text-hug-muted hover:text-hug-text cursor-pointer">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label for="settings-new-pwd" class="block text-xs font-semibold text-hug-text2 mb-1">New Secure Password <span class="text-danger">*</span></label>
+                <div class="relative">
+                  <input type="password" id="settings-new-pwd" oninput="checkPasswordStrength(this.value)" placeholder="Minimum 8 characters" class="w-full text-xs font-mono px-3.5 py-2.5 border border-border rounded-xl bg-white focus:border-primary outline-none pr-10" />
+                  <button type="button" onclick="togglePwdVisibility('settings-new-pwd')" class="absolute right-3 top-1/2 -translate-y-1/2 text-hug-muted hover:text-hug-text cursor-pointer">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+                <!-- Strength Bar -->
+                <div class="mt-1.5 flex items-center gap-2">
+                  <div class="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
+                    <div id="pwd-strength-bar" class="h-full w-0 bg-danger transition-all duration-300"></div>
+                  </div>
+                  <span id="pwd-strength-text" class="text-[10px] font-bold text-hug-muted">Enter password</span>
+                </div>
+              </div>
+
+              <div>
+                <label for="settings-confirm-pwd" class="block text-xs font-semibold text-hug-text2 mb-1">Confirm New Password <span class="text-danger">*</span></label>
+                <input type="password" id="settings-confirm-pwd" placeholder="Re-type new password" class="w-full text-xs font-mono px-3.5 py-2.5 border border-border rounded-xl bg-white focus:border-primary outline-none" />
+              </div>
+
+              <div class="pt-2">
+                <button onclick="saveNewPasswordFromSettings()" class="w-full py-3 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-light transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                  Save Account Password
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Security Guidelines -->
+          <div class="bg-white rounded-2xl p-6 border border-border shadow-xs flex flex-col gap-4">
+            <h4 class="text-xs font-bold text-hug-text border-b border-border pb-2">Cryptographic Password Standards</h4>
+            <div class="flex flex-col gap-3 text-xs text-hug-muted leading-relaxed">
+              <div class="flex items-start gap-2">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary flex-shrink-0 mt-0.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Minimum 8 characters in length</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary flex-shrink-0 mt-0.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Hashed client-side with salted FIPS 180-2 SHA-256</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary flex-shrink-0 mt-0.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Passwords are never stored in plaintext in the database</span>
+              </div>
+            </div>
+
+            <div class="bg-bg p-3.5 rounded-xl border border-border mt-auto text-[11px] text-hug-muted">
+              <p class="font-bold text-hug-text mb-0.5">Audit Trail Record</p>
+              <p>Every credential update is permanently logged in the SRA District Ledger with timestamp and user authority.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: APPEARANCE & DARK MODE -->
+        <div id="settings-tab-appearance" class="settings-tab-content hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
           <!-- Dark Mode Card -->
           <div class="bg-white rounded-2xl p-6 border border-border shadow-xs flex flex-col gap-4">
             <div class="flex items-center justify-between border-b border-border pb-3">
@@ -1975,178 +2091,32 @@
             </div>
           </div>
 
-          <!-- Language & Localization Card -->
+          <!-- Visual Display Info Card -->
           <div class="bg-white rounded-2xl p-6 border border-border shadow-xs flex flex-col gap-4">
             <div class="flex items-center justify-between border-b border-border pb-3">
               <div>
                 <h3 class="text-sm font-bold text-hug-text flex items-center gap-2">
                   <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                  Language &amp; Regional Localization
+                  Console Display Environment
                 </h3>
-                <p class="text-xs text-hug-muted">Select your dialect and numbering standard</p>
+                <p class="text-xs text-hug-muted">Standard regulatory presentation formatting</p>
               </div>
             </div>
 
-            <div class="flex flex-col gap-2">
-              <label class="text-xs font-semibold text-hug-text2">Console Language</label>
-              <div class="grid grid-cols-3 gap-2">
-                <button class="px-3 py-2.5 rounded-xl text-xs font-bold border border-primary bg-primary text-white text-center cursor-pointer shadow-xs">English (PH)</button>
-                <button class="px-3 py-2.5 rounded-xl text-xs font-bold border border-border bg-white text-hug-text2 hover:border-primary text-center cursor-pointer">Hiligaynon</button>
-                <button class="px-3 py-2.5 rounded-xl text-xs font-bold border border-border bg-white text-hug-text2 hover:border-primary text-center cursor-pointer">Tagalog</button>
+            <div class="flex flex-col gap-3 text-xs text-hug-text2">
+              <div class="bg-bg p-3.5 rounded-xl border border-border flex justify-between items-center">
+                <span class="text-hug-muted">Color Palette</span>
+                <span class="font-bold text-hug-text">Sugar Cane Green &amp; Charcoal Dark</span>
               </div>
-            </div>
-
-            <div class="bg-bg p-3.5 rounded-xl border border-border text-xs text-hug-muted flex justify-between items-center mt-auto">
-              <span>District Regulatory Standard</span>
-              <span class="font-bold text-hug-text">Silay Sugar Regulatory Administration</span>
+              <div class="bg-bg p-3.5 rounded-xl border border-border flex justify-between items-center">
+                <span class="text-hug-muted">District Regulatory Standard</span>
+                <span class="font-bold text-hug-text">Silay Sugar Regulatory Administration</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- TAB 2: PASSWORD & SECURITY -->
-        <div id="settings-tab-security" class="settings-tab-content hidden grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <!-- Left Column: Advisory & Password Form -->
-          <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-border shadow-xs flex flex-col gap-4">
-            <div class="flex items-center justify-between border-b border-border pb-3">
-              <div>
-                <h3 class="text-sm font-bold text-hug-text flex items-center gap-2">
-                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                  Update Account Password
-                </h3>
-                <p class="text-xs text-hug-muted">Secure your account credentials and console access</p>
-              </div>
-            </div>
-
-            <!-- Temporary Password Advisory Banner -->
-            <div id="temp-pwd-warning" class="p-4 bg-warning-bg rounded-xl border border-warning/30 flex items-start gap-3">
-              <svg width="18" height="18" fill="none" stroke="#F5A623" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0 mt-0.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              <div>
-                <h5 class="text-xs font-bold text-[#F5A623]">Default Temporary Password Active</h5>
-                <p class="text-xs text-hug-text2 mt-0.5 leading-relaxed">Your account was initialized with a temporary password (<span class="font-mono font-bold">hugpong2026</span> / demo credentials). We strongly recommend setting a custom private password.</p>
-              </div>
-            </div>
-
-            <div class="flex flex-col gap-3.5 pt-1">
-              <div>
-                <label class="block text-xs font-semibold text-hug-text2 mb-1">Current / Temporary Password <span class="text-danger">*</span></label>
-                <div class="relative">
-                  <input type="password" id="settings-curr-pwd" placeholder="Enter current password" class="w-full text-xs font-mono px-3.5 py-2.5 border border-border rounded-xl bg-white focus:border-primary outline-none pr-10" />
-                  <button type="button" onclick="togglePwdVisibility('settings-curr-pwd')" class="absolute right-3 top-1/2 -translate-y-1/2 text-hug-muted hover:text-hug-text cursor-pointer">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label class="block text-xs font-semibold text-hug-text2 mb-1">New Secure Password <span class="text-danger">*</span></label>
-                <div class="relative">
-                  <input type="password" id="settings-new-pwd" oninput="checkPasswordStrength(this.value)" placeholder="Minimum 8 characters with numbers and uppercase" class="w-full text-xs font-mono px-3.5 py-2.5 border border-border rounded-xl bg-white focus:border-primary outline-none pr-10" />
-                  <button type="button" onclick="togglePwdVisibility('settings-new-pwd')" class="absolute right-3 top-1/2 -translate-y-1/2 text-hug-muted hover:text-hug-text cursor-pointer">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  </button>
-                </div>
-                <!-- Strength Bar -->
-                <div class="mt-1.5 flex items-center gap-2">
-                  <div class="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
-                    <div id="pwd-strength-bar" class="h-full w-0 bg-danger transition-all duration-300"></div>
-                  </div>
-                  <span id="pwd-strength-text" class="text-[10px] font-bold text-hug-muted">Enter password</span>
-                </div>
-              </div>
-
-              <div>
-                <label class="block text-xs font-semibold text-hug-text2 mb-1">Confirm New Password <span class="text-danger">*</span></label>
-                <input type="password" id="settings-confirm-pwd" placeholder="Re-type new password" class="w-full text-xs font-mono px-3.5 py-2.5 border border-border rounded-xl bg-white focus:border-primary outline-none" />
-              </div>
-
-              <div class="pt-2">
-                <button onclick="saveNewPasswordFromSettings()" class="w-full py-3 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-light transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs">
-                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                  Save Account Password
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right Column: Security Guidelines -->
-          <div class="bg-white rounded-2xl p-6 border border-border shadow-xs flex flex-col gap-4">
-            <h4 class="text-xs font-bold text-hug-text border-b border-border pb-2">Password Policy Requirements</h4>
-            <div class="flex flex-col gap-3 text-xs text-hug-muted leading-relaxed">
-              <div class="flex items-start gap-2">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary flex-shrink-0 mt-0.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Minimum 8 characters in length</span>
-              </div>
-              <div class="flex items-start gap-2">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary flex-shrink-0 mt-0.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>At least one uppercase character (A-Z)</span>
-              </div>
-              <div class="flex items-start gap-2">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary flex-shrink-0 mt-0.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>At least one numeric digit (0-9)</span>
-              </div>
-              <div class="flex items-start gap-2">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary flex-shrink-0 mt-0.5"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Stored securely with AES-256 validation</span>
-              </div>
-            </div>
-
-            <div class="bg-bg p-3.5 rounded-xl border border-border mt-auto text-[11px] text-hug-muted">
-              <p class="font-bold text-hug-text mb-0.5">Audit Trail Record</p>
-              <p>Every credential update is permanently logged in the SRA District Ledger with timestamp and user authority.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB 3: ALERTS & PREFERENCES -->
-        <div id="settings-tab-alerts" class="settings-tab-content hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div class="bg-white rounded-2xl p-6 border border-border shadow-xs flex flex-col gap-4">
-            <h3 class="text-sm font-bold text-hug-text border-b border-border pb-3 flex items-center gap-2">
-              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              Regulatory &amp; Market Alerts
-            </h3>
-            
-            <div class="bg-bg p-4 rounded-xl border border-border flex items-center justify-between gap-3">
-              <div>
-                <h5 class="text-xs font-bold text-hug-text">Weekly SRA Sugar Price Broadcasts</h5>
-                <p class="text-[11px] text-hug-muted mt-0.5">Receive notifications when official weekly sugar benchmark prices are published</p>
-              </div>
-              <input type="checkbox" checked class="accent-primary w-4 h-4 rounded cursor-pointer">
-            </div>
-
-            <div class="bg-bg p-4 rounded-xl border border-border flex items-center justify-between gap-3">
-              <div>
-                <h5 class="text-xs font-bold text-hug-text">Offline Sync Inactivity Warning</h5>
-                <p class="text-[11px] text-hug-muted mt-0.5">Flag field plots when member logs remain unsynced for more than 48 hours</p>
-              </div>
-              <input type="checkbox" checked class="accent-primary w-4 h-4 rounded cursor-pointer">
-            </div>
-          </div>
-
-          <div class="bg-white rounded-2xl p-6 border border-border shadow-xs flex flex-col gap-4">
-            <h3 class="text-sm font-bold text-hug-text border-b border-border pb-3 flex items-center gap-2">
-              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              Audit Desk QR Validation
-            </h3>
-
-            <div class="bg-bg p-4 rounded-xl border border-border flex items-center justify-between gap-3">
-              <div>
-                <h5 class="text-xs font-bold text-hug-text">Automatic QR Signature Verification</h5>
-                <p class="text-[11px] text-hug-muted mt-0.5">Automatically validate digital signatures on mobile compiled reports</p>
-              </div>
-              <input type="checkbox" checked class="accent-primary w-4 h-4 rounded cursor-pointer">
-            </div>
-
-            <div class="bg-bg p-4 rounded-xl border border-border flex items-center justify-between gap-3">
-              <div>
-                <h5 class="text-xs font-bold text-hug-text">High-Contrast Table Density</h5>
-                <p class="text-[11px] text-hug-muted mt-0.5">Optimized table padding for rapid scanning on desktop monitors</p>
-              </div>
-              <input type="checkbox" checked class="accent-primary w-4 h-4 rounded cursor-pointer">
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB 4: SESSION & DIAGNOSTICS -->
+        <!-- TAB 3: SESSION & STORAGE CACHE -->
         <div id="settings-tab-session" class="settings-tab-content hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
           <div class="bg-white rounded-2xl p-6 border border-border shadow-xs flex flex-col gap-4">
             <h3 class="text-sm font-bold text-hug-text border-b border-border pb-3 flex items-center gap-2">
@@ -2182,19 +2152,15 @@
             <div>
               <h3 class="text-sm font-bold text-hug-text border-b border-border pb-3 flex items-center gap-2">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-primary"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                Console Cache &amp; Session Management
+                Console Cache &amp; Storage Health
               </h3>
-              <p class="text-xs text-hug-muted mt-2 leading-relaxed">Perform client-side cache cleanups or terminate your current administrative session.</p>
+              <p class="text-xs text-hug-muted mt-2 leading-relaxed">Perform client-side cache cleanups to refresh local ledger buffers, telemetry caches, and active station sockets.</p>
             </div>
 
             <div class="flex flex-col gap-3 pt-4">
               <button onclick="clearLocalClientCache()" class="w-full py-2.5 border border-border bg-bg text-hug-text hover:text-primary hover:border-primary text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
                 Clear Client Cache
-              </button>
-              <button onclick="handleLogout()" class="w-full py-2.5 bg-danger-bg text-danger hover:bg-danger hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                Terminate Session (Sign Out)
               </button>
             </div>
           </div>
@@ -2966,8 +2932,8 @@
       <!-- User ID / Contact Input (Member User ID for plots, Manager User ID for block farms) -->
       <div id="dash-modal-farm-contact-wrapper">
         <label id="dash-modal-lbl-farm-contact" class="block text-xs font-semibold text-hug-text2 mb-1.5">Assigned Member User ID <span class="text-danger">*</span></label>
-        <input type="text" id="dash-farm-contact" placeholder="e.g. 0917-654-3210" class="w-full text-xs font-semibold px-3 py-2.5 border border-border rounded-xl bg-white focus:border-primary outline-none transition-all" />
-        <p class="text-[11px] text-hug-muted mt-1" id="dash-modal-sub-farm-contact">Enter the registered User ID (contact number) of the member farmer managing this field plot.</p>
+        <input type="text" id="dash-farm-contact" placeholder="e.g. 03000001 / 04000001 or 0917-123-4567" class="w-full text-xs font-semibold px-3 py-2.5 border border-border rounded-xl bg-white focus:border-primary outline-none transition-all" />
+        <p class="text-[11px] text-hug-muted mt-1" id="dash-modal-sub-farm-contact">Enter the registered 8-digit User ID (e.g. 03000001, 04000001) or 11-digit mobile number.</p>
       </div>
 
       <!-- Total Declared Hectarage -->
@@ -3168,8 +3134,8 @@
       <!-- Member Input -->
       <div>
         <label class="block text-xs font-semibold text-hug-text2 mb-1.5">Assigned Member User ID <span class="text-danger">*</span></label>
-        <input type="text" id="edit-plot-member-id" placeholder="e.g. 0917-654-3210" class="w-full text-xs font-semibold px-3 py-2.5 border border-border rounded-xl bg-white focus:border-primary outline-none transition-all" />
-        <p class="text-[11px] text-hug-muted mt-1">Enter the registered User ID (contact number) of the member managing this field plot.</p>
+        <input type="text" id="edit-plot-member-id" placeholder="e.g. 04000001 or 0917-123-4567" class="w-full text-xs font-semibold px-3 py-2.5 border border-border rounded-xl bg-white focus:border-primary outline-none transition-all" />
+        <p class="text-[11px] text-hug-muted mt-1">Enter the registered 8-digit User ID (e.g. 04000001) or 11-digit mobile number of the member managing this field plot.</p>
       </div>
 
       <!-- Hectares -->

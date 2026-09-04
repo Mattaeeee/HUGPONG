@@ -27,15 +27,15 @@ var INITIAL_DATABASE = {
     { id: 'FLD-NCY-005', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000005', member: 'Ana Gomez', memberName: 'Ana Gomez', ha: 3.25, stage: 'Crop Maintenance & Final Hilling-Up', stageNumber: 5, month: 3.5, batchMonth: 2, synced: true, lastSync: '3 hrs ago', variety: 'Phil 99-1793', soilType: 'Clay Loam' }
   ],
   users: [
-    { employeeId: '01000001', contact: '09187654321', mobile: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: '', blockFarm: '', blockFarmScope: '', fieldId: '', logsHandled: 256, regDate: '2026-01-01', password: 'password123' },
-    { employeeId: '01000002', contact: '09451774699', mobile: '09451774699', name: 'Project Lead', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: '', logsHandled: 120, regDate: '2026-01-01', password: 'password123' },
-    { employeeId: '02000001', contact: '09194448888', mobile: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', roleKey: 'admin', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: '', logsHandled: 84, regDate: '2026-01-15', password: 'password123' },
-    { employeeId: '03000001', contact: '09189876543', mobile: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', roleKey: 'manager', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: '', logsHandled: 168, regDate: '2026-02-01', password: 'password123' },
-    { employeeId: '04000001', contact: '09171234567', mobile: '09171234567', name: 'Juan dela Cruz', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', logsHandled: 24, regDate: '2026-02-10', password: 'password123' },
-    { employeeId: '04000002', contact: '09179876543', mobile: '09179876543', name: 'Pedro Reyes', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-002', logsHandled: 18, regDate: '2026-02-12', password: 'password123' },
-    { employeeId: '04000003', contact: '09194448889', mobile: '09194448889', name: 'Corazon Santos', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-003', logsHandled: 22, regDate: '2026-02-14', password: 'password123' },
-    { employeeId: '04000004', contact: '09987654321', mobile: '09987654321', name: 'Roberto Tan', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-004', logsHandled: 15, regDate: '2026-02-20', password: 'password123' },
-    { employeeId: '04000005', contact: '09555444333', mobile: '09555444333', name: 'Ana Gomez', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-005', logsHandled: 9, regDate: '2026-03-01', password: 'password123' }
+    { employeeId: '01000001', contact: '09187654321', mobile: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: '', blockFarm: '', blockFarmScope: '', fieldId: '', logsHandled: 256, regDate: '2026-01-01', passwordHash: 'e6ae0a8605ad39ce73bcfe4eb671f4e7fd4d58ebfcc4a477adefea318db9b972' },
+    { employeeId: '01000002', contact: '09451774699', mobile: '09451774699', name: 'Project Lead', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: '', logsHandled: 120, regDate: '2026-01-01', passwordHash: 'e6ae0a8605ad39ce73bcfe4eb671f4e7fd4d58ebfcc4a477adefea318db9b972' },
+    { employeeId: '02000001', contact: '09194448888', mobile: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', roleKey: 'admin', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: '', logsHandled: 84, regDate: '2026-01-15', passwordHash: 'e6ae0a8605ad39ce73bcfe4eb671f4e7fd4d58ebfcc4a477adefea318db9b972' },
+    { employeeId: '03000001', contact: '09189876543', mobile: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', roleKey: 'manager', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: '', logsHandled: 168, regDate: '2026-02-01', passwordHash: 'e6ae0a8605ad39ce73bcfe4eb671f4e7fd4d58ebfcc4a477adefea318db9b972' },
+    { employeeId: '04000001', contact: '09171234567', mobile: '09171234567', name: 'Juan dela Cruz', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', logsHandled: 24, regDate: '2026-02-10', passwordHash: 'e6ae0a8605ad39ce73bcfe4eb671f4e7fd4d58ebfcc4a477adefea318db9b972' },
+    { employeeId: '04000002', contact: '09179876543', mobile: '09179876543', name: 'Pedro Reyes', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-002', logsHandled: 18, regDate: '2026-02-12', passwordHash: 'e6ae0a8605ad39ce73bcfe4eb671f4e7fd4d58ebfcc4a477adefea318db9b972' },
+    { employeeId: '04000003', contact: '09194448889', mobile: '09194448889', name: 'Corazon Santos', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-003', logsHandled: 22, regDate: '2026-02-14', passwordHash: 'e6ae0a8605ad39ce73bcfe4eb671f4e7fd4d58ebfcc4a477adefea318db9b972' },
+    { employeeId: '04000004', contact: '09987654321', mobile: '09987654321', name: 'Roberto Tan', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-004', logsHandled: 15, regDate: '2026-02-20', passwordHash: 'e6ae0a8605ad39ce73bcfe4eb671f4e7fd4d58ebfcc4a477adefea318db9b972' },
+    { employeeId: '04000005', contact: '09555444333', mobile: '09555444333', name: 'Ana Gomez', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-005', logsHandled: 9, regDate: '2026-03-01', passwordHash: 'e6ae0a8605ad39ce73bcfe4eb671f4e7fd4d58ebfcc4a477adefea318db9b972' }
   ],
   logs: [
     {
@@ -296,10 +296,112 @@ var INITIAL_DATABASE = {
     }
   ],
   pendingUsers: [],
-  syncLogs: [],
-  securityLogs: [],
-  registryHistory: [],
-  terminalDiagnostics: []
+  securityLogs: [
+    { id: 'SEC-2026-0001', time: '2026-05-30 14:30', user: 'Engr. Maria Santos (SRA Officer)', event: 'Certified Monthly Block Farm Agronomic Audit Report (RPT-2026-05-NCY01)' },
+    { id: 'SEC-2026-0002', time: '2026-05-25 10:15', user: 'Capstone Group (Super Admin)', event: 'Exported Cold Database Snapshot Backup (.JSON 148.4 KB)' },
+    { id: 'SEC-2026-0003', time: '2026-05-21 09:00', user: 'Capstone Group (Super Admin)', event: 'Broadcasted SRA Official Sugar & Molasses Price Circular #105' },
+    { id: 'SEC-2026-0004', time: '2026-05-18 16:45', user: 'Jose Reyes (Farm Manager)', event: 'Approved Membership & Field Plot Allocation for Roberto Tan' },
+    { id: 'SEC-2026-0005', time: '2026-05-12 11:20', user: 'Engr. Maria Santos (SRA Officer)', event: 'Verified Basal Fertilizer Input Voucher for Corazon Santos (4.5 Ha)' },
+    { id: 'SEC-2026-0006', time: '2026-05-01 08:00', user: 'Capstone Group (Super Admin)', event: 'System Initialized: Salted SHA-256 Authentication & Firestore Gateway Active' }
+  ],
+  terminalDiagnostics: [
+    {
+      id: 'SM-A146P-4567',
+      deviceId: 'SM-A146P-4567',
+      staff: 'Juan dela Cruz',
+      memberId: '04000001',
+      blockFarm: 'Nacayao Block Farm',
+      blockFarmId: 'BLK-NCY-01',
+      model: 'Samsung Galaxy A14',
+      os: 'Android 14 (API 34)',
+      appVersion: 'v1.0.0 (Build 2026.09)',
+      battery: '88%',
+      cachedLogs: 0,
+      lastSync: '10 mins ago',
+      status: 'Optimal',
+      updatedAt: '2026-05-30T10:00:00Z'
+    },
+    {
+      id: 'SM-R125G-6543',
+      deviceId: 'SM-R125G-6543',
+      staff: 'Pedro Reyes',
+      memberId: '04000002',
+      blockFarm: 'Nacayao Block Farm',
+      blockFarmId: 'BLK-NCY-01',
+      model: 'Xiaomi Redmi 12',
+      os: 'Android 13 (API 33)',
+      appVersion: 'v1.0.0 (Build 2026.09)',
+      battery: '76%',
+      cachedLogs: 0,
+      lastSync: '15 mins ago',
+      status: 'Optimal',
+      updatedAt: '2026-05-30T09:45:00Z'
+    },
+    {
+      id: 'SM-C550F-8889',
+      deviceId: 'SM-C550F-8889',
+      staff: 'Corazon Santos',
+      memberId: '04000003',
+      blockFarm: 'Nacayao Block Farm',
+      blockFarmId: 'BLK-NCY-01',
+      model: 'Realme C55',
+      os: 'Android 13 (API 33)',
+      appVersion: 'v1.0.0 (Build 2026.09)',
+      battery: '64%',
+      cachedLogs: 0,
+      lastSync: '1 hr ago',
+      status: 'Optimal',
+      updatedAt: '2026-05-30T09:00:00Z'
+    },
+    {
+      id: 'SM-H30I-4321',
+      deviceId: 'SM-H30I-4321',
+      staff: 'Roberto Tan',
+      memberId: '04000004',
+      blockFarm: 'Nacayao Block Farm',
+      blockFarmId: 'BLK-NCY-01',
+      model: 'Infinix Hot 30i',
+      os: 'Android 12 (API 32)',
+      appVersion: 'v1.0.0 (Build 2026.09)',
+      battery: '92%',
+      cachedLogs: 0,
+      lastSync: '2 hrs ago',
+      status: 'Optimal',
+      updatedAt: '2026-05-30T08:00:00Z'
+    },
+    {
+      id: 'SM-A580X-4333',
+      deviceId: 'SM-A580X-4333',
+      staff: 'Ana Gomez',
+      memberId: '04000005',
+      blockFarm: 'Nacayao Block Farm',
+      blockFarmId: 'BLK-NCY-01',
+      model: 'Oppo A58',
+      os: 'Android 13 (API 33)',
+      appVersion: 'v1.0.0 (Build 2026.09)',
+      battery: '55%',
+      cachedLogs: 0,
+      lastSync: '3 hrs ago',
+      status: 'Optimal',
+      updatedAt: '2026-05-30T07:00:00Z'
+    },
+    {
+      id: 'SM-S23U-6543',
+      deviceId: 'SM-S23U-6543',
+      staff: 'Jose Reyes (Manager)',
+      memberId: '03000001',
+      blockFarm: 'Nacayao Block Farm',
+      blockFarmId: 'BLK-NCY-01',
+      model: 'Samsung Galaxy S23',
+      os: 'Android 14 (API 34)',
+      appVersion: 'v1.0.0 (Build 2026.09)',
+      battery: '95%',
+      cachedLogs: 0,
+      lastSync: 'Just now',
+      status: 'Optimal',
+      updatedAt: '2026-05-30T10:15:00Z'
+    }
+  ]
 };
 
 if (typeof window !== 'undefined') {

@@ -1,23 +1,20 @@
 @echo off
-setlocal
-set "ROOT=%~dp0"
-title Opening HUGPONG Web Console...
+title HUGPONG Web Console ^& Server
+cd /d "%~dp0server"
 
-echo Checking HUGPONG Backend Server status...
+echo ========================================================
+echo   Starting HUGPONG Backend Server ^& Web Console...
+echo ========================================================
+echo.
+echo Opening Web Browser at http://localhost:3000/login.html ...
+start "" "http://localhost:3000/login.html"
 
-:: Check if server is running on port 3000. If not, start it in a separate window
-netstat -ano | findstr /i ":3000" | findstr /i "LISTENING" >nul
-if errorlevel 1 (
-    echo Starting Backend Server on http://localhost:3000...
-    start "HUGPONG Backend Sync Server" cmd /k "cd /d "%ROOT%server" && title HUGPONG Backend Sync Server && echo Starting HUGPONG Backend Server... && node server.js"
-    echo Waiting for server to initialize...
-    timeout /t 2 /nobreak >nul
-) else (
-    echo Backend Server is already running.
-)
+echo Starting server with Node.js on http://localhost:3000 ...
+echo (Keep this window OPEN while using HUGPONG)
+echo.
+node server.js
 
-echo Opening HUGPONG Web Console in your browser...
-explorer "http://localhost:3000/login.html"
-exit
-
+echo.
+echo Server has stopped.
+pause
 

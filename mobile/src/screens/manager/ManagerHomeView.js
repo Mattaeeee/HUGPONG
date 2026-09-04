@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../../theme';
-import { MOCK_LOGS } from '../../data/dataStore';
+import { operationLogs } from '../../data/dataStore';
 import { useTranslation } from '../../services/i18n';
 
 function ManagerHomeView({
@@ -24,10 +24,10 @@ function ManagerHomeView({
     const mf = fields.filter(f => f.blockFarm === targetFarm);
     const th = mf.reduce((sum, f) => sum + (Number(f.ha) || 0), 0);
     const mIds = mf.map(f => f.id);
-    const toc = MOCK_LOGS.filter(l => (mIds.length === 0 || mIds.includes(l.fieldId)) && !l.isPastCycle).length;
+    const toc = operationLogs.filter(l => (mIds.length === 0 || mIds.includes(l.fieldId)) && !l.isPastCycle).length;
 
     const fwrl = mf.map(f => {
-      const fieldLogs = MOCK_LOGS.filter(l => l.fieldId === f.id && !l.isPastCycle);
+      const fieldLogs = operationLogs.filter(l => l.fieldId === f.id && !l.isPastCycle);
       const latestLog = fieldLogs[0] || null;
       return {
         ...f,
@@ -104,7 +104,7 @@ function ManagerHomeView({
         <TouchableOpacity
           key={item.id}
           style={s.plotItem}
-          onPress={() => navigation.navigate('Field Ops', { fieldId: item.id })}
+          onPress={() => navigation.navigate('Field Ops', { screen: 'SchedMain', params: { fieldId: item.id } })}
           activeOpacity={0.7}
         >
           <View style={{ flex: 1 }}>

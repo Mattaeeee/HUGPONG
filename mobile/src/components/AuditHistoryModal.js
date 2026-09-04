@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONTS, SPACING, RADIUS, SHADOW } from '../theme';
-import { MOCK_AUDIT_HISTORY, MOCK_LOGS } from '../data/dataStore';
+import { auditLogs, operationLogs } from '../data/dataStore';
 import { useTranslation } from '../services/i18n';
 
 const fmt = n => (Number.isFinite(n) ? n.toLocaleString('en-PH') : '—');
@@ -27,8 +27,8 @@ export default function AuditHistoryModal({
   onOpenQR
 }) {
   const { t, formatPhaseMonth } = useTranslation();
-  const [selectedAuditId, setSelectedAuditId] = useState(MOCK_AUDIT_HISTORY[0]?.id || 'AUD-2026-05');
-  const activeAudit = MOCK_AUDIT_HISTORY.find(a => a.id === selectedAuditId) || MOCK_AUDIT_HISTORY[0] || {};
+  const [selectedAuditId, setSelectedAuditId] = useState(auditLogs[0]?.id || 'AUD-2026-05');
+  const activeAudit = auditLogs.find(a => a.id === selectedAuditId) || auditLogs[0] || {};
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -51,7 +51,7 @@ export default function AuditHistoryModal({
           {/* Monthly Selector Horizontal Chips */}
           <Text style={s.sectionLabel}>{t('select_report_month', 'Select Report Month')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.monthScroll} contentContainerStyle={{ gap: 8 }}>
-            {MOCK_AUDIT_HISTORY.map(audit => {
+            {auditLogs.map(audit => {
               const isSel = audit.id === selectedAuditId;
               return (
                 <TouchableOpacity

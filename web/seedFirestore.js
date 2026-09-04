@@ -58,15 +58,17 @@ export async function seedFirestoreDatabase(force = false) {
 
   // 3. SEED USERS DIRECTORY (8-Digit Role-Prefixed Numeric IDs)
   // 01xxxxxx: Super Admin | 02xxxxxx: SRA Admin | 03xxxxxx: Farm Manager | 04xxxxxx: Member
+  const DEFAULT_SEED_PASSWORD_HASH = 'e6ae0a8605ad39ce73bcfe4eb671f4e7fd4d58ebfcc4a477adefea318db9b972'; // Salted SHA-256 for 'password123'
   const initialUsers = [
-    { employeeId: '02000001', contact: '09194448888', name: 'Maria Santos', role: 'SRA (Admin)', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 42, regDate: '2026-01-15' },
-    { employeeId: '03000001', contact: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 128, regDate: '2026-02-01' },
-    { employeeId: '01000001', contact: '09187654321', name: 'Capstone Group', role: 'Super Admin', blockFarmId: '', fieldId: '', logsHandled: 256, regDate: '2026-01-01' },
-    { employeeId: '04000001', contact: '09171234567', name: 'Juan dela Cruz', role: 'Member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-001', logsHandled: 14, regDate: '2026-02-10' },
-    { employeeId: '04000002', contact: '09179876543', name: 'Jose Reyes', role: 'Member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-002', logsHandled: 8, regDate: '2026-02-12' },
-    { employeeId: '04000003', contact: '09194448889', name: 'Maria Santos', role: 'Member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-003', logsHandled: 19, regDate: '2026-02-14' },
-    { employeeId: '04000004', contact: '09987654321', name: 'Pedro Reyes', role: 'Member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-004', logsHandled: 23, regDate: '2026-02-20' },
-    { employeeId: '04000005', contact: '09555444333', name: 'Ana Gomez', role: 'Member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-005', logsHandled: 3, regDate: '2026-03-01' },
+    { employeeId: '01000001', contact: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: '', fieldId: '', logsHandled: 256, regDate: '2026-01-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '01000002', contact: '09451774699', name: 'Project Lead', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 120, regDate: '2026-01-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '02000001', contact: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', roleKey: 'admin', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 84, regDate: '2026-01-15', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '03000001', contact: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', roleKey: 'manager', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 168, regDate: '2026-02-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '04000001', contact: '09171234567', name: 'Juan dela Cruz', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-001', logsHandled: 24, regDate: '2026-02-10', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '04000002', contact: '09179876543', name: 'Pedro Reyes', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-002', logsHandled: 18, regDate: '2026-02-12', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '04000003', contact: '09194448889', name: 'Corazon Santos', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-003', logsHandled: 22, regDate: '2026-02-14', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '04000004', contact: '09987654321', name: 'Roberto Tan', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-004', logsHandled: 15, regDate: '2026-02-20', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '04000005', contact: '09555444333', name: 'Ana Gomez', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-005', logsHandled: 9, regDate: '2026-03-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH }
   ];
 
   initialUsers.forEach(u => {
@@ -212,10 +214,112 @@ export async function seedFirestoreDatabase(force = false) {
     batch.set(ref, { ...t, createdAt: new Date().toISOString() }, { merge: true });
   });
 
+  // 6. SEED AUDIT REPORTS (Monthly Certification Packages)
+  const initialAuditReports = [
+    {
+      id: 'RPT-2026-05-NCY01',
+      reportId: 'RPT-2026-05-NCY01',
+      qrHash: 'HUG-202605-A3F9',
+      qrPayload: 'HUG-202605-A3F9',
+      blockFarmId: 'BLK-NCY-01',
+      blockFarmName: 'Nacayao Block Farm',
+      period: 'May 2026',
+      totalHectares: 15.25,
+      activePlots: 5,
+      totalLogs: 14,
+      totalCost: 145225,
+      certifiedBy: 'Engr. Maria Santos (SRA Officer)',
+      certifiedRole: 'SRA (Admin)',
+      certifiedAt: '2026-05-30T14:30:00Z',
+      status: 'Certified',
+      notes: 'Fully audited against SRA S1-S14 Sugar Agronomic Benchmark standards.'
+    },
+    {
+      id: 'RPT-2026-04-NCY01',
+      reportId: 'RPT-2026-04-NCY01',
+      qrHash: 'HUG-202604-B8E2',
+      qrPayload: 'HUG-202604-B8E2',
+      blockFarmId: 'BLK-NCY-01',
+      blockFarmName: 'Nacayao Block Farm',
+      period: 'April 2026',
+      totalHectares: 15.25,
+      activePlots: 5,
+      totalLogs: 12,
+      totalCost: 128400,
+      certifiedBy: 'Engr. Maria Santos (SRA Officer)',
+      certifiedRole: 'SRA (Admin)',
+      certifiedAt: '2026-04-30T16:15:00Z',
+      status: 'Certified',
+      notes: 'Pre-planting soil tests & furrowing passes certified for Silay district plots.'
+    }
+  ];
+
+  initialAuditReports.forEach(ar => {
+    const ref = doc(db, 'audit_reports', ar.id);
+    batch.set(ref, { ...ar, updatedAt: new Date().toISOString() }, { merge: true });
+  });
+
+  // 7. SEED AUDIT LOGS (System & Area-Linked Stream)
+  const initialAuditLogs = [
+    {
+      id: 'AUD-2026-0001',
+      category: 'audit',
+      eventType: 'Report Certification',
+      action: 'Report Certification',
+      actorId: '02000001',
+      actorName: 'Engr. Maria Santos',
+      actorRole: 'SRA (Admin)',
+      entityType: 'Audit Report',
+      entityId: 'RPT-2026-05-NCY01',
+      blockFarmId: 'BLK-NCY-01',
+      blockFarm: 'Nacayao Block Farm',
+      details: 'Certified May 2026 Block Farm Monthly Agronomic Report with QR Hash HUG-202605-A3F9 for 5 plots (15.25 Ha).',
+      timestamp: '2026-05-30T14:30:00Z',
+      status: 'Certified'
+    },
+    {
+      id: 'AUD-2026-0002',
+      category: 'plot',
+      eventType: 'Field Stage Advance',
+      action: 'Field Stage Advance',
+      actorId: '03000001',
+      actorName: 'Jose Reyes',
+      actorRole: 'Farm Manager',
+      entityType: 'Field Plot',
+      entityId: 'FLD-NCY-002',
+      blockFarmId: 'BLK-NCY-01',
+      blockFarm: 'Nacayao Block Farm',
+      fieldId: 'FLD-NCY-002',
+      details: 'Advanced FLD-NCY-002 (Pedro Reyes, 2.5 Ha) to Stage 2: Planting & Crop Establishment.',
+      timestamp: '2026-05-08T11:00:00Z',
+      status: 'Recorded'
+    }
+  ];
+
+  initialAuditLogs.forEach(al => {
+    const ref = doc(db, 'audit_logs', al.id);
+    batch.set(ref, { ...al, updatedAt: new Date().toISOString() }, { merge: true });
+  });
+
+  // 8. SEED CONNECTED MOBILE TERMINALS & DEVICE HEALTH
+  const initialTerminals = [
+    { id: 'SM-A146P-4567', deviceId: 'SM-A146P-4567', staff: 'Juan dela Cruz', memberId: '04000001', blockFarm: 'Nacayao Block Farm', blockFarmId: 'BLK-NCY-01', model: 'Samsung Galaxy A14', os: 'Android 14 (API 34)', appVersion: 'v1.0.0 (Build 2026.09)', battery: '88%', cachedLogs: 0, lastSync: '10 mins ago', status: 'Optimal', updatedAt: new Date().toISOString() },
+    { id: 'SM-R125G-6543', deviceId: 'SM-R125G-6543', staff: 'Pedro Reyes', memberId: '04000002', blockFarm: 'Nacayao Block Farm', blockFarmId: 'BLK-NCY-01', model: 'Xiaomi Redmi 12', os: 'Android 13 (API 33)', appVersion: 'v1.0.0 (Build 2026.09)', battery: '76%', cachedLogs: 0, lastSync: '15 mins ago', status: 'Optimal', updatedAt: new Date().toISOString() },
+    { id: 'SM-C550F-8889', deviceId: 'SM-C550F-8889', staff: 'Corazon Santos', memberId: '04000003', blockFarm: 'Nacayao Block Farm', blockFarmId: 'BLK-NCY-01', model: 'Realme C55', os: 'Android 13 (API 33)', appVersion: 'v1.0.0 (Build 2026.09)', battery: '64%', cachedLogs: 0, lastSync: '1 hr ago', status: 'Optimal', updatedAt: new Date().toISOString() },
+    { id: 'SM-H30I-4321', deviceId: 'SM-H30I-4321', staff: 'Roberto Tan', memberId: '04000004', blockFarm: 'Nacayao Block Farm', blockFarmId: 'BLK-NCY-01', model: 'Infinix Hot 30i', os: 'Android 12 (API 32)', appVersion: 'v1.0.0 (Build 2026.09)', battery: '92%', cachedLogs: 0, lastSync: '2 hrs ago', status: 'Optimal', updatedAt: new Date().toISOString() },
+    { id: 'SM-A580X-4333', deviceId: 'SM-A580X-4333', staff: 'Ana Gomez', memberId: '04000005', blockFarm: 'Nacayao Block Farm', blockFarmId: 'BLK-NCY-01', model: 'Oppo A58', os: 'Android 13 (API 33)', appVersion: 'v1.0.0 (Build 2026.09)', battery: '55%', cachedLogs: 0, lastSync: '3 hrs ago', status: 'Optimal', updatedAt: new Date().toISOString() },
+    { id: 'SM-S23U-6543', deviceId: 'SM-S23U-6543', staff: 'Jose Reyes (Manager)', memberId: '03000001', blockFarm: 'Nacayao Block Farm', blockFarmId: 'BLK-NCY-01', model: 'Samsung Galaxy S23', os: 'Android 14 (API 34)', appVersion: 'v1.0.0 (Build 2026.09)', battery: '95%', cachedLogs: 0, lastSync: 'Just now', status: 'Optimal', updatedAt: new Date().toISOString() }
+  ];
+
+  initialTerminals.forEach(t => {
+    const ref = doc(db, 'terminal_diagnostics', t.id);
+    batch.set(ref, { ...t, updatedAt: new Date().toISOString() }, { merge: true });
+  });
+
   // Commit all writes
   await batch.commit();
   console.log('[HUGPONG Seeder] Success! All collections seeded to Firestore (hugpong-ff).');
-  return { status: 'success', seededCount: initialFields.length + initialUsers.length + initialPrices.length + initialLogs.length + initialTickets.length };
+  return { status: 'success', seededCount: initialFields.length + initialUsers.length + initialPrices.length + initialLogs.length + initialTickets.length + initialAuditReports.length + initialAuditLogs.length + initialTerminals.length };
 }
 
 // Auto-seed on load if requested or in browser context

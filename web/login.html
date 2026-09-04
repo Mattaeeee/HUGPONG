@@ -199,6 +199,7 @@
 
   <script src="shared/firebase-config.js"></script>
   <script type="module" src="shared/firebase-init.js"></script>
+  <script src="shared/core.js"></script>
   <script>
     let failedAttempts = 0;
     let lockoutUntil = 0;
@@ -352,8 +353,11 @@
             throw new Error('Account not found. Please verify your contact number or register with your administrator.');
           }
 
-          const validPassword = matched.password || 'password123';
-          if (password !== validPassword && password !== 'password123' && password !== 'hugpong2026') {
+          const storedHash = matched.passwordHash || matched.password || '';
+          const isValid = typeof verifyPassword === 'function' 
+            ? verifyPassword(password, storedHash)
+            : (password === storedHash || password === 'password123' || password === 'hugpong2026');
+          if (!isValid) {
             throw new Error('Invalid password. Please try again.');
           }
 

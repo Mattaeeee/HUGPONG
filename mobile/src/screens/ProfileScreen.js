@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
 import AppHeader from '../components/AppHeader';
-import { subscribe, getIsSynced, getCurrentSession, setSynced, requestFieldAssignment, MOCK_FIELDS, MOCK_LOGS, DRAFT_LOGS, MOCK_TICKETS, submitSupportTicket, resetLocalCache, authenticateUser } from '../data/dataStore';
+import { subscribe, getIsSynced, getCurrentSession, setSynced, requestFieldAssignment, fields, operationLogs, draftLogs, supportTickets, submitSupportTicket, resetLocalCache, authenticateUser } from '../data/dataStore';
 import { useTranslation, LANGUAGES } from '../services/i18n';
 
 const { height } = Dimensions.get('window');
@@ -23,7 +23,7 @@ export default function ProfileScreen({ navigation }) {
   const [showTicketsModal, setShowTicketsModal] = useState(false);
   const [ticketTab, setTicketTab] = useState('submit');
   const [ticketForm, setTicketForm] = useState({ title: '', category: 'Offline Sync', priority: 'Normal', details: '' });
-  const [ticketsList, setTicketsList] = useState(MOCK_TICKETS);
+  const [ticketsList, setTicketsList] = useState(supportTickets);
 
   useEffect(() => {
     const unsubscribe = subscribe(() => {
@@ -43,8 +43,8 @@ export default function ProfileScreen({ navigation }) {
         { 
           text: t('profile_cache', 'Clear Local Cache'), 
           style: 'destructive', 
-          onPress: () => {
-            resetLocalCache();
+          onPress: async () => {
+            await resetLocalCache();
             Alert.alert(t('cache_cleared', 'Cache Cleared'), t('cache_cleared_msg', 'Local offline buffer and cached drafts have been reset.'));
           } 
         },
@@ -122,12 +122,12 @@ export default function ProfileScreen({ navigation }) {
                   return 'District 3 · Silay City, Negros Occidental';
                 }
                 if (session.role === 'Farm Manager') {
-                  const totalPlots = MOCK_FIELDS.length || 5;
-                  const totalHa = MOCK_FIELDS.reduce((s, f) => s + (Number(f.ha) || 0), 0) || 15.25;
+                  const totalPlots = fields.length || 5;
+                  const totalHa = fields.reduce((s, f) => s + (Number(f.ha) || 0), 0) || 15.25;
                   return `${session.farm || 'Nacayao Block Farm'} (${totalPlots} Plots · ${totalHa.toFixed(1)} Ha)`;
                 }
                 // Member Role: Show assigned plots
-                const memberPlots = MOCK_FIELDS.filter(f => 
+                const memberPlots = fields.filter(f => 
                   f.member === session.name || 
                   f.memberId === session.employeeId || 
                   f.id === session.fieldId
@@ -360,7 +360,7 @@ export default function ProfileScreen({ navigation }) {
                         priority: ticketForm.priority,
                         details: ticketForm.details.trim() || 'No additional details provided.'
                       });
-                      setTicketsList([...MOCK_TICKETS]);
+                      setTicketsList([...supportTickets]);
                       setTicketForm({ title: '', category: 'Offline Sync', priority: 'Normal', details: '' });
                       setTicketTab('my');
                       Alert.alert(

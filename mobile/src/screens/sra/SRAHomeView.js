@@ -92,7 +92,7 @@ function SRAHomeView({ session = {}, fields = [], navigation }) {
           <TouchableOpacity
             key={farm.name}
             style={s.plotItem}
-            onPress={() => navigation.navigate('Field Ops', { farmName: farm.name })}
+            onPress={() => navigation.navigate('Field Ops', { screen: 'SchedMain', params: { farmName: farm.name } })}
             activeOpacity={0.7}
           >
             <View style={{ flex: 1 }}>
