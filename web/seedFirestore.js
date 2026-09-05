@@ -34,7 +34,7 @@ export async function seedFirestoreDatabase(force = false) {
 
   // 1. SEED BLOCK FARMS (Canonical Block Farm Entities)
   const initialBlockFarms = [
-    { id: 'BLK-NCY-01', code: 'BLK-NCY', name: 'Nacayao Block Farm', location: 'Silay City, Negros Occidental', farmManagerId: '03000001', declaredHa: 15.25, activePlots: 5 }
+    { id: 'BLK-NCY-01', code: 'BLK-NCY', name: 'Nacayao Block Farm', location: 'Silay City, Negros Occidental', farmManagerId: '03000001', farmManagerName: 'Jose Reyes', declaredHa: 15.25 }
   ];
 
   initialBlockFarms.forEach(bf => {
@@ -44,11 +44,11 @@ export async function seedFirestoreDatabase(force = false) {
 
   // 2. SEED FIELDS (Relational: references blockFarmId and memberId)
   const initialFields = [
-    { id: 'FLD-NCY-001', blockFarmId: 'BLK-NCY-01', memberId: '04000001', ha: 1.5, stage: 'Pre-Planting & Land Preparation', stageNumber: 1, month: 0.5, batchMonth: 1, synced: true, lastSync: '15 mins ago', customStages: [] },
-    { id: 'FLD-NCY-002', blockFarmId: 'BLK-NCY-01', memberId: '04000002', ha: 2.5, stage: 'Planting & Crop Establishment', stageNumber: 2, month: 1.0, batchMonth: 1, synced: true, lastSync: '10 mins ago', customStages: [] },
-    { id: 'FLD-NCY-003', blockFarmId: 'BLK-NCY-01', memberId: '04000003', ha: 4.5, stage: 'Basal Nutrition & Early Care', stageNumber: 3, month: 1.2, batchMonth: 1, synced: true, lastSync: '2 hrs ago', customStages: [] },
-    { id: 'FLD-NCY-004', blockFarmId: 'BLK-NCY-01', memberId: '04000004', ha: 3.5, stage: 'Cultivation & Weed Management', stageNumber: 4, month: 2.5, batchMonth: 2, synced: true, lastSync: '1 hr ago', customStages: [] },
-    { id: 'FLD-NCY-005', blockFarmId: 'BLK-NCY-01', memberId: '04000005', ha: 3.25, stage: 'Crop Maintenance & Final Hilling-Up', stageNumber: 5, month: 3.5, batchMonth: 2, synced: true, lastSync: '4 hrs ago', customStages: [] },
+    { id: 'FLD-NCY-001', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000001', memberName: 'Juan dela Cruz', ha: 1.5, stage: 'Pre-Planting & Land Preparation', stageNumber: 1, month: 0.5, batchMonth: 1, synced: true, lastSync: '15 mins ago', variety: 'VMC 84-524', soilType: 'Clay Loam', customStages: [] },
+    { id: 'FLD-NCY-002', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000002', memberName: 'Pedro Reyes', ha: 2.5, stage: 'Planting & Crop Establishment', stageNumber: 2, month: 1.0, batchMonth: 1, synced: true, lastSync: '10 mins ago', variety: 'Phil 99-1793', soilType: 'Sandy Loam', customStages: [] },
+    { id: 'FLD-NCY-003', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000003', memberName: 'Corazon Santos', ha: 4.5, stage: 'Basal Nutrition & Early Care', stageNumber: 3, month: 1.2, batchMonth: 1, synced: true, lastSync: '2 hrs ago', variety: 'Phil 2006-2289', soilType: 'Clay Loam', customStages: [] },
+    { id: 'FLD-NCY-004', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000004', memberName: 'Roberto Tan', ha: 3.5, stage: 'Cultivation & Weed Management', stageNumber: 4, month: 2.5, batchMonth: 2, synced: true, lastSync: '1 hr ago', variety: 'VMC 84-524', soilType: 'Loam', customStages: [] },
+    { id: 'FLD-NCY-005', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000005', memberName: 'Ana Gomez', ha: 3.25, stage: 'Crop Maintenance & Final Hilling-Up', stageNumber: 5, month: 3.5, batchMonth: 2, synced: true, lastSync: '4 hrs ago', variety: 'Phil 99-1793', soilType: 'Clay Loam', customStages: [] },
   ];
 
   initialFields.forEach(f => {
@@ -60,20 +60,20 @@ export async function seedFirestoreDatabase(force = false) {
   // 01xxxxxx: Super Admin | 02xxxxxx: SRA Admin | 03xxxxxx: Farm Manager | 04xxxxxx: Member
   const DEFAULT_SEED_PASSWORD_HASH = 'e6ae0a8605ad39ce73bcfe4eb671f4e7fd4d58ebfcc4a477adefea318db9b972'; // Salted SHA-256 for 'password123'
   const initialUsers = [
-    { employeeId: '01000001', contact: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: '', fieldId: '', logsHandled: 256, regDate: '2026-01-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-    { employeeId: '01000002', contact: '09451774699', name: 'Project Lead', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 120, regDate: '2026-01-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-    { employeeId: '02000001', contact: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', roleKey: 'admin', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 84, regDate: '2026-01-15', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-    { employeeId: '03000001', contact: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', roleKey: 'manager', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 168, regDate: '2026-02-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-    { employeeId: '04000001', contact: '09171234567', name: 'Juan dela Cruz', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-001', logsHandled: 24, regDate: '2026-02-10', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-    { employeeId: '04000002', contact: '09179876543', name: 'Pedro Reyes', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-002', logsHandled: 18, regDate: '2026-02-12', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-    { employeeId: '04000003', contact: '09194448889', name: 'Corazon Santos', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-003', logsHandled: 22, regDate: '2026-02-14', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-    { employeeId: '04000004', contact: '09987654321', name: 'Roberto Tan', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-004', logsHandled: 15, regDate: '2026-02-20', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-    { employeeId: '04000005', contact: '09555444333', name: 'Ana Gomez', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-005', logsHandled: 9, regDate: '2026-03-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH }
+    { employeeId: '01000001', contact: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', roleKey: 'super_admin', blockFarmId: '', blockFarm: '', fieldId: '', regDate: '2026-01-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '01000002', contact: '09451774699', name: 'Project Lead', role: 'Super Admin', roleKey: 'super_admin', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: '', regDate: '2026-01-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '02000001', contact: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', roleKey: 'sra_admin', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: '', regDate: '2026-01-15', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '03000001', contact: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', roleKey: 'farm_manager', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: '', regDate: '2026-02-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '04000001', contact: '09171234567', name: 'Juan dela Cruz', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', regDate: '2026-02-10', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '04000002', contact: '09179876543', name: 'Pedro Reyes', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: 'FLD-NCY-002', regDate: '2026-02-12', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '04000003', contact: '09194448889', name: 'Corazon Santos', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: 'FLD-NCY-003', regDate: '2026-02-14', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '04000004', contact: '09987654321', name: 'Roberto Tan', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: 'FLD-NCY-004', regDate: '2026-02-20', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+    { employeeId: '04000005', contact: '09555444333', name: 'Ana Gomez', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: 'FLD-NCY-005', regDate: '2026-03-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH }
   ];
 
   initialUsers.forEach(u => {
-    const cleanId = u.contact.replace(/\D/g, '');
-    const ref = doc(db, 'users', cleanId);
+    const docId = u.employeeId || u.contact.replace(/\D/g, '');
+    const ref = doc(db, 'users', docId);
     batch.set(ref, { ...u, updatedAt: new Date().toISOString() }, { merge: true });
   });
 
@@ -106,16 +106,16 @@ export async function seedFirestoreDatabase(force = false) {
       operationName: 'Land Preparation',
       activity: 'Land Preparation (Disc Plowing & Furrowing)',
       category: 'prep',
-      cost: 18000,
       totalCost: 18000,
       costPerHa: 12000,
-      hectares: '1.5',
-      people: '2',
+      hectares: 1.5,
+      people: 2,
       date: '2026-05-02',
       approved: true,
       status: 'Recorded',
       isOffline: false,
       loggedBy: 'Farmer (Juan dela Cruz)',
+      loggedById: '04000001',
       subItems: [
         { id: 'SI-LOG-NCY001-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
         { id: 'SI-LOG-NCY001-001-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
@@ -132,16 +132,16 @@ export async function seedFirestoreDatabase(force = false) {
       operationName: 'Cost of Planting Material (Seedcane acquisition)',
       activity: 'Cost of Planting Material (Patdan)',
       category: 'plant',
-      cost: 37500,
       totalCost: 37500,
       costPerHa: 15000,
-      hectares: '2.5',
-      people: '4',
+      hectares: 2.5,
+      people: 4,
       date: '2026-05-08',
       approved: true,
       status: 'Recorded',
       isOffline: false,
       loggedBy: 'Manager (Jose Reyes - Takeover)',
+      loggedById: '03000001',
       subItems: [
         { id: 'SI-LOG-NCY002-001-1', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
       ]
@@ -156,16 +156,16 @@ export async function seedFirestoreDatabase(force = false) {
       operationName: 'Land Preparation',
       activity: 'Land Preparation (Disc Plowing & Furrowing)',
       category: 'prep',
-      cost: 42000,
       totalCost: 42000,
       costPerHa: 12000,
-      hectares: '3.5',
-      people: '4',
+      hectares: 3.5,
+      people: 4,
       date: '2026-05-15',
       approved: true,
       status: 'Recorded',
       isOffline: false,
       loggedBy: 'Farmer (Pedro Reyes)',
+      loggedById: '04000002',
       subItems: [
         { id: 'SI-LOG-NCY004-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 3.5, unit: 'ha', unitCost: 5000, subTotal: 17500 },
         { id: 'SI-LOG-NCY004-001-2', description: '2nd Pass Disc Harrowing', qty: 3.5, unit: 'ha', unitCost: 4000, subTotal: 14000 },
@@ -225,7 +225,6 @@ export async function seedFirestoreDatabase(force = false) {
       blockFarmName: 'Nacayao Block Farm',
       period: 'May 2026',
       totalHectares: 15.25,
-      activePlots: 5,
       totalLogs: 14,
       totalCost: 145225,
       certifiedBy: 'Engr. Maria Santos (SRA Officer)',
@@ -243,7 +242,6 @@ export async function seedFirestoreDatabase(force = false) {
       blockFarmName: 'Nacayao Block Farm',
       period: 'April 2026',
       totalHectares: 15.25,
-      activePlots: 5,
       totalLogs: 12,
       totalCost: 128400,
       certifiedBy: 'Engr. Maria Santos (SRA Officer)',

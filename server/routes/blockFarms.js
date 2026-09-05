@@ -40,7 +40,6 @@ router.post('/', requireAuth, requireRole(['sra (admin)', 'super admin', 'admin'
     location: location || 'Silay City, Negros Occidental',
     farmManagerId: farmManagerId || '03000001',
     declaredHa: Number(declaredHa) || 15.25,
-    activePlots: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };

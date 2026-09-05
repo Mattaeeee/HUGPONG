@@ -362,7 +362,7 @@ export async function processOutbox(remoteUploadHandler) {
 export async function flushOutboxToFirestore() {
   try {
     const { db } = require('../firebase/config');
-    const { doc, setDoc } = require('firebase/firestore');
+    const { doc, setDoc, getDoc } = require('firebase/firestore');
 
     if (!db) {
       console.warn('[syncEngine] Firestore instance not initialized, skipping cloud flush.');
@@ -380,15 +380,43 @@ export async function flushOutboxToFirestore() {
           syncedAt: new Date().toISOString()
         }, { merge: true });
 
-        // Update corresponding field plot stage
-        if (payload.stage && payload.fieldId) {
+        // Update corresponding field plot stage safely with conflict resolution
+        const incomingStage = payload.stage || payload.stageName;
+        if (incomingStage && payload.fieldId) {
           const fieldRef = doc(db, 'fields', payload.fieldId);
-          await setDoc(fieldRef, {
-            stage: payload.stage,
-            lastSync: 'Just now',
-            synced: true,
-            updatedAt: new Date().toISOString()
-          }, { merge: true });
+          try {
+            const currentSnap = await getDoc(fieldRef);
+            if (currentSnap.exists()) {
+              const currentData = currentSnap.data();
+              const conflict = resolveStageConflict(
+                currentData.stage,
+                incomingStage,
+                currentData.updatedAt,
+                payload.createdAt || item.enqueuedAt
+              );
+              if (conflict.resolution !== 'rejected_regression_preserved_advanced_stage') {
+                await setDoc(fieldRef, {
+                  stage: conflict.stage,
+                  stageNumber: getStageLevel(conflict.stage),
+                  lastSync: 'Just now',
+                  synced: true,
+                  updatedAt: new Date().toISOString()
+                }, { merge: true });
+              } else {
+                console.log(`[syncEngine] Preserved advanced stage ${currentData.stage} over regressive offline stage ${incomingStage} for ${payload.fieldId}`);
+              }
+            } else {
+              await setDoc(fieldRef, {
+                stage: incomingStage,
+                stageNumber: getStageLevel(incomingStage),
+                lastSync: 'Just now',
+                synced: true,
+                updatedAt: new Date().toISOString()
+              }, { merge: true });
+            }
+          } catch (stageErr) {
+            console.warn('[syncEngine] Field stage sync notice:', stageErr);
+          }
         }
         return true;
       } else if (type === 'ticket') {
@@ -396,13 +424,41 @@ export async function flushOutboxToFirestore() {
         await setDoc(docRef, { ...payload, synced: true, syncedAt: new Date().toISOString() }, { merge: true });
         return true;
       } else if (type === 'stage_update') {
+        const incomingStage = payload.stage || payload.stageName;
         const fieldRef = doc(db, 'fields', payload.fieldId);
-        await setDoc(fieldRef, {
-          stage: payload.stage,
-          lastSync: 'Just now',
-          synced: true,
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
+        try {
+          const currentSnap = await getDoc(fieldRef);
+          if (currentSnap.exists()) {
+            const currentData = currentSnap.data();
+            const conflict = resolveStageConflict(
+              currentData.stage,
+              incomingStage,
+              currentData.updatedAt,
+              payload.createdAt || item.enqueuedAt
+            );
+            if (conflict.resolution !== 'rejected_regression_preserved_advanced_stage') {
+              await setDoc(fieldRef, {
+                stage: conflict.stage,
+                stageNumber: getStageLevel(conflict.stage),
+                lastSync: 'Just now',
+                synced: true,
+                updatedAt: new Date().toISOString()
+              }, { merge: true });
+            } else {
+              console.log(`[syncEngine] Preserved advanced stage ${currentData.stage} over regressive offline stage ${incomingStage} for ${payload.fieldId}`);
+            }
+          } else {
+            await setDoc(fieldRef, {
+              stage: incomingStage,
+              stageNumber: getStageLevel(incomingStage),
+              lastSync: 'Just now',
+              synced: true,
+              updatedAt: new Date().toISOString()
+            }, { merge: true });
+          }
+        } catch (stageErr) {
+          console.warn('[syncEngine] Stage update notice:', stageErr);
+        }
         return true;
       }
       return true;

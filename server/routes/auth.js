@@ -23,7 +23,6 @@ function verifyPassword(inputPassword, storedHash) {
   const inputHash = hashPassword(inputPassword);
   if (storedHash && storedHash.length === 64 && inputHash === storedHash) return true;
   if (storedHash && storedHash.length < 64 && inputPassword === storedHash) return true;
-  if (inputHash === DEFAULT_SEED_PASSWORD_HASH || inputHash === DEFAULT_MASTER_PASSWORD_HASH) return true;
   return false;
 }
 

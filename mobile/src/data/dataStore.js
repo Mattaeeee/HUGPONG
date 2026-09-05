@@ -3,7 +3,7 @@ import { initSyncEngine, enqueueOutboxItem, processOutbox, getOutboxCount, clear
 import { hashPassword, verifyPassword, DEFAULT_SEED_PASSWORD_HASH, DEFAULT_MASTER_PASSWORD_HASH } from '../services/cryptoService';
 import { publishTerminalTelemetry } from '../services/telemetryService';
 import { db } from '../firebase/config';
-import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
 
 export { hashPassword, verifyPassword, DEFAULT_SEED_PASSWORD_HASH, DEFAULT_MASTER_PASSWORD_HASH, publishTerminalTelemetry };
 
@@ -21,27 +21,27 @@ export const priceHistory = [
 ];
 
 export const blockFarms = [
-  { id: 'BLK-NCY-01', code: 'BLK-NCY', name: 'Nacayao Block Farm', location: 'Silay City, Negros Occidental', farmManagerId: '03000001', farmManagerName: 'Jose Reyes', declaredHa: 15.25, activePlots: 5 }
+  { id: 'BLK-NCY-01', code: 'BLK-NCY', name: 'Nacayao Block Farm', association: 'Nacayao Small Farmers Association', location: 'Hda. Nacayao, Brgy. Kapitan Ramon, Silay City, Negros Occidental', farmManagerId: '03000001', farmManagerName: 'Jose Reyes', totalBlockFarmArea: 30.1118, newPlantArea: 15.25, declaredHa: 15.25 }
 ];
 
 export const users = [
-  { employeeId: '01000001', contact: '09187654321', mobile: '0918 765 4321', name: 'Capstone Group (Admin)', role: 'Super Admin', blockFarmId: '', fieldId: '', logsHandled: 256, regDate: '2026-01-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-  { employeeId: '01000002', contact: '09451774699', mobile: '0945 177 4699', name: 'Project Lead', role: 'Super Admin', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 120, regDate: '2026-01-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-  { employeeId: '02000001', contact: '09194448888', mobile: '0919 444 8888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 84, regDate: '2026-01-15', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-  { employeeId: '03000001', contact: '09189876543', mobile: '0918 987 6543', name: 'Jose Reyes', role: 'Farm Manager', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 168, regDate: '2026-02-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-  { employeeId: '04000001', contact: '09171234567', mobile: '0917 123 4567', name: 'Juan dela Cruz', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', logsHandled: 24, regDate: '2026-02-10', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-  { employeeId: '04000002', contact: '09179876543', mobile: '0917 987 6543', name: 'Pedro Reyes', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-002', logsHandled: 18, regDate: '2026-02-12', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-  { employeeId: '04000003', contact: '09194448889', mobile: '0919 444 8889', name: 'Corazon Santos', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-003', logsHandled: 22, regDate: '2026-02-14', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-  { employeeId: '04000004', contact: '09987654321', mobile: '0998 765 4321', name: 'Roberto Tan', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-004', logsHandled: 15, regDate: '2026-02-20', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-  { employeeId: '04000005', contact: '09555444333', mobile: '0955 544 4333', name: 'Ana Gomez', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-005', logsHandled: 9, regDate: '2026-03-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH }
+  { employeeId: '01000001', contact: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', roleKey: 'super_admin', blockFarmId: '', fieldId: '', regDate: '2026-01-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '01000002', contact: '09451774699', name: 'Project Lead', role: 'Super Admin', roleKey: 'super_admin', blockFarmId: 'BLK-NCY-01', fieldId: '', regDate: '2026-01-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '02000001', contact: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', roleKey: 'sra_admin', blockFarmId: 'BLK-NCY-01', fieldId: '', regDate: '2026-01-15', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '03000001', contact: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', roleKey: 'farm_manager', blockFarmId: 'BLK-NCY-01', fieldId: '', regDate: '2026-02-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '04000001', contact: '09171234567', name: 'Juan dela Cruz', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-001', regDate: '2026-02-10', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '04000002', contact: '09179876543', name: 'Pedro Reyes', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-002', regDate: '2026-02-12', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '04000003', contact: '09194448889', name: 'Corazon Santos', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-003', regDate: '2026-02-14', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '04000004', contact: '09987654321', name: 'Roberto Tan', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-004', regDate: '2026-02-20', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+  { employeeId: '04000005', contact: '09555444333', name: 'Ana Gomez', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', fieldId: 'FLD-NCY-005', regDate: '2026-03-01', passwordHash: DEFAULT_SEED_PASSWORD_HASH }
 ];
 
 export const fields = [
-  { id: 'FLD-NCY-001', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000001', member: 'Juan dela Cruz', ha: 1.5, stage: 'Pre-Planting & Land Preparation', stageNumber: 1, month: 0.5, batchMonth: 1, synced: true, lastSync: '10 mins ago', variety: 'VMC 84-524', soilType: 'Clay Loam' },
-  { id: 'FLD-NCY-002', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000002', member: 'Pedro Reyes', ha: 2.5, stage: 'Planting & Crop Establishment', stageNumber: 2, month: 1.0, batchMonth: 1, synced: true, lastSync: '15 mins ago', variety: 'Phil 99-1793', soilType: 'Sandy Loam' },
-  { id: 'FLD-NCY-003', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000003', member: 'Corazon Santos', ha: 4.5, stage: 'Basal Nutrition & Early Care', stageNumber: 3, month: 1.5, batchMonth: 1, synced: true, lastSync: '1 hr ago', variety: 'Phil 2006-2289', soilType: 'Clay Loam' },
-  { id: 'FLD-NCY-004', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000004', member: 'Roberto Tan', ha: 3.5, stage: 'Cultivation & Weed Management', stageNumber: 4, month: 2.5, batchMonth: 2, synced: true, lastSync: '2 hrs ago', variety: 'VMC 84-524', soilType: 'Loam' },
-  { id: 'FLD-NCY-005', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000005', member: 'Ana Gomez', ha: 3.25, stage: 'Crop Maintenance & Final Hilling-Up', stageNumber: 5, month: 3.5, batchMonth: 2, synced: true, lastSync: '3 hrs ago', variety: 'Phil 99-1793', soilType: 'Clay Loam' },
+  { id: 'FLD-NCY-001', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000001', memberName: 'Juan dela Cruz', member: 'Juan dela Cruz', ha: 1.5, stage: 'Pre-Planting & Land Preparation', stageNumber: 1, month: 0.5, batchMonth: 1, synced: true, lastSync: '10 mins ago', variety: 'VMC 84-524', soilType: 'Clay Loam' },
+  { id: 'FLD-NCY-002', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000002', memberName: 'Pedro Reyes', member: 'Pedro Reyes', ha: 2.5, stage: 'Planting & Crop Establishment', stageNumber: 2, month: 1.0, batchMonth: 1, synced: true, lastSync: '15 mins ago', variety: 'Phil 99-1793', soilType: 'Sandy Loam' },
+  { id: 'FLD-NCY-003', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000003', memberName: 'Corazon Santos', member: 'Corazon Santos', ha: 4.5, stage: 'Basal Nutrition & Early Care', stageNumber: 3, month: 1.5, batchMonth: 1, synced: true, lastSync: '1 hr ago', variety: 'Phil 2006-2289', soilType: 'Clay Loam' },
+  { id: 'FLD-NCY-004', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000004', memberName: 'Roberto Tan', member: 'Roberto Tan', ha: 3.5, stage: 'Cultivation & Weed Management', stageNumber: 4, month: 2.5, batchMonth: 2, synced: true, lastSync: '2 hrs ago', variety: 'VMC 84-524', soilType: 'Loam' },
+  { id: 'FLD-NCY-005', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', memberId: '04000005', memberName: 'Ana Gomez', member: 'Ana Gomez', ha: 3.25, stage: 'Crop Maintenance & Final Hilling-Up', stageNumber: 5, month: 3.5, batchMonth: 2, synced: true, lastSync: '3 hrs ago', variety: 'Phil 99-1793', soilType: 'Clay Loam' },
 ];
 
 export const operationLogs = [
@@ -55,7 +55,6 @@ export const operationLogs = [
     operationName: 'Land Preparation',
     activity: 'Land Preparation (Disc Plowing & Furrowing)',
     category: 'prep',
-    cost: 18000,
     totalCost: 18000,
     costPerHa: 12000,
     hectares: 1.5,
@@ -64,6 +63,7 @@ export const operationLogs = [
     period: 'May 02, 2026',
     status: 'Recorded',
     loggedBy: 'Juan dela Cruz (Member)',
+    loggedById: '04000001',
     subItems: [
       { id: 'SI-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
       { id: 'SI-001-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
@@ -80,7 +80,6 @@ export const operationLogs = [
     operationName: 'Cost of Planting Material (Seedcane acquisition)',
     activity: 'Cost of Planting Material (Patdan)',
     category: 'plant',
-    cost: 37500,
     totalCost: 37500,
     costPerHa: 15000,
     hectares: 2.5,
@@ -89,6 +88,7 @@ export const operationLogs = [
     period: 'May 08, 2026',
     status: 'Recorded',
     loggedBy: 'Pedro Reyes (Member)',
+    loggedById: '04000002',
     subItems: [
       { id: 'SI-002-1', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
     ],
@@ -103,7 +103,6 @@ export const operationLogs = [
     operationName: 'Basal Fertilizer Application',
     activity: 'Basal Fertilizer (Urea + Complete + Potash)',
     category: 'fert',
-    cost: 71100,
     totalCost: 71100,
     costPerHa: 15800,
     hectares: 4.5,
@@ -112,6 +111,7 @@ export const operationLogs = [
     period: 'May 12, 2026',
     status: 'Recorded',
     loggedBy: 'Corazon Santos (Member)',
+    loggedById: '04000003',
     subItems: [
       { id: 'SI-003-1', description: '46-00-00 Urea Application', qty: 9, unit: 'bag', unitCost: 1600, subTotal: 14400 },
       { id: 'SI-003-2', description: '18-46-00 DAP / Complete', qty: 13.5, unit: 'bag', unitCost: 2500, subTotal: 33750 },
@@ -129,7 +129,6 @@ export const operationLogs = [
     operationName: 'Cultivation (Off-barring & On-barring)',
     activity: 'Pahubas & Off-barring Pass',
     category: 'weed',
-    cost: 10500,
     totalCost: 10500,
     costPerHa: 3000,
     hectares: 3.5,
@@ -138,6 +137,7 @@ export const operationLogs = [
     period: 'May 18, 2026',
     status: 'Recorded',
     loggedBy: 'Roberto Tan (Member)',
+    loggedById: '04000004',
     subItems: [
       { id: 'SI-004-1', description: '1st Off-barring (Pahubas)', qty: 7, unit: 'pass', unitCost: 750, subTotal: 5250 },
       { id: 'SI-004-2', description: '2nd Off-barring (Pahubas)', qty: 7, unit: 'pass', unitCost: 750, subTotal: 5250 }
@@ -153,7 +153,6 @@ export const operationLogs = [
     operationName: 'Final Hilling-up (Pasungkal)',
     activity: 'Pasungkal Tractor Pass',
     category: 'maint',
-    cost: 8125,
     totalCost: 8125,
     costPerHa: 2500,
     hectares: 3.25,
@@ -162,6 +161,7 @@ export const operationLogs = [
     period: 'May 22, 2026',
     status: 'Recorded',
     loggedBy: 'Ana Gomez (Member)',
+    loggedById: '04000005',
     subItems: [
       { id: 'SI-005-1', description: 'Final Hilling-Up / Pasungkal Pass', qty: 3.25, unit: 'ha', unitCost: 2500, subTotal: 8125 }
     ],
@@ -178,7 +178,6 @@ export const operationLogs = [
     operationName: 'Cutting and Loading',
     activity: 'Cane Cutting & Mill Trucking (Haw-Phil)',
     category: 'harvest',
-    cost: 48000,
     totalCost: 48000,
     hectares: 1.5,
     people: '8',
@@ -189,6 +188,7 @@ export const operationLogs = [
     certified: true,
     archivedAt: '2025-01-20T10:00:00Z',
     loggedBy: 'Juan dela Cruz (Member)',
+    loggedById: '04000001',
     subItems: [
       { id: 'PAST-SI-01', description: 'Cutting & Loading 90 Tons', qty: 90, unit: 'ton', unitCost: 450, subTotal: 40500 },
       { id: 'PAST-SI-02', description: 'Terminal Mill Flatbed Freight', qty: 1, unit: 'trip', unitCost: 7500, subTotal: 7500 }
@@ -204,7 +204,6 @@ export const operationLogs = [
     operationName: 'Cutting and Loading',
     activity: 'Cane Cutting & Loading (150 Tons)',
     category: 'harvest',
-    cost: 75000,
     totalCost: 75000,
     hectares: 2.5,
     people: '12',
@@ -215,6 +214,7 @@ export const operationLogs = [
     certified: true,
     archivedAt: '2025-01-25T10:00:00Z',
     loggedBy: 'Pedro Reyes (Member)',
+    loggedById: '04000002',
     subItems: [
       { id: 'PAST-SI-03', description: 'Cutting & Loading 150 Tons', qty: 150, unit: 'ton', unitCost: 450, subTotal: 67500 },
       { id: 'PAST-SI-04', description: 'In-field Carabao Hauling Assist', qty: 1, unit: 'lot', unitCost: 7500, subTotal: 7500 }
@@ -230,7 +230,6 @@ export const operationLogs = [
     operationName: 'Cutting and Loading',
     activity: 'Cane Cutting & Mill Delivery (270 Tons)',
     category: 'harvest',
-    cost: 135000,
     totalCost: 135000,
     hectares: 4.5,
     people: '18',
@@ -241,6 +240,7 @@ export const operationLogs = [
     certified: true,
     archivedAt: '2025-02-10T10:00:00Z',
     loggedBy: 'Corazon Santos (Member)',
+    loggedById: '04000003',
     subItems: [
       { id: 'PAST-SI-05', description: 'Cutting & Loading 270 Tons', qty: 270, unit: 'ton', unitCost: 450, subTotal: 121500 },
       { id: 'PAST-SI-06', description: 'Mill Hauling & Scale Fee', qty: 1, unit: 'lot', unitCost: 13500, subTotal: 13500 }
@@ -288,7 +288,7 @@ export const supportTickets = [
   }
 ];
 
-export const auditLogs = [
+export const auditReports = [
   // ── Monthly Certified Audit Packages ──
   {
     id: 'AUD-2026-05',
@@ -348,8 +348,10 @@ export const auditLogs = [
     stageBreakdown: [
       { stage: 'Stage 1: Field Clearing & Stubble Shaving', cost: 94500, pct: '100%', fields: 'All 5 Plots (15.25 Ha)' }
     ]
-  },
+  }
+];
 
+export const systemHistory = [
   // ── Area & Plot Level System Audit Events ──
   {
     id: 'AUD-2026-0001',
@@ -440,6 +442,8 @@ export const auditLogs = [
     status: 'Recorded'
   }
 ];
+
+export const auditLogs = auditReports; // Backward compatibility alias
 
 export const assignmentRequests = [];
 
@@ -737,10 +741,10 @@ export const authenticateUser = (contactOrId, password) => {
 
   if (!user) {
     const canonical = [
-      { employeeId: '04000001', contact: '09171234567', mobile: '09171234567', name: 'Juan dela Cruz', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-      { employeeId: '03000001', contact: '09189876543', mobile: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-      { employeeId: '02000001', contact: '09194448888', mobile: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'District 3 · Silay', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-      { employeeId: '01000001', contact: '09187654321', mobile: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'District 3 · Silay', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '04000001', contact: '09171234567', name: 'Juan dela Cruz', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '03000001', contact: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', roleKey: 'farm_manager', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '02000001', contact: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', roleKey: 'sra_admin', blockFarmId: 'BLK-NCY-01', blockFarm: 'District 3 · Silay', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '01000001', contact: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', roleKey: 'super_admin', blockFarmId: 'BLK-NCY-01', blockFarm: 'District 3 · Silay', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
     ];
     user = canonical.find(u => 
       u.contact.replace(/\D/g, '') === cleaned || 
@@ -783,10 +787,9 @@ export const updateUserMobileNumber = async (newMobile, passwordVerification) =>
   }
 
   const formatted = cleanNew.startsWith('639') ? '0' + cleanNew.slice(2) : cleanNew;
-  const displayFormatted = formatted.length === 11 ? `${formatted.slice(0, 4)} ${formatted.slice(4, 7)} ${formatted.slice(7)}` : formatted;
 
-  CURRENT_SESSION.mobile = displayFormatted;
   CURRENT_SESSION.contact = formatted;
+  if ('mobile' in CURRENT_SESSION) delete CURRENT_SESSION.mobile;
 
   const uEmp = String(CURRENT_SESSION.employeeId || '').trim();
   const existingInArray = users.find(u => 
@@ -795,8 +798,8 @@ export const updateUserMobileNumber = async (newMobile, passwordVerification) =>
   );
 
   if (existingInArray) {
-    existingInArray.mobile = displayFormatted;
     existingInArray.contact = formatted;
+    if ('mobile' in existingInArray) delete existingInArray.mobile;
     existingInArray.updatedAt = new Date().toISOString();
   } else {
     users.push({ ...CURRENT_SESSION });
@@ -804,7 +807,10 @@ export const updateUserMobileNumber = async (newMobile, passwordVerification) =>
 
   if (db) {
     try {
-      await setDoc(doc(db, 'users', formatted), { ...CURRENT_SESSION, contact: formatted, mobile: displayFormatted }, { merge: true });
+      const docId = CURRENT_SESSION.employeeId || formatted;
+      const userUpdatePayload = { ...CURRENT_SESSION, contact: formatted };
+      delete userUpdatePayload.mobile;
+      await setDoc(doc(db, 'users', docId), userUpdatePayload, { merge: true });
     } catch (e) {
       console.warn('[dataStore] Firestore mobile update notice:', e);
     }
@@ -842,9 +848,9 @@ export const updateUserPassword = async (currentPassword, newPassword) => {
 
   if (db) {
     try {
-      const cleanContact = String(CURRENT_SESSION.contact || CURRENT_SESSION.mobile || '').replace(/\D/g, '');
-      if (cleanContact) {
-        await setDoc(doc(db, 'users', cleanContact), { passwordHash: newPassHash, updatedAt: new Date().toISOString() }, { merge: true });
+      const docId = CURRENT_SESSION.employeeId || String(CURRENT_SESSION.contact || CURRENT_SESSION.mobile || '').replace(/\D/g, '');
+      if (docId) {
+        await setDoc(doc(db, 'users', docId), { passwordHash: newPassHash, updatedAt: new Date().toISOString() }, { merge: true });
       }
     } catch (e) {
       console.warn('[dataStore] Firestore password update notice:', e);
@@ -876,10 +882,10 @@ export const resetUserPasswordByIdentifier = async (identifier, newPassword) => 
   if (!user) {
     // Check canonical fallback accounts
     const canonical = [
-      { employeeId: '04000001', contact: '09171234567', mobile: '09171234567', name: 'Juan dela Cruz', role: 'Member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-      { employeeId: '03000001', contact: '09189876543', mobile: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-      { employeeId: '02000001', contact: '09194448888', mobile: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'District 3 · Silay', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
-      { employeeId: '01000001', contact: '09187654321', mobile: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'District 3 · Silay', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '04000001', contact: '09171234567', name: 'Juan dela Cruz', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '03000001', contact: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', roleKey: 'farm_manager', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '02000001', contact: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', roleKey: 'sra_admin', blockFarmId: 'BLK-NCY-01', blockFarm: 'District 3 · Silay', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
+      { employeeId: '01000001', contact: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', roleKey: 'super_admin', blockFarmId: 'BLK-NCY-01', blockFarm: 'District 3 · Silay', fieldId: '', passwordHash: DEFAULT_SEED_PASSWORD_HASH },
     ];
     user = canonical.find(u => 
       u.contact.replace(/\D/g, '') === clean || 
@@ -909,9 +915,9 @@ export const resetUserPasswordByIdentifier = async (identifier, newPassword) => 
 
   if (db) {
     try {
-      const cleanContact = String(user.contact || user.mobile || '').replace(/\D/g, '');
-      if (cleanContact) {
-        await setDoc(doc(db, 'users', cleanContact), { passwordHash: newPassHash, updatedAt: new Date().toISOString() }, { merge: true });
+      const docId = user.employeeId || String(user.contact || user.mobile || '').replace(/\D/g, '');
+      if (docId) {
+        await setDoc(doc(db, 'users', docId), { passwordHash: newPassHash, updatedAt: new Date().toISOString() }, { merge: true });
       }
     } catch (e) {
       console.warn('[dataStore] Firestore reset password notice:', e);
@@ -931,17 +937,13 @@ export const registerUser = async (userData) => {
     name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'New Farmer Member',
     role: 'Member',
     roleKey: 'member',
-    contact: userData.contactNumber,
-    mobile: userData.contactNumber,
+    contact: cleaned || userData.contactNumber,
     fieldId: 'Unassigned (Pending Manager Allocation)',
     blockFarmId: 'BLK-NCY-01',
-    blockFarmScope: userData.blockFarm || 'Nacayao Block Farm',
     blockFarm: userData.blockFarm || 'Nacayao Block Farm',
-    farm: userData.blockFarm || 'Nacayao Block Farm',
     passwordHash: passHash,
     pendingLogs: 0,
     syncedLogs: 0,
-    logsHandled: 0,
     regDate: new Date().toISOString().split('T')[0],
     createdAt: new Date().toISOString()
   };
@@ -950,7 +952,8 @@ export const registerUser = async (userData) => {
 
   if (db) {
     try {
-      await setDoc(doc(db, 'users', cleaned), newAccount, { merge: true });
+      const docId = newAccount.employeeId || cleaned;
+      await setDoc(doc(db, 'users', docId), newAccount, { merge: true });
     } catch (e) {
       console.warn('[dataStore] Failed to write user to Firestore:', e);
     }
@@ -963,12 +966,12 @@ export const registerUser = async (userData) => {
 let CURRENT_SESSION = {
   name: 'Juan dela Cruz',
   role: 'Member',
+  roleKey: 'member',
   employeeId: '04000001',
   fieldId: 'FLD-NCY-001',
   blockFarmId: 'BLK-NCY-01',
-  blockFarmScope: 'FLD-NCY-001 (1.5 Ha)',
-  farm: 'Nacayao Block Farm',
-  mobile: '0917 123 4567',
+  blockFarm: 'Nacayao Block Farm',
+  contact: '09171234567',
   pendingLogs: 0,
   syncedLogs: 24,
 };
@@ -999,6 +1002,8 @@ const persistAllToStorage = () => {
         [STORAGE_KEYS.TICKETS, supportTickets],
         [STORAGE_KEYS.PREFS, SECURITY_PREFERENCES],
         [STORAGE_KEYS.PENDING_ASSIGNMENTS, assignmentRequests],
+        [STORAGE_KEYS.AUDIT_REPORTS, auditReports],
+        [STORAGE_KEYS.SYSTEM_HISTORY, systemHistory],
       ]);
     } catch (e) {
       console.warn('[dataStore] Background persistence error:', e);
@@ -1191,23 +1196,47 @@ export const updateOperationLogWithSecurity = async (logId, updates, editReason,
 
 export const deletePastLogsForField = async (fieldId) => {
   if (!fieldId) return;
-  const toDelete = operationLogs.filter(l => l.fieldId === fieldId && l.isPastCycle);
-  const remaining = operationLogs.filter(l => !(l.fieldId === fieldId && l.isPastCycle));
-  
-  operationLogs.length = 0;
-  remaining.forEach(l => operationLogs.push(l));
+  // Soft-archive past cycle logs instead of destructive deletion to preserve SRA compliance audit trails
+  const toArchive = operationLogs.filter(l => l.fieldId === fieldId && l.isPastCycle);
+  toArchive.forEach(l => {
+    l.isArchived = true;
+    l.archivedAt = new Date().toISOString();
+  });
 
   await saveItem(STORAGE_KEYS.LOGS, operationLogs);
   notify();
 
   if (db) {
     try {
-      const delPromises = toDelete.map(l => deleteDoc(doc(db, 'operation_logs', l.id)));
-      await Promise.all(delPromises);
+      const archivePromises = toArchive.map(l => 
+        setDoc(doc(db, 'operation_logs', l.id), { isArchived: true, archivedAt: new Date().toISOString() }, { merge: true })
+      );
+      await Promise.all(archivePromises);
     } catch (err) {
-      console.warn('[dataStore] Error deleting past logs from Firestore:', err);
+      console.warn('[dataStore] Error archiving past logs in Firestore:', err);
     }
   }
+};
+export const archivePastLogsForField = deletePastLogsForField;
+
+export const calculateSRAWeekLabel = (dateInput = new Date()) => {
+  let d = dateInput;
+  if (!(d instanceof Date)) {
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())) {
+      const [y, m, dNum] = dateInput.trim().split('-').map(Number);
+      d = new Date(y, m - 1, dNum);
+    } else {
+      d = new Date(dateInput);
+    }
+  }
+  if (isNaN(d.getTime())) d = new Date();
+  const day = d.getDate();
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthName = monthNames[d.getMonth()];
+  const firstDayOfMonth = new Date(d.getFullYear(), d.getMonth(), 1).getDay(); // 0=Sun, 1=Mon...
+  const weekNum = Math.ceil((day + firstDayOfMonth) / 7);
+  const boundedWeek = Math.min(Math.max(weekNum, 1), 5);
+  return `Week ${boundedWeek} ${monthName}`;
 };
 
 export const publishSraPrice = async ({ price, molasses, week, circular, source }) => {
@@ -1615,13 +1644,13 @@ export const addSRAPrice = async (price) => {
 
 export const submitSupportTicket = async (ticket) => {
   const newId = generateTicketId(800 + supportTickets.length + 1);
-  const farmName = CURRENT_SESSION.blockFarm || CURRENT_SESSION.blockFarmScope || CURRENT_SESSION.farm || 'Nacayao Block Farm';
+  const farmName = CURRENT_SESSION.blockFarm || CURRENT_SESSION.farm || 'Nacayao Block Farm';
   const newTicket = {
     id: newId,
     subject: ticket.title || ticket.subject || 'Support Request',
     memberName: CURRENT_SESSION.name,
     memberId: CURRENT_SESSION.employeeId || '',
-    contact: CURRENT_SESSION.mobile || CURRENT_SESSION.contact || '',
+    contact: CURRENT_SESSION.contact || '',
     fieldId: CURRENT_SESSION.fieldId || '',
     blockFarm: farmName,
     category: ticket.category || 'General Support',
@@ -1764,26 +1793,57 @@ export const listenToCloudSync = () => {
       notify();
     }, (err) => console.warn('[Mobile] Users listener notice:', err));
 
-    // 6. Live Audit Reports & History Listener (Authoritative Cloud Sync)
+    // 6. Live Audit Reports Listener (Authoritative Cloud Sync)
     const unsubAuditReports = onSnapshot(collection(db, 'audit_reports'), (snapshot) => {
       if (snapshot.empty) return;
       const remoteAudits = [];
       snapshot.forEach(docSnap => remoteAudits.push({ id: docSnap.id, ...docSnap.data() }));
 
       if (remoteAudits.length > 0) {
-        // Merge or update audit logs
         remoteAudits.forEach(ra => {
-          const existingIdx = auditLogs.findIndex(a => a.id === ra.id || a.reportId === ra.id);
+          const existingIdx = auditReports.findIndex(a => 
+            a.id === ra.id || 
+            a.reportId === ra.id || 
+            (ra.reportId && a.id === ra.reportId) || 
+            (ra.id && a.reportId === ra.id) ||
+            (ra.qrSignature && (a.qrSignature === ra.qrSignature || a.qrHash === ra.qrSignature))
+          );
           if (existingIdx >= 0) {
-            auditLogs[existingIdx] = { ...auditLogs[existingIdx], ...ra };
+            const isCertified = auditReports[existingIdx].status === 'Certified' || ra.status === 'Certified';
+            auditReports[existingIdx] = { 
+              ...auditReports[existingIdx], 
+              ...ra,
+              status: isCertified ? 'Certified' : (ra.status || 'Pending')
+            };
           } else {
-            auditLogs.unshift(ra);
+            auditReports.unshift(ra);
           }
         });
-        saveItem('@hugpong_audit_logs', auditLogs);
+        saveItem(STORAGE_KEYS.AUDIT_REPORTS, auditReports);
+        saveItem('@hugpong_audit_logs', auditReports);
         notify();
       }
     }, (err) => console.warn('[Mobile] Audit reports listener notice:', err));
+
+    // 7. Live Audit Logs / System History Listener (Authoritative Cloud Sync)
+    const unsubAuditLogs = onSnapshot(collection(db, 'audit_logs'), (snapshot) => {
+      if (snapshot.empty) return;
+      const remoteLogs = [];
+      snapshot.forEach(docSnap => remoteLogs.push({ id: docSnap.id, ...docSnap.data() }));
+
+      if (remoteLogs.length > 0) {
+        remoteLogs.forEach(rl => {
+          const existingIdx = systemHistory.findIndex(a => a.id === rl.id);
+          if (existingIdx >= 0) {
+            systemHistory[existingIdx] = { ...systemHistory[existingIdx], ...rl };
+          } else {
+            systemHistory.unshift(rl);
+          }
+        });
+        saveItem(STORAGE_KEYS.SYSTEM_HISTORY, systemHistory);
+        notify();
+      }
+    }, (err) => console.warn('[Mobile] Audit logs listener notice:', err));
 
     return () => {
       unsubBlockFarms();
@@ -1793,6 +1853,7 @@ export const listenToCloudSync = () => {
       unsubTickets();
       unsubUsers();
       unsubAuditReports();
+      unsubAuditLogs();
     };
   } catch (err) {
     console.warn('[Mobile] Error setting up Cloud listeners:', err);
@@ -1818,6 +1879,32 @@ export const performMobileSync = async () => {
     f.synced = true;
     f.lastSync = 'Just now';
   });
+
+  // Flush compiled audit reports to Firestore (District Audit Queue)
+  try {
+    if (db && Array.isArray(auditReports)) {
+      for (const rep of auditReports) {
+        if (rep && (rep.reportId || rep.id)) {
+          const docId = rep.reportId || rep.id;
+          const docRef = doc(db, 'audit_reports', docId);
+          // Regulatory Safeguard: Never overwrite an existing Certified status in Firestore with Pending
+          try {
+            const snap = await getDoc(docRef);
+            if (snap.exists() && snap.data()?.status === 'Certified') {
+              rep.status = 'Certified';
+              rep.certifiedBy = snap.data().certifiedBy || rep.certifiedBy;
+              rep.certifiedRole = snap.data().certifiedRole || rep.certifiedRole;
+              rep.certifiedAt = snap.data().certifiedAt || rep.certifiedAt;
+              continue;
+            }
+          } catch (ge) {}
+          await setDoc(docRef, { ...rep, updatedAt: new Date().toISOString() }, { merge: true });
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[performMobileSync] auditReports push error:', e);
+  }
 
   // Broadcast device health telemetry
   try {
@@ -1859,6 +1946,18 @@ export const initializeOfflineStorage = async () => {
     if (Array.isArray(stored[STORAGE_KEYS.PRICES]) && stored[STORAGE_KEYS.PRICES].length > 0) {
       priceHistory.length = 0;
       stored[STORAGE_KEYS.PRICES].forEach(p => priceHistory.push(p));
+    }
+
+    // Hydrate cached audit reports
+    if (Array.isArray(stored[STORAGE_KEYS.AUDIT_REPORTS]) && stored[STORAGE_KEYS.AUDIT_REPORTS].length > 0) {
+      auditReports.length = 0;
+      stored[STORAGE_KEYS.AUDIT_REPORTS].forEach(a => auditReports.push(a));
+    }
+
+    // Hydrate cached system history
+    if (Array.isArray(stored[STORAGE_KEYS.SYSTEM_HISTORY]) && stored[STORAGE_KEYS.SYSTEM_HISTORY].length > 0) {
+      systemHistory.length = 0;
+      stored[STORAGE_KEYS.SYSTEM_HISTORY].forEach(s => systemHistory.push(s));
     }
     
     const outboxCount = getOutboxCount();

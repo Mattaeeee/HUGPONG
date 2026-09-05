@@ -13,6 +13,8 @@ export const STORAGE_KEYS = {
   PENDING_ASSIGNMENTS: '@hugpong_pending_assignments',
   CUSTOM_STAGES: '@hugpong_custom_stages',
   LAST_SYNC: '@hugpong_last_sync',
+  AUDIT_REPORTS: '@hugpong_audit_reports',
+  SYSTEM_HISTORY: '@hugpong_system_history',
 };
 
 // In-memory shadow cache for synchronous reads after initial hydration

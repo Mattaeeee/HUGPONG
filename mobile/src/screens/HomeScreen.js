@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, SHADOW } from '../theme';
-import { currentPrice, currentMarketObservation, priceAnalytics, subscribe, getIsSynced, getCurrentSession, fields, performMobileSync, getSortedPrices, operationLogs, draftLogs, publishSraPrice } from '../data/dataStore';
+import { currentPrice, currentMarketObservation, priceAnalytics, subscribe, getIsSynced, getCurrentSession, fields, performMobileSync, getSortedPrices, operationLogs, draftLogs, publishSraPrice, calculateSRAWeekLabel } from '../data/dataStore';
 import { getOutboxCount } from '../services/syncEngine';
 import { useTranslation } from '../services/i18n';
 import AppHeader from '../components/AppHeader';
@@ -29,11 +29,11 @@ const generateDynamicNotifications = (session, customDrafts, customLogs, readIds
   const allDrafts = customDrafts || draftLogs || [];
 
   const userRole = session?.role || 'Member';
-  const managerBlockFarm = (session?.blockFarmScope || session?.blockFarm || 'Nacayao Block Farm').toLowerCase();
+  const managerBlockFarm = (session?.blockFarm || 'Nacayao Block Farm').toLowerCase();
   
   // Resolve fields belonging to this manager's block farm
   const managerFieldIds = fields.filter(f => {
-    const fFarm = (f.blockFarm || f.blockFarmScope || 'Nacayao Block Farm').toLowerCase();
+    const fFarm = (f.blockFarm || 'Nacayao Block Farm').toLowerCase();
     return fFarm.includes(managerBlockFarm) || managerBlockFarm.includes(fFarm);
   }).map(f => f.id);
 
@@ -97,7 +97,7 @@ const generateDynamicNotifications = (session, customDrafts, customLogs, readIds
         icon: 'document-text-outline',
         color: '#0284C7',
         title: 'Unsubmitted Field Drafts',
-        msg: `You have ${scopedDrafts.length} unsubmitted draft log(s) for ${userRole === 'Member' ? (session?.fieldId || 'your plot') : (session?.blockFarmScope || 'Nacayao Block Farm')}. Tap to review, edit, and record operations.`,
+        msg: `You have ${scopedDrafts.length} unsubmitted draft log(s) for ${userRole === 'Member' ? (session?.fieldId || 'your plot') : (session?.blockFarm || 'Nacayao Block Farm')}. Tap to review, edit, and record operations.`,
         time: `${scopedDrafts.length} draft${scopedDrafts.length !== 1 ? 's' : ''}`,
         badgeText: 'Review Drafts',
         unread: !readIds.has('notif-unsubmitted-drafts'),
@@ -131,7 +131,7 @@ export default function HomeScreen({ navigation }) {
   const { livePrice, liveMol, liveDate, liveChange, liveWeek } = priceData;
 
   const [showPriceModal, setShowPriceModal] = useState(false);
-  const [inputWeek, setInputWeek] = useState('Week 4 May');
+  const [inputWeek, setInputWeek] = useState(() => calculateSRAWeekLabel(new Date()));
   const [inputBag, setInputBag] = useState('2950');
   const [inputMol, setInputMol] = useState('4400');
   const [inputCircular, setInputCircular] = useState('SRA Circular #105');
@@ -230,9 +230,10 @@ export default function HomeScreen({ navigation }) {
 
   const handleOpenPriceModal = () => {
     if (session.role === 'SRA (Admin)') {
+      const autoWeek = calculateSRAWeekLabel(new Date());
       setInputBag(livePrice.toString());
       setInputMol(liveMol.toString());
-      setInputWeek(liveWeek || 'Week 3 Jun');
+      setInputWeek(autoWeek);
       setInputCircular('SRA Circular #105');
       setShowPriceModal(true);
     }
@@ -511,14 +512,33 @@ export default function HomeScreen({ navigation }) {
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
             <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>{t('sra_publish_title', 'Publish Official SRA Price')}</Text>
+              <View>
+                <Text style={s.modalTitle}>{t('sra_publish_title', 'Publish Official SRA Price')}</Text>
+                <Text style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
+                  HPCo Silay Millsite Circular · Official SRA Notice
+                </Text>
+              </View>
               <TouchableOpacity onPress={() => setShowPriceModal(false)}>
                 <Ionicons name="close" size={22} color={COLORS.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <Text style={s.inputLabel}>{t('sra_circ_week', 'Circular / Week')}</Text>
-            <TextInput style={s.input} value={inputWeek} onChangeText={setInputWeek} placeholder="e.g. Week 3 Jun" />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 4 }}>
+              <Text style={[s.inputLabel, { marginBottom: 0 }]}>{t('sra_circ_week', 'Circular / Week')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EBF3E8', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                <Ionicons name="sparkles-outline" size={10} color={COLORS.primary} />
+                <Text style={{ fontSize: 10, fontWeight: '700', color: COLORS.primary }}>Auto-detected</Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <TextInput style={[s.input, { flex: 1 }]} value={inputWeek} onChangeText={setInputWeek} placeholder="e.g. Week 1 Sep" />
+              <TouchableOpacity
+                onPress={() => setInputWeek(calculateSRAWeekLabel(new Date()))}
+                style={{ backgroundColor: COLORS.background, paddingHorizontal: 12, paddingVertical: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border }}
+              >
+                <Ionicons name="refresh" size={16} color={COLORS.primary} />
+              </TouchableOpacity>
+            </View>
 
             <Text style={s.inputLabel}>{t('sra_circ_num', 'SRA Circular Number')}</Text>
             <TextInput
@@ -536,7 +556,7 @@ export default function HomeScreen({ navigation }) {
 
             <TouchableOpacity 
               style={s.saveModalBtn}
-              onPress={async () => {
+              onPress={() => {
                 const b = parseFloat(inputBag);
                 const m = parseFloat(inputMol);
                 if (isNaN(b) || isNaN(m)) {
@@ -544,32 +564,44 @@ export default function HomeScreen({ navigation }) {
                   return;
                 }
 
-                try {
-                  await publishSraPrice({
-                    price: b,
-                    molasses: m,
-                    week: inputWeek || 'Current Week',
-                    circular: inputCircular || 'SRA Circular #105',
-                    source: inputCircular ? `${inputCircular} (HPCo Silay Millsite)` : 'HPCo Silay Millsite'
-                  });
+                Alert.alert(
+                  t('confirm_broadcast_title', 'Publish SRA Circular Price?'),
+                  `You are about to broadcast the official SRA Circular prices for ${inputWeek || 'Current Week'}:\n\n• Raw Sugar: ₱${b.toLocaleString()}/Lkg\n• Molasses: ₱${m.toLocaleString()}/MT\n\nThis benchmark will synchronize across all cooperative web dashboards and member mobile apps.`,
+                  [
+                    { text: t('cancel', 'Cancel'), style: 'cancel' },
+                    {
+                      text: t('confirm_publish', 'Publish & Broadcast'),
+                      onPress: async () => {
+                        try {
+                          await publishSraPrice({
+                            price: b,
+                            molasses: m,
+                            week: inputWeek || 'Current Week',
+                            circular: inputCircular || 'SRA Circular #105',
+                            source: inputCircular ? `${inputCircular} (HPCo Silay Millsite)` : 'HPCo Silay Millsite'
+                          });
 
-                  setPriceData({
-                    livePrice: b,
-                    liveMol: m,
-                    liveWeek: inputWeek || 'Current Week',
-                    liveDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                    liveChange: b - (currentPrice.value || b)
-                  });
+                          setPriceData({
+                            livePrice: b,
+                            liveMol: m,
+                            liveWeek: inputWeek || 'Current Week',
+                            liveDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                            liveChange: b - (currentPrice.value || b)
+                          });
 
-                  setShowPriceModal(false);
-                  Alert.alert(
-                    t('price_posted_title', 'Price Posted ✓'),
-                    `${inputCircular || 'SRA Circular'} benchmark updated to ₱${b.toLocaleString()}/Lkg and broadcasted to all cooperative portals & mobile apps.`
-                  );
-                } catch (err) {
-                  console.warn('[HomeScreen] Error posting price:', err);
-                  Alert.alert('Broadcast Error', 'Could not broadcast price update.');
-                }
+                          setShowPriceModal(false);
+                          Alert.alert(
+                            t('price_posted_title', 'Price Posted ✓'),
+                            `${inputCircular || 'SRA Circular'} benchmark updated to ₱${b.toLocaleString()}/Lkg and broadcasted to all cooperative portals & mobile apps.`
+                          );
+                        } catch (err) {
+                          console.warn('[HomeScreen] Error posting price:', err);
+                          Alert.alert('Broadcast Error', 'Could not broadcast price update.');
+                        }
+                      }
+                    }
+                  ]
+                );
               }}
             >
               <Text style={s.saveModalBtnText}>{t('sra_btn_broadcast', 'Broadcast Benchmark Price')}</Text>

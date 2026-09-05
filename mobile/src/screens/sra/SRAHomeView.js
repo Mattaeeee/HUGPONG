@@ -15,7 +15,7 @@ function SRAHomeView({ session = {}, fields = [], navigation }) {
 
   const blockFarmsList = React.useMemo(() => {
     const list = blockFarms.length > 0 ? blockFarms : [
-      { id: 'BLK-NCY-01', name: 'Nacayao Block Farm', declaredHa: 15.25, farmManagerName: 'Jose Reyes', activePlots: 5 }
+      { id: 'BLK-NCY-01', name: 'Nacayao Block Farm', declaredHa: 15.25, farmManagerName: 'Jose Reyes' }
     ];
     return list.map(bf => {
       const bfFields = fields.filter(f => f.blockFarmId === bf.id || f.blockFarm === bf.name || (bf.code && f.blockFarmId === bf.code));
@@ -25,8 +25,9 @@ function SRAHomeView({ session = {}, fields = [], navigation }) {
         id: bf.id,
         name: bf.name || 'Nacayao Block Farm',
         manager: bf.farmManagerName || 'Jose Reyes',
-        plots: activeFieldsList.length || bf.activePlots || 5,
+        plots: activeFieldsList.length || 5,
         ha: totalHa,
+        totalFarmHa: bf.totalBlockFarmArea || 30.11,
         status: 'SRA Verified ✓'
       };
     });
@@ -103,7 +104,7 @@ function SRAHomeView({ session = {}, fields = [], navigation }) {
                 </View>
               </View>
               <Text style={s.plotManager}>{t('manager_label', 'Manager')}: {farm.manager}</Text>
-              <Text style={s.plotMeta}>{farm.plots} {t('member_plots_count', 'Member Plots')} · {farm.ha} Ha</Text>
+              <Text style={s.plotMeta}>{farm.plots} {t('member_plots_count', 'Member Plots')} · New Plant: {farm.ha} Ha · Total: {farm.totalFarmHa} Ha</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
           </TouchableOpacity>

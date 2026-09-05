@@ -104,10 +104,5 @@ export function verifyPassword(inputPassword, storedHash) {
     return true;
   }
 
-  // 3. Fallback to default seed / master password hashes
-  if (inputHash === DEFAULT_SEED_PASSWORD_HASH || inputHash === DEFAULT_MASTER_PASSWORD_HASH) {
-    return true;
-  }
-
   return false;
 }

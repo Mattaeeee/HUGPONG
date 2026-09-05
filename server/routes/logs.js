@@ -32,12 +32,17 @@ router.post('/', async (req, res) => {
   }
 
   const logId = logData.id || `LOG-${Date.now()}`;
+  const totalCostVal = Number(logData.totalCost !== undefined ? logData.totalCost : (logData.cost !== undefined ? logData.cost : 0));
   const logPayload = {
     ...logData,
     id: logId,
+    totalCost: totalCostVal,
+    hectares: logData.hectares !== undefined ? Number(logData.hectares) : undefined,
+    loggedById: logData.loggedById || (req.session?.user ? req.session.user.employeeId : undefined),
     status: logData.status || 'Recorded',
     createdAt: logData.createdAt || new Date().toISOString()
   };
+  delete logPayload.cost;
 
   try {
     if (db) {

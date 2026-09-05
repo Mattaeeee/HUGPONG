@@ -213,6 +213,14 @@ export const TRANSLATIONS = {
     confirm_delete_past_cycles: 'This will remove past cycle records for this field from local device history. Active cycle logs are not affected.',
     past_cycles_deleted_msg: 'Past cycle history has been cleared from local history.',
     btn_delete_all: 'Delete All',
+    monthly_audit_package_badge: 'Monthly Regulatory Audit',
+    audit_period_label: 'Period',
+    compile_ready_badge: 'Ready to Compile',
+    compile_card_desc: 'Compiles all member operation logs into a tamper-evident, offline vector SRA QR package for district regulatory inspection.',
+    btn_compile_generate_qr: 'Compile & Generate SRA QR',
+    btn_copy_hash: 'Copy Audit Hash',
+    btn_share_hash: 'Share / Copy Audit Code',
+    hash_copied_toast: 'Audit Hash Copied!',
 
     // Sync & Offline Notifications
     sync_status_synced: 'Fully Synced with Cloud',
@@ -1254,6 +1262,14 @@ export const TRANSLATIONS = {
     confirm_delete_past_cycles: 'Tatanggalin nito ang mga tala ng nakaraang siklo para sa bukid na ito mula sa lokal na kasaysayan ng device. Hindi maaapektuhan ang kasalukuyang aktibong tala.',
     past_cycles_deleted_msg: 'Nalinis na ang kasaysayan ng nakaraang siklo mula sa lokal na talaan.',
     btn_delete_all: 'Burahin Lahat',
+    monthly_audit_package_badge: 'Buwanang Regulatoryong Audit',
+    audit_period_label: 'Panahon',
+    compile_ready_badge: 'Handa nang Tipunin',
+    compile_card_desc: 'Tinitipon ang lahat ng tala ng operasyon ng mga miyembro sa isang opisyal na SRA QR package para sa inspeksyon ng distrito.',
+    btn_compile_generate_qr: 'Tipunin at Bumuo ng SRA QR',
+    btn_copy_hash: 'Kopyahin ang Audit Hash',
+    btn_share_hash: 'Ibahagi / Kopyahin ang Audit Code',
+    hash_copied_toast: 'Nakopya ang Audit Hash!',
 
     // Sync & Offline Notifications
     sync_status_synced: 'Naka-sync sa Cloud',
@@ -2294,6 +2310,14 @@ export const TRANSLATIONS = {
     confirm_delete_past_cycles: 'Kuhaon sini ang mga rekord sang nagligad nga siklo para sa sini nga uma sa memory sang device. Indi maapektuhan ang subong nga aktibo nga rekord.',
     past_cycles_deleted_msg: 'Napanas na ang rekord sang nagligad nga siklo sa lokal nga memory.',
     btn_delete_all: 'Panason Tanan',
+    monthly_audit_package_badge: 'Bulanan nga Regulatory Audit',
+    audit_period_label: 'Panag-on',
+    compile_ready_badge: 'Handa na Tipunon',
+    compile_card_desc: 'Ginatipon ang tanan nga tala sang hilikuton sang mga miyembro sa isa ka opisyal nga SRA QR package para sa inspeksyon sang distrito.',
+    btn_compile_generate_qr: 'Tipunon kag Maghimo sang SRA QR',
+    btn_copy_hash: 'Kopyahon ang Audit Hash',
+    btn_share_hash: 'Ipaambit / Kopyahon ang Audit Code',
+    hash_copied_toast: 'Nakopya ang Audit Hash!',
 
     // Sync & Offline Notifications
     sync_status_synced: 'Naka-sync na sa Cloud',

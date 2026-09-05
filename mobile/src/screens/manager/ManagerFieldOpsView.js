@@ -34,7 +34,7 @@ function ManagerFieldOpsView({
       <View style={s.commandRow}>
         <TouchableOpacity style={s.auditBtn} onPress={onGenerateAudit} activeOpacity={0.8}>
           <Ionicons name="qr-code-outline" size={18} color="#FFF" />
-          <Text style={s.auditBtnText} numberOfLines={1} adjustsFontSizeToFit>{t('generate_audit_qr_btn', 'Generate Audit QR')}</Text>
+          <Text style={s.auditBtnText} numberOfLines={1} adjustsFontSizeToFit>{t('btn_compile_generate_qr', 'Compile & Generate SRA QR')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.takeoverBtn} onPress={onOpenTakeover} activeOpacity={0.8}>
           <Ionicons name="swap-horizontal" size={18} color={COLORS.primary} />

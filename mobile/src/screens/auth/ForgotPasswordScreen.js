@@ -59,18 +59,30 @@ export default function ForgotPasswordScreen({ navigation }) {
       if (res && res.success) {
         Alert.alert(
           'SMS Code Dispatched',
-          `A 6-digit SMS verification code was sent to ${userPhone}.\n\n(Verification Code: ${generatedOtp})`
+          `A 6-digit SMS verification code was dispatched to ${userPhone}.`
         );
       } else {
-        Alert.alert(
-          'SMS Code Ready',
-          `Verification code for ${userPhone}:\n\nCode: ${generatedOtp}`
-        );
+        // Fallback for offline / dev simulation
+        if (typeof __DEV__ !== 'undefined' && __DEV__) {
+          Alert.alert(
+            'SMS Simulation (Dev Mode)',
+            `Verification code for ${userPhone}:\n\nCode: ${generatedOtp}`
+          );
+        } else {
+          Alert.alert(
+            'SMS Dispatch Notice',
+            `A 6-digit verification code was sent to ${userPhone}. Please check your SMS inbox.`
+          );
+        }
       }
       setStep(2);
     } catch (e) {
       setLoading(false);
-      Alert.alert('SMS Ready', `Verification code for ${userPhone}: ${generatedOtp}`);
+      if (typeof __DEV__ !== 'undefined' && __DEV__) {
+        Alert.alert('SMS Simulation (Dev Mode)', `Verification code for ${userPhone}: ${generatedOtp}`);
+      } else {
+        Alert.alert('SMS Dispatch Notice', `A verification code was dispatched to ${userPhone}.`);
+      }
       setStep(2);
     }
   };
@@ -82,7 +94,7 @@ export default function ForgotPasswordScreen({ navigation }) {
       Alert.alert('Required', 'Please enter the 6-digit SMS code.');
       return;
     }
-    if (cleanOtp !== sentOtp && cleanOtp !== '123456') {
+    if (cleanOtp !== sentOtp) {
       Alert.alert('Invalid Code', 'The verification code you entered is incorrect. Please try again.');
       return;
     }

@@ -26,16 +26,34 @@ router.get('/', async (req, res) => {
 
 // ── POST /api/fields (Managers & Admins) ──────────────────────
 router.post('/', requireAuth, requireRole(['farm manager', 'super admin', 'admin']), async (req, res) => {
-  const { id, memberId, blockFarmId, member, ha, stage, blockFarm, customStages } = req.body;
+  const { id, memberId, memberName, member, blockFarmId, ha, stage, blockFarm, customStages } = req.body;
 
-  if (!id) {
-    return res.status(400).json({ success: false, error: 'Field ID is required.' });
+  const sessionUser = req.session ? req.session.user : null;
+  const isManager = sessionUser && String(sessionUser.role || '').toLowerCase().includes('manager');
+  const isSuperAdmin = sessionUser && String(sessionUser.role || '').toLowerCase().includes('super');
+  const isSRAAdmin = sessionUser && (String(sessionUser.role || '').toLowerCase().includes('sra') || (String(sessionUser.role || '').toLowerCase().includes('admin') && !isManager));
+
+  if (isManager && !isSuperAdmin && !isSRAAdmin) {
+    const mgrFarm = (sessionUser.blockFarm || '').trim().toLowerCase();
+    const reqFarm = (blockFarm || '').trim().toLowerCase();
+    if (mgrFarm && reqFarm && mgrFarm !== reqFarm) {
+      return res.status(403).json({
+        success: false,
+        error: `Permission Denied: Farm Managers are restricted to their assigned block farm (${sessionUser.blockFarm}).`
+      });
+    }
   }
+
+  const assignedBlockFarm = (isManager && !isSuperAdmin && !isSRAAdmin && sessionUser?.blockFarm) 
+    ? sessionUser.blockFarm 
+    : (blockFarm || 'Nacayao Block Farm');
 
   const fieldPayload = {
     id,
-    blockFarmId: blockFarmId || (blockFarm ? 'BLK-NCY-01' : 'BLK-NCY-01'),
+    blockFarmId: blockFarmId || 'BLK-NCY-01',
+    blockFarm: assignedBlockFarm,
     memberId: memberId || '04000001',
+    memberName: memberName || member || 'Assigned Member',
     ha: Number(ha) || 1.5,
     stage: stage || 'Pre-Planting & Land Preparation',
     customStages: customStages || [],

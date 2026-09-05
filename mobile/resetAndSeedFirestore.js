@@ -78,7 +78,6 @@ async function seedData() {
       farmManagerId: '03000001',
       farmManagerName: 'Jose Reyes',
       declaredHa: 15.25,
-      activePlots: 5,
       cooperative: 'Silay Planters Sugarcane Agrarian Reform Cooperative',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -91,31 +90,31 @@ async function seedData() {
   // 2. USERS
   console.log('  → Seeding users...');
   const users = [
-    { employeeId: '01000001', contact: '09187654321', mobile: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: '', fieldId: '', logsHandled: 256, regDate: '2026-01-01', password: 'password123' },
-    { employeeId: '01000002', contact: '09451774699', mobile: '09451774699', name: 'Project Lead', role: 'Super Admin', roleKey: 'superadmin', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 120, regDate: '2026-01-01', password: 'password123' },
-    { employeeId: '02000001', contact: '09194448888', mobile: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', roleKey: 'admin', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 84, regDate: '2026-01-15', password: 'password123' },
-    { employeeId: '03000001', contact: '09189876543', mobile: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', roleKey: 'manager', blockFarmId: 'BLK-NCY-01', fieldId: '', logsHandled: 168, regDate: '2026-02-01', password: 'password123' },
-    { employeeId: '04000001', contact: '09171234567', mobile: '09171234567', name: 'Juan dela Cruz', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', logsHandled: 24, regDate: '2026-02-10', password: 'password123' },
-    { employeeId: '04000002', contact: '09179876543', mobile: '09179876543', name: 'Pedro Reyes', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-002', logsHandled: 18, regDate: '2026-02-12', password: 'password123' },
-    { employeeId: '04000003', contact: '09194448889', mobile: '09194448889', name: 'Corazon Santos', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-003', logsHandled: 22, regDate: '2026-02-14', password: 'password123' },
-    { employeeId: '04000004', contact: '09987654321', mobile: '09987654321', name: 'Roberto Tan', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-004', logsHandled: 15, regDate: '2026-02-20', password: 'password123' },
-    { employeeId: '04000005', contact: '09555444333', mobile: '09555444333', name: 'Ana Gomez', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarmScope: 'Nacayao Block Farm', fieldId: 'FLD-NCY-005', logsHandled: 9, regDate: '2026-03-01', password: 'password123' },
+    { employeeId: '01000001', contact: '09187654321', name: 'Capstone Group (Admin)', role: 'Super Admin', roleKey: 'super_admin', blockFarmId: '', blockFarm: '', fieldId: '', regDate: '2026-01-01', password: 'password123' },
+    { employeeId: '01000002', contact: '09451774699', name: 'Project Lead', role: 'Super Admin', roleKey: 'super_admin', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: '', regDate: '2026-01-01', password: 'password123' },
+    { employeeId: '02000001', contact: '09194448888', name: 'Engr. Maria Santos', role: 'SRA (Admin)', roleKey: 'sra_admin', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: '', regDate: '2026-01-15', password: 'password123' },
+    { employeeId: '03000001', contact: '09189876543', name: 'Jose Reyes', role: 'Farm Manager', roleKey: 'farm_manager', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: '', regDate: '2026-02-01', password: 'password123' },
+    { employeeId: '04000001', contact: '09171234567', name: 'Juan dela Cruz', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: 'FLD-NCY-001', regDate: '2026-02-10', password: 'password123' },
+    { employeeId: '04000002', contact: '09179876543', name: 'Pedro Reyes', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: 'FLD-NCY-002', regDate: '2026-02-12', password: 'password123' },
+    { employeeId: '04000003', contact: '09194448889', name: 'Corazon Santos', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: 'FLD-NCY-003', regDate: '2026-02-14', password: 'password123' },
+    { employeeId: '04000004', contact: '09987654321', name: 'Roberto Tan', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: 'FLD-NCY-004', regDate: '2026-02-20', password: 'password123' },
+    { employeeId: '04000005', contact: '09555444333', name: 'Ana Gomez', role: 'Member', roleKey: 'member', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', fieldId: 'FLD-NCY-005', regDate: '2026-03-01', password: 'password123' },
   ];
   batch = writeBatch(db);
   users.forEach(u => {
-    const cleanId = u.contact.replace(/\D/g, '');
-    batch.set(doc(db, 'users', cleanId), u);
+    const docId = u.employeeId || u.contact.replace(/\D/g, '');
+    batch.set(doc(db, 'users', docId), u);
   });
   await batch.commit();
 
   // 3. FIELDS
   console.log('  → Seeding fields...');
   const fields = [
-    { id: 'FLD-NCY-001', blockFarmId: 'BLK-NCY-01', blockFarmName: 'Nacayao Block Farm', memberId: '04000001', memberName: 'Juan dela Cruz', ha: 1.5, stage: 'Pre-Planting & Land Preparation', stageNumber: 1, month: 0.5, batchMonth: 1, synced: true, lastSync: '10 mins ago', variety: 'VMC 84-524', soilType: 'Clay Loam' },
-    { id: 'FLD-NCY-002', blockFarmId: 'BLK-NCY-01', blockFarmName: 'Nacayao Block Farm', memberId: '04000002', memberName: 'Pedro Reyes', ha: 2.5, stage: 'Planting & Crop Establishment', stageNumber: 2, month: 1.0, batchMonth: 1, synced: true, lastSync: '15 mins ago', variety: 'Phil 99-1793', soilType: 'Sandy Loam' },
-    { id: 'FLD-NCY-003', blockFarmId: 'BLK-NCY-01', blockFarmName: 'Nacayao Block Farm', memberId: '04000003', memberName: 'Corazon Santos', ha: 4.5, stage: 'Basal Nutrition & Early Care', stageNumber: 3, month: 1.5, batchMonth: 1, synced: true, lastSync: '1 hr ago', variety: 'Phil 2006-2289', soilType: 'Clay Loam' },
-    { id: 'FLD-NCY-004', blockFarmId: 'BLK-NCY-01', blockFarmName: 'Nacayao Block Farm', memberId: '04000004', memberName: 'Roberto Tan', ha: 3.5, stage: 'Cultivation & Weed Management', stageNumber: 4, month: 2.5, batchMonth: 2, synced: true, lastSync: '2 hrs ago', variety: 'VMC 84-524', soilType: 'Loam' },
-    { id: 'FLD-NCY-005', blockFarmId: 'BLK-NCY-01', blockFarmName: 'Nacayao Block Farm', memberId: '04000005', memberName: 'Ana Gomez', ha: 3.25, stage: 'Crop Maintenance & Final Hilling-Up', stageNumber: 5, month: 3.5, batchMonth: 2, synced: true, lastSync: '3 hrs ago', variety: 'Phil 99-1793', soilType: 'Clay Loam' },
+    { id: 'FLD-NCY-001', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmName: 'Nacayao Block Farm', memberId: '04000001', memberName: 'Juan dela Cruz', ha: 1.5, stage: 'Pre-Planting & Land Preparation', stageNumber: 1, month: 0.5, batchMonth: 1, synced: true, lastSync: '10 mins ago', variety: 'VMC 84-524', soilType: 'Clay Loam' },
+    { id: 'FLD-NCY-002', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmName: 'Nacayao Block Farm', memberId: '04000002', memberName: 'Pedro Reyes', ha: 2.5, stage: 'Planting & Crop Establishment', stageNumber: 2, month: 1.0, batchMonth: 1, synced: true, lastSync: '15 mins ago', variety: 'Phil 99-1793', soilType: 'Sandy Loam' },
+    { id: 'FLD-NCY-003', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmName: 'Nacayao Block Farm', memberId: '04000003', memberName: 'Corazon Santos', ha: 4.5, stage: 'Basal Nutrition & Early Care', stageNumber: 3, month: 1.5, batchMonth: 1, synced: true, lastSync: '1 hr ago', variety: 'Phil 2006-2289', soilType: 'Clay Loam' },
+    { id: 'FLD-NCY-004', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmName: 'Nacayao Block Farm', memberId: '04000004', memberName: 'Roberto Tan', ha: 3.5, stage: 'Cultivation & Weed Management', stageNumber: 4, month: 2.5, batchMonth: 2, synced: true, lastSync: '2 hrs ago', variety: 'VMC 84-524', soilType: 'Loam' },
+    { id: 'FLD-NCY-005', blockFarmId: 'BLK-NCY-01', blockFarm: 'Nacayao Block Farm', blockFarmName: 'Nacayao Block Farm', memberId: '04000005', memberName: 'Ana Gomez', ha: 3.25, stage: 'Crop Maintenance & Final Hilling-Up', stageNumber: 5, month: 3.5, batchMonth: 2, synced: true, lastSync: '3 hrs ago', variety: 'Phil 99-1793', soilType: 'Clay Loam' },
   ];
   batch = writeBatch(db);
   fields.forEach(f => batch.set(doc(db, 'fields', f.id), { ...f, updatedAt: new Date().toISOString() }));
@@ -147,16 +146,16 @@ async function seedData() {
       operationName: 'Land Preparation',
       activity: 'Land Preparation (Disc Plowing & Furrowing)',
       category: 'prep',
-      cost: 18000,
       totalCost: 18000,
       costPerHa: 12000,
-      hectares: '1.5',
-      people: '2',
+      hectares: 1.5,
+      people: 2,
       date: '2026-05-02',
       approved: true,
       status: 'Recorded',
       isOffline: false,
       loggedBy: 'Juan dela Cruz (Member)',
+      loggedById: '04000001',
       subItems: [
         { id: 'SI-001-1', description: '1st Pass Disc Plowing (Tractor)', qty: 1.5, unit: 'ha', unitCost: 5000, subTotal: 7500 },
         { id: 'SI-001-2', description: '2nd Pass Disc Harrowing', qty: 1.5, unit: 'ha', unitCost: 4000, subTotal: 6000 },
@@ -173,16 +172,16 @@ async function seedData() {
       operationName: 'Cost of Planting Material (Seedcane acquisition)',
       activity: 'Cost of Planting Material (Patdan)',
       category: 'plant',
-      cost: 37500,
       totalCost: 37500,
       costPerHa: 15000,
-      hectares: '2.5',
-      people: '4',
+      hectares: 2.5,
+      people: 4,
       date: '2026-05-08',
       approved: true,
       status: 'Recorded',
       isOffline: false,
       loggedBy: 'Pedro Reyes (Member)',
+      loggedById: '04000002',
       subItems: [
         { id: 'SI-002-1', description: 'Cane Points (Patdan - VMC 84-524)', qty: 12.5, unit: 'lac', unitCost: 3000, subTotal: 37500 }
       ]
@@ -197,16 +196,16 @@ async function seedData() {
       operationName: 'Basal Fertilizer Application',
       activity: 'Basal Fertilizer (Urea + Complete + Potash)',
       category: 'fert',
-      cost: 71100,
       totalCost: 71100,
       costPerHa: 15800,
-      hectares: '4.5',
-      people: '6',
+      hectares: 4.5,
+      people: 6,
       date: '2026-05-12',
       approved: true,
       status: 'Recorded',
       isOffline: false,
       loggedBy: 'Corazon Santos (Member)',
+      loggedById: '04000003',
       subItems: [
         { id: 'SI-003-1', description: '46-00-00 Urea Application', qty: 9, unit: 'bag', unitCost: 1600, subTotal: 14400 },
         { id: 'SI-003-2', description: '18-46-00 DAP / Complete', qty: 13.5, unit: 'bag', unitCost: 2500, subTotal: 33750 },
@@ -224,16 +223,16 @@ async function seedData() {
       operationName: 'Cultivation (Off-barring & On-barring)',
       activity: 'Pahubas & Off-barring Pass',
       category: 'weed',
-      cost: 10500,
       totalCost: 10500,
       costPerHa: 3000,
-      hectares: '3.5',
-      people: '3',
+      hectares: 3.5,
+      people: 3,
       date: '2026-05-18',
       approved: true,
       status: 'Recorded',
       isOffline: false,
       loggedBy: 'Roberto Tan (Member)',
+      loggedById: '04000004',
       subItems: [
         { id: 'SI-004-1', description: '1st Off-barring (Pahubas)', qty: 7, unit: 'pass', unitCost: 750, subTotal: 5250 },
         { id: 'SI-004-2', description: '2nd Off-barring (Pahubas)', qty: 7, unit: 'pass', unitCost: 750, subTotal: 5250 }
@@ -249,16 +248,16 @@ async function seedData() {
       operationName: 'Final Hilling-up (Pasungkal)',
       activity: 'Pasungkal Tractor Pass',
       category: 'maint',
-      cost: 8125,
       totalCost: 8125,
       costPerHa: 2500,
-      hectares: '3.25',
-      people: '2',
+      hectares: 3.25,
+      people: 2,
       date: '2026-05-22',
       approved: true,
       status: 'Recorded',
       isOffline: false,
       loggedBy: 'Ana Gomez (Member)',
+      loggedById: '04000005',
       subItems: [
         { id: 'SI-005-1', description: 'Final Hilling-Up / Pasungkal Pass', qty: 3.25, unit: 'ha', unitCost: 2500, subTotal: 8125 }
       ]
@@ -321,7 +320,6 @@ async function seedData() {
       blockFarmName: 'Nacayao Block Farm',
       period: 'May 2026',
       totalHectares: 15.25,
-      activePlots: 5,
       totalLogs: 14,
       totalCost: 145225,
       certifiedBy: 'Engr. Maria Santos (SRA Officer)',
@@ -379,37 +377,7 @@ async function seedData() {
   auditLogs.forEach(al => batch.set(doc(db, 'audit_logs', al.id), al));
   await batch.commit();
 
-  // 9. SYNC OPERATIONS (Offline Queue & Outbox State)
-  console.log('  → Seeding sync_operations...');
-  const syncOps = [
-    {
-      id: 'SYNC-2026-0001',
-      clientLogId: 'LOG-2026-NCY-001-001',
-      deviceId: 'SM-A546E-01',
-      memberId: '04000001',
-      memberName: 'Juan dela Cruz',
-      fieldId: 'FLD-NCY-001',
-      operation: 'SRA-02: Land Preparation',
-      status: 'Reconciled',
-      syncedAt: '2026-05-02T16:20:00Z'
-    },
-    {
-      id: 'SYNC-2026-0002',
-      clientLogId: 'LOG-2026-NCY-003-001',
-      deviceId: 'SM-G990B-02',
-      memberId: '04000003',
-      memberName: 'Corazon Santos',
-      fieldId: 'FLD-NCY-003',
-      operation: 'SRA-05: Basal Fertilization',
-      status: 'Reconciled',
-      syncedAt: '2026-05-12T17:45:00Z'
-    }
-  ];
-  batch = writeBatch(db);
-  syncOps.forEach(so => batch.set(doc(db, 'sync_operations', so.id), so));
-  await batch.commit();
-
-  console.log('🎉 [3/3] All 9 Firestore collections seeded with 100% relational integrity!');
+  console.log('🎉 [3/3] All 8 canonical Firestore collections seeded with 100% relational integrity!');
   process.exit(0);
 }
 

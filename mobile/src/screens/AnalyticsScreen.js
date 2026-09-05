@@ -57,7 +57,7 @@ export default function AnalyticsScreen({ navigation, route }) {
       return fields.filter(f => resolveFieldBlockFarm(f) === selectedBlockFarm || f.blockFarmId === selectedBlockFarm);
     }
     // Farm Manager: scoped to assigned farm
-    const mgrFarm = session.blockFarm || session.blockFarmScope || session.farm || 'Nacayao Block Farm';
+    const mgrFarm = session.blockFarm || session.farm || 'Nacayao Block Farm';
     const mgrFields = fields.filter(f => resolveFieldBlockFarm(f) === mgrFarm || f.blockFarmId === session.blockFarmId);
     return mgrFields.length > 0 ? mgrFields : fields;
   }, [isMember, isSRA, selectedBlockFarm, session.name, session.farm, session.employeeId, session.blockFarmId]);
